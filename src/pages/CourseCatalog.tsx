@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
 import { CourseCard } from '@/components/cards/CourseCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,10 +23,10 @@ const CourseCatalog = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+
 
       {/* Hero */}
-      <section className="bg-gradient-to-b from-slate-50 to-white py-12">
+      <section className="bg-slate-50 dark:bg-slate-900/50 py-20 pt-32">
         <div className="container mx-auto max-w-7xl px-4 text-center">
           <h1 className="mb-4 text-4xl font-bold text-foreground">Course Catalog</h1>
           <p className="text-lg text-muted-foreground">
@@ -111,8 +110,6 @@ const CourseCatalog = () => {
           </div>
         </div>
       </section>
-
-      <Footer />
     </div>
   );
 };

@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import {
   BookOpen,
   Users,
@@ -13,9 +15,9 @@ import {
   Target,
   Zap,
   ChevronRight,
+  Play
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -28,6 +30,38 @@ import { CourseCard } from '@/components/cards/CourseCard';
 import { MentorCard } from '@/components/cards/MentorCard';
 import { courses } from '@/data/courses';
 import { mentors } from '@/data/mentors';
+
+const RotatingText = () => {
+  const words = ["Schools", "Colleges", "Professionals"];
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIndex((prev) => (prev + 1) % words.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <span className="block h-[1.8em] overflow-visible mt-4 mb-20">
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={index}
+          className="block bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-extrabold text-5xl md:text-7xl leading-tight py-2"
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -50, opacity: 0 }}
+          transition={{
+            y: { type: "spring", stiffness: 100, damping: 20 },
+            opacity: { duration: 0.2 }
+          }}
+        >
+          {words[index]}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
+};
 import { instructors, pricingPlans, faqs } from '@/data/instructors';
 
 const stats = [
@@ -42,31 +76,37 @@ const features = [
     icon: Sparkles,
     title: 'Cutting-Edge Curriculum',
     description: 'Learn the latest AI technologies including GPT, Computer Vision, and ML algorithms',
+    gradient: 'from-purple-500 to-indigo-500'
   },
   {
     icon: Lightbulb,
     title: 'Hands-On Projects',
     description: 'Build real AI applications that you can showcase in your portfolio and interviews',
+    gradient: 'from-amber-400 to-orange-500'
   },
   {
     icon: Users,
     title: 'Personal Mentorship',
     description: '1-on-1 guidance from industry experts to accelerate your learning journey',
+    gradient: 'from-blue-400 to-cyan-500'
   },
   {
     icon: Zap,
     title: 'AI Tools Access',
     description: 'Easy-to-use AI tools available on any device with no special hardware required',
+    gradient: 'from-emerald-400 to-teal-500'
   },
   {
     icon: Award,
     title: 'Industry Recognition',
     description: 'Earn certificates and credentials recognized by top tech companies in India',
+    gradient: 'from-rose-400 to-pink-500'
   },
   {
     icon: Target,
     title: 'Career Support',
     description: 'Job placement assistance, interview prep, and direct industry connections',
+    gradient: 'from-violet-500 to-fuchsia-500'
   },
 ];
 
@@ -80,390 +120,277 @@ const callFeatures = [
 ];
 
 const Home = () => {
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
+  const { scrollYProgress } = useScroll();
+  const y = useTransform(scrollYProgress, [0, 1], [0, -50]);
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white py-20 lg:py-28">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="mx-auto max-w-3xl text-center">
-            <Badge className="mb-6 gradient-primary text-white">
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const item = {
+    hidden: { opacity: 0, y: 30 },
+    show: { opacity: 1, y: 0, transition: { type: "spring" as const, bounce: 0.4 } }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC]">
+
+      {/* Hero Section - Thematic Premium Design */}
+      <section className="relative overflow-hidden bg-slate-900 pb-20 pt-28 lg:pb-32 lg:pt-40">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <motion.div
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.3, 0.5, 0.3],
+            }}
+            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -top-[20%] -right-[10%] h-[800px] w-[800px] rounded-full bg-purple-600/20 blur-3xl"
+          ></motion.div>
+          <motion.div
+            animate={{
+              scale: [1, 1.1, 1],
+              x: [0, 30, 0],
+            }}
+            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute top-[20%] -left-[10%] h-[600px] w-[600px] rounded-full bg-blue-600/10 blur-3xl"
+          ></motion.div>
+        </div>
+
+        <div className="container relative mx-auto max-w-7xl px-4 text-center z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <Badge className="mb-8 bg-white/10 text-white border-white/20 px-6 py-2 text-sm font-medium backdrop-blur-md shadow-xl">
+              <Sparkles className="w-4 h-4 mr-2 text-amber-400 inline" />
               AI Education for Everyone
             </Badge>
-            <h1 className="mb-6 text-4xl font-bold tracking-tight text-foreground md:text-5xl lg:text-6xl">
-              Ready to Start Your{' '}
-              <span className="text-gradient">AI Journey?</span>
-            </h1>
-            <p className="mb-8 text-lg text-muted-foreground md:text-xl">
-              Join thousands of students who have transformed their careers with Koutuhal.
-              Explore tailored programs for schools, colleges, and businesses.
-            </p>
-            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link to="/courses">
-                <Button size="lg" className="gradient-primary text-white hover:opacity-90">
-                  Explore Our Courses
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <div className="flex gap-2">
-                <Link to="/courses/schools">
-                  <Button variant="outline" size="lg">AI for Schools</Button>
-                </Link>
-                <Link to="/courses/bootcamp">
-                  <Button variant="outline" size="lg">AI for Colleges</Button>
-                </Link>
-              </div>
+          </motion.div>
+
+          <motion.h1
+            className="mb-8 text-5xl font-bold tracking-tight text-white md:text-7xl leading-tight"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            Ready to Start Your{' '}
+            <span className="relative whitespace-nowrap">
+              <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-amber-400 animate-gradient-x">
+                AI Journey?
+              </span>
+              <span className="absolute bottom-1 left-0 w-full h-4 bg-purple-500/20 -z-0 rounded-full blur-sm"></span>
+            </span>
+          </motion.h1>
+
+          <motion.p
+            className="mb-10 text-xl text-slate-300 md:text-2xl leading-relaxed max-w-3xl mx-auto font-light"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
+            Join thousands of students transforming their careers.
+            Explore tailored programs for
+            <RotatingText />
+          </motion.p>
+
+          <motion.div
+            className="flex flex-col sm:flex-row gap-5 justify-center"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+          >
+            <Link to="/courses">
+              <Button size="lg" className="h-14 px-10 text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105 transition-all shadow-xl shadow-purple-500/25 rounded-xl border-0">
+                Enroll Now
+              </Button>
+            </Link>
+            <Link to="/courses/clarity">
+              <Button size="lg" className="h-14 px-10 text-lg bg-slate-800/80 hover:bg-slate-700 text-white border border-slate-700 backdrop-blur-sm rounded-xl transition-all hover:scale-105">
+                <Play className="w-5 h-5 mr-2 fill-current" /> Watch Demo
+              </Button>
+            </Link>
+          </motion.div>
+
+          {/* Floating UI Elements Mockup */}
+          <motion.div
+            style={{ y }}
+            className="mt-20 relative mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur-sm shadow-2xl hidden md:block"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+          >
+            <div className="rounded-xl overflow-hidden bg-slate-900 border border-slate-800 relative aspect-video flex items-center justify-center group cursor-pointer shadow-inner">
+              <img
+                src="/dashboard-mockup.png"
+                alt="Koutuhal AI Learning Dashboard"
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 to-transparent pointer-events-none"></div>
             </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* 1:1 Calls Section (Gold/Dark Contrast) */}
+      <section className="py-24 relative overflow-hidden">
+        <div className="absolute inset-0 bg-slate-900 -skew-y-3 origin-top-left scale-110 z-0 border-t border-white/5"></div>
+        <div className="container relative z-10 mx-auto max-w-7xl px-4">
+          <div className="text-center mb-16">
+            <Badge className="mb-4 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-4 py-1">Premium Support</Badge>
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
+              1:1 Calls for <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">100% Prep</span>
+            </h2>
+          </div>
+
+          <motion.div
+            variants={container}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-100px" }}
+            className="grid grid-cols-2 lg:grid-cols-6 gap-4"
+          >
+            {callFeatures.map((feature, i) => (
+              <motion.div
+                key={feature.title}
+                variants={item}
+                className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all hover:-translate-y-2 cursor-pointer text-center"
+              >
+                <div className="mb-4 mx-auto w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center group-hover:bg-amber-500 transition-colors">
+                  <feature.icon className="h-5 w-5 text-amber-400 group-hover:text-white transition-colors" />
+                </div>
+                <span className="text-sm font-bold text-slate-300 group-hover:text-white transition-colors leading-tight block">{feature.title}</span>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Stats Section - Floating Cards */}
+      <section className="py-12 -mt-10 z-20 relative px-4">
+        <div className="container mx-auto max-w-7xl">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { label: "Partner Workplaces", value: "750+", color: "bg-blue-500" },
+              { label: "Partner Colleges", value: "200+", color: "bg-purple-500" },
+              { label: "Expert Mentors", value: "1,000+", color: "bg-emerald-500" }
+            ].map((stat, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="bg-white rounded-2xl p-8 shadow-xl shadow-slate-200/50 flex items-center justify-between border border-slate-100"
+              >
+                <div>
+                  <p className="text-4xl font-bold text-slate-900 mb-1">{stat.value}</p>
+                  <p className="text-slate-500 font-medium">{stat.label}</p>
+                </div>
+                <div className={`w-12 h-12 rounded-full ${stat.color} opacity-20`}></div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* 1:1 Calls Section */}
-      <section className="py-16 gradient-gold text-white">
+      {/* Features - Grid with Hover Effects */}
+      <section id="features" className="py-24 bg-white">
         <div className="container mx-auto max-w-7xl px-4">
-          <h2 className="mb-8 text-center text-3xl font-bold">
-            1:1 Calls for 100% Prep
-          </h2>
-          <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-6">
-            {callFeatures.map((feature) => (
-              <div
-                key={feature.title}
-                className="flex flex-col items-center rounded-lg bg-white/10 p-4 backdrop-blur"
-              >
-                <feature.icon className="mb-2 h-8 w-8" />
-                <span className="text-center text-sm font-medium">{feature.title}</span>
-              </div>
-            ))}
+          <div className="mb-16 text-center max-w-3xl mx-auto">
+            <h2 className="mb-6 text-4xl font-bold text-slate-900">
+              Why Choose Koutuhal?
+            </h2>
+            <p className="text-xl text-slate-500">
+              We provide everything you need to become an AI professional, packaged in a world-class learning experience.
+            </p>
           </div>
-          <div className="flex flex-wrap justify-center gap-4">
-            <div className="rounded-lg bg-gold-light px-6 py-3 text-amber-900 font-semibold">
-              750+ Workplaces
-            </div>
-            <div className="rounded-lg bg-gold-light px-6 py-3 text-amber-900 font-semibold">
-              200+ Colleges
-            </div>
-            <div className="rounded-lg bg-gold-light px-6 py-3 text-amber-900 font-semibold">
-              1,000+ Experts
-            </div>
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {features.map((feature, i) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="group rounded-3xl border border-slate-100 bg-slate-50 p-8 transition-all hover:shadow-2xl hover:shadow-purple-500/10 hover:bg-white hover:-translate-y-1"
+              >
+                <div className={`mb-6 h-14 w-14 rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center text-white shadow-lg`}>
+                  <feature.icon className="h-7 w-7" />
+                </div>
+                <h3 className="mb-3 text-xl font-bold text-slate-900">{feature.title}</h3>
+                <p className="text-slate-600 leading-relaxed">{feature.description}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Mentors Preview */}
-      <section id="mentors" className="py-20">
+      <section id="mentors" className="py-24 bg-[#F8FAFC]">
         <div className="container mx-auto max-w-7xl px-4">
-          <div className="mb-12 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-foreground">
-              Learn from Industry Leaders
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Get personalized guidance from top AI professionals working at leading tech companies
-            </p>
-          </div>
-          <div className="mb-8 flex items-center justify-between">
-            <div className="flex gap-2">
-              <Badge variant="secondary">Our Mentors</Badge>
-              <Badge variant="outline">Mentorship Programs</Badge>
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+            <div>
+              <Badge className="mb-4 bg-purple-100 text-purple-700 px-3 py-1 border-0">World-Class Faculty</Badge>
+              <h2 className="text-4xl font-bold text-slate-900 mb-4">
+                Learn from Industry Leaders
+              </h2>
+              <p className="text-lg text-slate-500 max-w-xl">
+                Get personalized guidance from top AI professionals working at companies like Google, Microsoft, and Amazon.
+              </p>
             </div>
-          </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {mentors.slice(0, 8).map((mentor) => (
-              <MentorCard key={mentor.id} mentor={mentor} />
-            ))}
-          </div>
-          <div className="mt-8 text-center">
             <Link to="/mentors">
-              <Button variant="outline" size="lg">
-                View All Mentors
-                <ChevronRight className="ml-2 h-5 w-5" />
+              <Button size="lg" variant="outline" className="rounded-full px-6 border-slate-300 hover:border-purple-500 hover:text-purple-600">
+                View All Mentors <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </div>
-        </div>
-      </section>
 
-      {/* Stats */}
-      <section className="border-y bg-slate-50 py-12">
-        <div className="container mx-auto max-w-7xl px-4">
-          <h3 className="mb-8 text-center text-xl font-semibold text-foreground">
-            Mentorship Impact
-          </h3>
-          <p className="mb-8 text-center text-muted-foreground">
-            Real results from our mentorship programs
-          </p>
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-            {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <p className="text-3xl font-bold text-gradient">{stat.value}</p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Curriculum Overview */}
-      <section className="py-20">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="mb-12 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-foreground">
-              Comprehensive AI Education Program
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              From fundamentals to advanced applications, our curriculum is designed to make you job-ready in AI
-            </p>
-          </div>
-
-          {/* Benefits Row */}
-          <div className="mb-12 grid gap-4 md:grid-cols-3">
-            <div className="flex items-center gap-4 rounded-xl border bg-card p-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                <Clock className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h4 className="font-semibold">Flexible Learning</h4>
-                <p className="text-sm text-muted-foreground">Learn at your own pace with 24/7 access</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4 rounded-xl border bg-card p-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                <Users className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h4 className="font-semibold">Expert Mentorship</h4>
-                <p className="text-sm text-muted-foreground">Get guidance from AI researchers</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4 rounded-xl border bg-card p-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                <Award className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h4 className="font-semibold">Industry Recognition</h4>
-                <p className="text-sm text-muted-foreground">Earn valued certificates</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Learnings */}
-          <div className="rounded-xl border bg-card p-8">
-            <h3 className="mb-6 text-xl font-semibold">What You'll Learn</h3>
-            <div className="grid gap-3 md:grid-cols-2">
-              {[
-                'Understand basic AI tools and their uses',
-                'Use AI apps to solve everyday problems',
-                'Create simple AI projects with guidance',
-                'Explore AI in daily life (voice assistants, image recognition)',
-                'Enhance creativity & problem-solving through AI',
-                'Learn to use AI responsibly and safely',
-              ].map((item) => (
-                <div key={item} className="flex items-center gap-3">
-                  <CheckCircle className="h-5 w-5 text-emerald-500" />
-                  <span className="text-muted-foreground">{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Curriculum Timeline */}
-          <div className="mt-12 rounded-xl border bg-card p-8">
-            <h3 className="mb-6 text-xl font-semibold">Curriculum Overview</h3>
-            <div className="grid gap-4 md:grid-cols-4">
-              <div className="rounded-lg bg-slate-50 p-4">
-                <span className="text-sm font-medium text-primary">Weeks 1-4</span>
-                <h4 className="mb-2 mt-1 font-semibold">AI Basics</h4>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  <li>ChatGPT & AI Tools</li>
-                  <li>Simple Coding</li>
-                  <li>AI for Students</li>
-                  <li>Smart Study Methods</li>
-                </ul>
-              </div>
-              <div className="rounded-lg bg-slate-50 p-4">
-                <span className="text-sm font-medium text-primary">Weeks 5-8</span>
-                <h4 className="mb-2 mt-1 font-semibold">AI Learning Tools</h4>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  <li>AI Quiz Makers</li>
-                  <li>Study Assistants</li>
-                  <li>Smart Presentations</li>
-                  <li>Learning Apps</li>
-                </ul>
-              </div>
-              <div className="rounded-lg bg-slate-50 p-4">
-                <span className="text-sm font-medium text-primary">Weeks 9-16</span>
-                <h4 className="mb-2 mt-1 font-semibold">AI Projects</h4>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  <li>Build AI Games</li>
-                  <li>Create AI Helpers</li>
-                  <li>Make Smart Apps</li>
-                  <li>AI Art & Videos</li>
-                </ul>
-              </div>
-              <div className="rounded-lg bg-slate-50 p-4">
-                <span className="text-sm font-medium text-primary">Weeks 17-24</span>
-                <h4 className="mb-2 mt-1 font-semibold">Real AI Projects</h4>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  <li>Career AI Guide</li>
-                  <li>AI Business Ideas</li>
-                  <li>Share Your Projects</li>
-                  <li>Future Skills</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="bg-slate-50 py-20">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="mb-12 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-foreground">
-              Why Choose Koutuhal?
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              We provide everything you need to become an AI professional
-            </p>
-          </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature) => (
-              <div
-                key={feature.title}
-                className="group rounded-xl border bg-card p-6 transition-all hover:shadow-lg"
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {mentors.slice(0, 4).map((mentor, i) => (
+              <motion.div
+                key={mentor.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
               >
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 transition-colors group-hover:bg-primary/20">
-                  <feature.icon className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="mb-2 text-lg font-semibold">{feature.title}</h3>
-                <p className="text-muted-foreground">{feature.description}</p>
-              </div>
+                <MentorCard mentor={mentor} index={i} />
+              </motion.div>
             ))}
-          </div>
-
-          {/* Built for Indian Students */}
-          <div className="mt-16 rounded-xl gradient-primary p-8 text-white">
-            <h3 className="mb-6 text-center text-2xl font-bold">
-              Built for Indian Students
-            </h3>
-            <p className="mb-8 text-center text-white/90">
-              We understand the unique challenges and opportunities in the Indian tech ecosystem
-            </p>
-            <div className="grid gap-6 md:grid-cols-3">
-              <div className="rounded-lg bg-white/10 p-6 text-center backdrop-blur">
-                <h4 className="mb-2 font-semibold">Indian Context</h4>
-                <p className="text-sm text-white/80">
-                  Curriculum designed specifically for Indian students and job market needs
-                </p>
-              </div>
-              <div className="rounded-lg bg-white/10 p-6 text-center backdrop-blur">
-                <h4 className="mb-2 font-semibold">Latest Technology</h4>
-                <p className="text-sm text-white/80">
-                  Stay ahead with the most current AI tools and frameworks
-                </p>
-              </div>
-              <div className="rounded-lg bg-white/10 p-6 text-center backdrop-blur">
-                <h4 className="mb-2 font-semibold">Community Driven</h4>
-                <p className="text-sm text-white/80">
-                  Join a thriving community of AI enthusiasts and professionals
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* Instructors */}
-      <section id="instructors" className="py-20">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="mb-12 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-foreground">
-              Meet Our AI Coaches
+      {/* Featured Courses - Dark Mode Contrast */}
+      <section className="bg-slate-900 py-24 text-white relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+        <div className="container relative z-10 mx-auto max-w-7xl px-4">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 text-4xl font-bold">
+              Popular Programs
             </h2>
-            <p className="text-lg text-muted-foreground">
-              Our AI coaches are experienced educators dedicated to making AI accessible
+            <p className="text-xl text-slate-400">
+              Start your journey with our most loved courses
             </p>
           </div>
-          <div className="grid gap-8 md:grid-cols-3">
-            {instructors.map((instructor) => (
-              <div
-                key={instructor.id}
-                className="group overflow-hidden rounded-xl border bg-card transition-all hover:shadow-lg"
-              >
-                <div className="aspect-square overflow-hidden">
-                  <img
-                    src={instructor.image}
-                    alt={instructor.name}
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
-                <div className="p-6">
-                  <h3 className="mb-1 text-xl font-semibold">{instructor.name}</h3>
-                  <p className="mb-3 text-sm font-medium text-primary">
-                    {instructor.title}
-                  </p>
-                  <p className="mb-4 text-sm text-muted-foreground">
-                    {instructor.bio}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {instructor.specialties.map((specialty) => (
-                      <Badge key={specialty} variant="secondary" className="text-xs">
-                        {specialty}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {courses.slice(0, 3).map((course) => (
+              <div key={course.id} className="transform hover:-translate-y-2 transition-transform duration-300">
+                <CourseCard course={course} />
               </div>
             ))}
           </div>
-
-          {/* Faculty Stats */}
-          <div className="mt-16 rounded-xl border bg-card p-8">
-            <h3 className="mb-6 text-center text-xl font-semibold">World-Class Faculty</h3>
-            <p className="mb-8 text-center text-muted-foreground">
-              Our instructors combine deep academic knowledge with practical industry experience
-            </p>
-            <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-gradient">18+</p>
-                <p className="text-sm text-muted-foreground">Years Experience</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl font-bold text-gradient">20+</p>
-                <p className="text-sm text-muted-foreground">Research Papers</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl font-bold text-gradient">15,000+</p>
-                <p className="text-sm text-muted-foreground">Students Guided</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl font-bold text-gradient">Young</p>
-                <p className="text-sm text-muted-foreground">Learner Focus</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Courses */}
-      <section className="bg-slate-50 py-20">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="mb-12 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-foreground">
-              Popular Courses
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Start learning with our most loved programs
-            </p>
-          </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {courses.slice(0, 6).map((course) => (
-              <CourseCard key={course.id} course={course} />
-            ))}
-          </div>
-          <div className="mt-8 text-center">
+          <div className="mt-16 text-center">
             <Link to="/courses">
-              <Button size="lg" className="gradient-primary text-white hover:opacity-90">
+              <Button size="lg" className="h-14 px-10 rounded-full bg-white text-slate-900 hover:bg-slate-200 font-bold">
                 Browse All Courses
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
@@ -472,170 +399,89 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section id="testimonials" className="py-20">
+      {/* Pricing - Cards */}
+      <section id="pricing" className="py-24 bg-white">
         <div className="container mx-auto max-w-7xl px-4">
-          <div className="mb-12 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-foreground">
-              Success Stories
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <h2 className="text-4xl font-bold text-slate-900 mb-6">
+              Invest in Your Future
             </h2>
-            <p className="text-lg text-muted-foreground">
-              Hear from our students who have transformed their careers
+            <p className="text-xl text-slate-500">
+              Flexible learning packages designed for every stage of your journey.
             </p>
           </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {[
-              {
-                quote: "Koutuhal transformed my understanding of AI. The practical approach and expert guidance helped me land an internship at a top tech company.",
-                name: "Arjun Patel",
-                role: "Computer Science Student, IIT Bombay",
-              },
-              {
-                quote: "The course content is incredibly well-structured. I went from AI novice to building my own machine learning models in just 12 weeks.",
-                name: "Sneha Reddy",
-                role: "Engineering Graduate, BITS Pilani",
-              },
-              {
-                quote: "Perfect blend of technical depth and business applications. Now I can speak confidently about AI strategy in my consulting interviews.",
-                name: "Vikram Singh",
-                role: "MBA Student, ISB Hyderabad",
-              },
-            ].map((testimonial) => (
-              <div
-                key={testimonial.name}
-                className="rounded-xl border bg-card p-6"
-              >
-                <div className="mb-4 flex gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-5 w-5 fill-amber-400 text-amber-400" />
-                  ))}
-                </div>
-                <p className="mb-6 text-muted-foreground">"{testimonial.quote}"</p>
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-purple-500" />
-                  <div>
-                    <p className="font-semibold">{testimonial.name}</p>
-                    <p className="text-sm text-muted-foreground">{testimonial.role}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" className="bg-slate-50 py-20">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="mb-12 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-foreground">
-              Choose Your Learning Path
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Flexible learning packages designed for young learners
-            </p>
-          </div>
-          <div className="grid gap-8 md:grid-cols-3">
-            {pricingPlans.map((plan) => (
-              <div
+          <div className="grid gap-8 md:grid-cols-3 max-w-5xl mx-auto">
+            {pricingPlans.map((plan, index) => (
+              <motion.div
                 key={plan.id}
-                className={`relative overflow-hidden rounded-xl border bg-card p-6 transition-all hover:shadow-lg ${
-                  plan.isPopular ? 'border-primary ring-2 ring-primary' : ''
-                }`}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ y: -8 }}
+                className={`relative overflow-hidden rounded-2xl border p-8 transition-all ${plan.isPopular
+                  ? 'border-purple-200 bg-purple-50/50 shadow-2xl shadow-purple-200/50'
+                  : 'border-slate-100 bg-white shadow-lg shadow-slate-200/50'
+                  }`}
               >
                 {plan.isPopular && (
-                  <div className="absolute -right-8 top-4 rotate-45 bg-primary px-8 py-1 text-xs font-semibold text-white">
-                    Most Popular
+                  <div className="absolute top-0 right-0 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-bold px-4 py-1 rounded-bl-xl shadow-lg">
+                    MOST POPULAR
                   </div>
                 )}
-                <h3 className="mb-2 text-xl font-bold">{plan.name}</h3>
-                <div className="mb-2">
-                  <span className="text-3xl font-bold">{plan.price}</span>
-                  <span className="text-muted-foreground"> total</span>
+                <h3 className="mb-2 text-xl font-bold text-slate-900">{plan.name}</h3>
+                <div className="mb-4">
+                  <span className="text-4xl font-bold text-slate-900">{plan.price}</span>
+                  <span className="text-slate-500"> / total</span>
                 </div>
-                <p className="mb-6 text-sm text-muted-foreground">{plan.duration}</p>
-                <ul className="mb-8 space-y-3">
+                <p className="mb-8 text-sm text-slate-500 font-medium bg-slate-100 inline-block px-3 py-1 rounded-full">{plan.duration}</p>
+                <ul className="mb-8 space-y-4">
                   {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="h-4 w-4 text-emerald-500" />
+                    <li key={feature} className="flex items-start gap-3 text-sm text-slate-600">
+                      <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
                       {feature}
                     </li>
                   ))}
                 </ul>
                 <Button
-                  className={`w-full ${
-                    plan.isPopular
-                      ? 'gradient-primary text-white hover:opacity-90'
-                      : ''
-                  }`}
-                  variant={plan.isPopular ? 'default' : 'outline'}
+                  className={`w-full h-12 text-base font-bold rounded-xl ${plan.isPopular
+                    ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:shadow-lg hover:shadow-purple-500/25 text-white border-0'
+                    : 'bg-white border-2 border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
                 >
                   Start Learning
                 </Button>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* FAQ */}
-      <section id="faq" className="py-20">
-        <div className="container mx-auto max-w-3xl px-4">
-          <div className="mb-12 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-foreground">
-              Frequently Asked Questions
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Got questions? We have answers.
-            </p>
-          </div>
-          <Accordion type="single" collapsible className="space-y-4">
-            {faqs.map((faq, index) => (
-              <AccordionItem
-                key={index}
-                value={`faq-${index}`}
-                className="overflow-hidden rounded-lg border bg-card px-4"
-              >
-                <AccordionTrigger className="py-4 text-left hover:no-underline">
-                  {faq.question}
-                </AccordionTrigger>
-                <AccordionContent className="pb-4 text-muted-foreground">
-                  {faq.answer}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-          <div className="mt-12 text-center">
-            <p className="mb-4 text-muted-foreground">Still Have Questions?</p>
-            <div className="flex justify-center gap-4">
-              <Button variant="outline">Book a Call</Button>
-              <Button className="gradient-primary text-white hover:opacity-90">
-                Contact Us
-              </Button>
-            </div>
+      {/* CTA - Gradient Banner */}
+      <section className="py-24 px-4 bg-[#F8FAFC]">
+        <div className="container mx-auto max-w-6xl">
+          <div className="rounded-[3rem] bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-12 lg:p-24 text-center text-white shadow-2xl shadow-purple-900/30 relative overflow-hidden">
+            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] animate-pulse"></div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              className="relative z-10"
+            >
+              <h2 className="mb-6 text-4xl md:text-6xl font-bold tracking-tight">
+                Ready to Transform Your Future?
+              </h2>
+              <p className="mb-10 text-xl text-purple-100 max-w-2xl mx-auto">
+                Join the program and start your AI journey today. Limited seats available for the upcoming cohort.
+              </p>
+              <Link to="/courses">
+                <Button size="lg" className="h-16 px-12 text-lg bg-white text-purple-700 hover:bg-purple-50 hover:scale-105 transition-all shadow-xl rounded-full font-bold">
+                  Join the Program <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+            </motion.div>
           </div>
         </div>
       </section>
-
-      {/* CTA */}
-      <section className="gradient-primary py-20 text-white">
-        <div className="container mx-auto max-w-4xl px-4 text-center">
-          <h2 className="mb-4 text-3xl font-bold">
-            Ready to Transform Your Future?
-          </h2>
-          <p className="mb-8 text-lg text-white/90">
-            Join the program and start your AI journey today
-          </p>
-          <Link to="/courses">
-            <Button size="lg" variant="secondary" className="text-primary">
-              Join the Program
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
-        </div>
-      </section>
-
-      <Footer />
     </div>
   );
 };

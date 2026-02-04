@@ -1,253 +1,161 @@
-import { useState } from 'react';
-import { Search } from 'lucide-react';
-import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
-import { MentorCard } from '@/components/cards/MentorCard';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { mentors, mentorCompanies } from '@/data/mentors';
-import { cn } from '@/lib/utils';
+import { MentorCard } from "@/components/cards/MentorCard";
+import { mentors } from "@/data/mentors";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search, Filter, Sparkles, MapPin, Briefcase, GraduationCap, ChevronDown, Users } from "lucide-react";
+import { motion } from "framer-motion";
 
 const SearchMentors = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCompany, setSelectedCompany] = useState('All Companies');
-  const [activeTab, setActiveTab] = useState('current');
-
-  const filteredMentors = mentors.filter((mentor) => {
-    const searchMatch =
-      mentor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      mentor.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      mentor.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const companyMatch =
-      selectedCompany === 'All Companies' || mentor.company === selectedCompany;
-    const tabMatch =
-      activeTab === 'current' ? !mentor.isAlumni : mentor.isAlumni;
-    return searchMatch && companyMatch && tabMatch;
-  });
-
-  const currentCount = mentors.filter((m) => !m.isAlumni).length;
-  const alumniCount = mentors.filter((m) => m.isAlumni).length;
-
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
+      <div className="container mx-auto max-w-7xl px-4 pt-32 pb-12">
 
-      {/* Hero */}
-      <section className="bg-gradient-to-b from-slate-50 to-white py-12">
-        <div className="container mx-auto max-w-7xl px-4 text-center">
-          <h1 className="mb-4 text-4xl font-bold text-gradient">
+        {/* Header Section */}
+        <div className="text-center mb-10 space-y-4">
+          {/* New Badge */}
+          <div className="inline-flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm mb-2">
+            <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 rounded-sm uppercase tracking-wider">NEW</span>
+            <span className="text-xs font-medium text-slate-600 flex items-center gap-1">
+              <Search className="w-3 h-3" /> Search
+            </span>
+            <div className="flex gap-2 text-slate-400">
+              <div className="bg-emerald-100 text-emerald-700 p-1 rounded-full"><Briefcase className="w-3 h-3" /></div>
+              <div className="bg-slate-100 p-1 rounded-full"><Briefcase className="w-3 h-3" /></div>
+              <div className="bg-slate-100 p-1 rounded-full"><Briefcase className="w-3 h-3" /></div>
+            </div>
+          </div>
+
+          <h1 className="text-4xl font-bold text-slate-800">
             Let's Find You The Perfect Near Peer
           </h1>
-          <p className="mb-8 text-lg text-muted-foreground">
-            Connect with industry experts for personalized career guidance
-          </p>
+        </div>
 
-          {/* Search */}
-          <div className="mx-auto max-w-2xl">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+        {/* Main Search Bar Area */}
+        <div className="max-w-4xl mx-auto mb-8">
+          <div className="bg-white p-2 rounded-full shadow-lg border border-slate-200 flex flex-col md:flex-row items-center gap-2">
+            <div className="flex items-center gap-2 px-4 py-2 border-r border-slate-100 w-full md:w-auto">
+              <div className="text-left">
+                <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Search By</p>
+                <p className="text-sm font-bold text-purple-700 flex items-center gap-1 cursor-pointer">
+                  Industry <ChevronDown className="w-3 h-3" />
+                </p>
+              </div>
+            </div>
+
+            <div className="flex-1 w-full relative">
               <Input
-                type="text"
-                placeholder="Search by name, company, or role..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-12 pl-12 text-lg"
+                className="border-none shadow-none focus-visible:ring-0 text-base font-medium placeholder:text-slate-300 h-10"
+                placeholder="IT Services / DevOps"
               />
             </div>
+
+            <Button className="rounded-full bg-purple-600 hover:bg-purple-700 text-white px-8 h-10 w-full md:w-auto text-base font-medium transition-all shadow-md hover:shadow-lg shadow-purple-200">
+              Find Near Peers
+            </Button>
           </div>
         </div>
-      </section>
 
-      {/* Content */}
-      <section className="py-12">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="flex flex-col gap-8 lg:flex-row">
-            {/* Sidebar */}
-            <aside className="w-full shrink-0 lg:w-64">
-              <div className="sticky top-24 rounded-xl border bg-card p-6">
-                <h3 className="mb-4 font-semibold">Search By</h3>
+        {/* Pill Filters */}
+        <div className="flex flex-wrap justify-center gap-3 mb-12">
+          {[
+            { label: 'Workplace', icon: Briefcase },
+            { label: 'College', icon: GraduationCap },
+            { label: 'Name', icon: Users },
+            { label: 'Industry', icon: Briefcase, active: true },
+            { label: 'Function', icon: Sparkles }, // Using Sparkles as generic for Function
+            { label: 'Journey', icon: MapPin }
+          ].map((filter) => (
+            <button
+              key={filter.label}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium border transition-all ${filter.active
+                  ? 'bg-purple-50 border-purple-200 text-purple-700 shadow-sm ring-2 ring-purple-100'
+                  : 'bg-white border-slate-200 text-slate-500 hover:border-purple-200 hover:text-purple-600 hover:bg-slate-50'
+                }`}
+            >
+              {filter.icon && <filter.icon className="w-4 h-4" />}
+              {filter.label}
+            </button>
+          ))}
+        </div>
 
-                {/* Tabs */}
-                <div className="mb-6">
-                  <Button
-                    variant={activeTab === 'current' ? 'default' : 'outline'}
-                    size="sm"
-                    className={cn('mr-2', activeTab === 'current' && 'gradient-primary text-white')}
-                    onClick={() => setActiveTab('current')}
-                  >
-                    Workplace
-                  </Button>
-                  <Button
-                    variant={activeTab === 'alumni' ? 'default' : 'outline'}
-                    size="sm"
-                    className={cn(activeTab === 'alumni' && 'gradient-primary text-white')}
-                    onClick={() => setActiveTab('alumni')}
-                  >
-                    Alumni
-                  </Button>
-                </div>
-
-                <h3 className="mb-4 font-semibold">Company</h3>
-                <div className="flex flex-wrap gap-2">
-                  {mentorCompanies.map((company) => (
-                    <Badge
-                      key={company}
-                      variant={selectedCompany === company ? 'default' : 'outline'}
-                      className={cn(
-                        'cursor-pointer transition-colors',
-                        selectedCompany === company && 'gradient-primary text-white'
-                      )}
-                      onClick={() => setSelectedCompany(company)}
-                    >
-                      {company}
-                    </Badge>
-                  ))}
-                </div>
-
-                <Button
-                  variant="outline"
-                  className="mt-6 w-full"
-                  onClick={() => {
-                    setSelectedCompany('All Companies');
-                    setSearchQuery('');
-                  }}
-                >
-                  Clear Filters
-                </Button>
-              </div>
-            </aside>
-
-            {/* Mentor Grid */}
-            <div className="flex-1">
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="mb-6">
-                  <TabsTrigger value="current">
-                    Current Employees ({currentCount})
-                  </TabsTrigger>
-                  <TabsTrigger value="alumni">
-                    Alumni ({alumniCount})
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value={activeTab}>
-                  <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                    {filteredMentors.map((mentor) => (
-                      <MentorCard key={mentor.id} mentor={mentor} />
-                    ))}
-                  </div>
-
-                  {filteredMentors.length === 0 && (
-                    <div className="rounded-xl border bg-card p-12 text-center">
-                      <p className="text-lg font-medium text-muted-foreground">
-                        No mentors match your search
-                      </p>
-                      <Button
-                        variant="outline"
-                        className="mt-4"
-                        onClick={() => {
-                          setSelectedCompany('All Companies');
-                          setSearchQuery('');
-                        }}
-                      >
-                        Clear Filters
-                      </Button>
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
+        {/* Secondary Filters Row */}
+        <div className="max-w-5xl mx-auto mb-16 grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="md:col-span-3 space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 ml-1 uppercase tracking-wide">Role</label>
+            <Input className="bg-slate-50 border-slate-200 focus:bg-white transition-colors" placeholder="Search roles..." />
+          </div>
+          <div className="md:col-span-3 space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 ml-1 uppercase tracking-wide">Location</label>
+            <Input className="bg-slate-50 border-slate-200 focus:bg-white transition-colors" placeholder="Search locations..." />
+          </div>
+          <div className="md:col-span-3 space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 ml-1 uppercase tracking-wide">Work Experience</label>
+            <div className="flex gap-2">
+              <Input className="bg-slate-50 border-slate-200 focus:bg-white transition-colors" placeholder="Min" />
+              <Input className="bg-slate-50 border-slate-200 focus:bg-white transition-colors" placeholder="Max" />
             </div>
+            <p className="text-[10px] text-slate-400 text-right pr-1">Years of experience</p>
+          </div>
+          <div className="md:col-span-3">
+            <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium h-10 shadow-lg shadow-purple-200">
+              Apply Filters
+            </Button>
           </div>
         </div>
-      </section>
 
-      {/* Mentorship Programs */}
-      <section className="bg-slate-50 py-16">
-        <div className="container mx-auto max-w-7xl px-4">
-          <h2 className="mb-8 text-center text-2xl font-bold">Mentorship Programs</h2>
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="rounded-xl border bg-card p-6">
-              <Badge className="mb-4 badge-available">Free for students</Badge>
-              <h3 className="mb-2 text-xl font-bold">1-on-1 Mentorship</h3>
-              <p className="mb-4 text-sm text-muted-foreground">
-                Personal guidance sessions with industry experts
-              </p>
-              <ul className="mb-6 space-y-2 text-sm text-muted-foreground">
-                <li>• 3 months duration</li>
-                <li>• 8 sessions</li>
-                <li>• Weekly 1-hour video calls</li>
-                <li>• Personalized learning plan</li>
-                <li>• Career guidance and advice</li>
-              </ul>
-              <Button className="w-full gradient-primary text-white hover:opacity-90">
-                Apply Now
-              </Button>
-            </div>
+        {/* Infinite Marquee - "Trusted By" Style Animation */}
+        <div className="mb-16 overflow-hidden relative group py-8 bg-white border-y border-slate-100">
+          <div className="absolute top-0 left-0 h-full w-20 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute top-0 right-0 h-full w-20 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
 
-            <div className="rounded-xl border bg-card p-6">
-              <Badge className="mb-4 badge-available">Free for students</Badge>
-              <h3 className="mb-2 text-xl font-bold">Group Mentorship</h3>
-              <p className="mb-4 text-sm text-muted-foreground">
-                Learn alongside peers with expert guidance
-              </p>
-              <ul className="mb-6 space-y-2 text-sm text-muted-foreground">
-                <li>• 2 months duration</li>
-                <li>• 6 group sessions</li>
-                <li>• Small groups of 5-8 students</li>
-                <li>• Collaborative projects</li>
-                <li>• Peer learning opportunities</li>
-              </ul>
-              <Button className="w-full gradient-primary text-white hover:opacity-90">
-                Apply Now
-              </Button>
-            </div>
+          <h3 className="text-center text-sm font-semibold text-slate-400 uppercase tracking-widest mb-8">Mentors from top companies</h3>
 
-            <div className="rounded-xl border bg-card p-6">
-              <Badge className="mb-4 badge-limited">Free for enrolled students</Badge>
-              <h3 className="mb-2 text-xl font-bold">Mentor Masterclasses</h3>
-              <p className="mb-4 text-sm text-muted-foreground">
-                Exclusive sessions with top industry leaders
-              </p>
-              <ul className="mb-6 space-y-2 text-sm text-muted-foreground">
-                <li>• Monthly live sessions</li>
-                <li>• Q&A with industry leaders</li>
-                <li>• Latest industry trends</li>
-                <li>• Career opportunities</li>
-                <li>• Recorded for later viewing</li>
-              </ul>
-              <Button className="w-full gradient-primary text-white hover:opacity-90">
-                Apply Now
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How it Works */}
-      <section className="py-16">
-        <div className="container mx-auto max-w-4xl px-4">
-          <h2 className="mb-12 text-center text-2xl font-bold">How Mentorship Works</h2>
-          <div className="grid gap-8 md:grid-cols-4">
-            {[
-              { step: 1, title: 'Apply', desc: 'Submit your application with your goals and interests' },
-              { step: 2, title: 'Match', desc: 'Get matched with the perfect mentor based on your profile' },
-              { step: 3, title: 'Learn', desc: 'Start your mentorship journey with regular sessions' },
-              { step: 4, title: 'Succeed', desc: 'Achieve your career goals with expert guidance' },
-            ].map((item) => (
-              <div key={item.step} className="text-center">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full gradient-primary text-white font-bold">
-                  {item.step}
-                </div>
-                <h3 className="mb-2 font-semibold">{item.title}</h3>
-                <p className="text-sm text-muted-foreground">{item.desc}</p>
+          <div className="flex animate-scroll hover:pause-animation">
+            {[...Array(4)].map((_, widthIndex) => (
+              <div key={widthIndex} className="flex gap-16 items-center mx-8 shrink-0">
+                <span className="text-2xl font-bold text-slate-300 hover:text-slate-800 transition-colors cursor-default">GOOGLE</span>
+                <span className="text-2xl font-bold text-slate-300 hover:text-red-600 transition-colors cursor-default">NETFLIX</span>
+                <span className="text-2xl font-bold text-slate-300 hover:text-amber-500 transition-colors cursor-default">AMAZON</span>
+                <span className="text-2xl font-bold text-slate-300 hover:text-blue-600 transition-colors cursor-default">META</span>
+                <span className="text-2xl font-bold text-slate-300 hover:text-slate-800 transition-colors cursor-default italic">MICROSOFT</span>
+                <span className="text-2xl font-bold text-slate-300 hover:text-green-600 transition-colors cursor-default">UBER</span>
+                <span className="text-2xl font-bold text-slate-300 hover:text-rose-500 transition-colors cursor-default">AIRBNB</span>
+                <span className="text-2xl font-bold text-slate-300 hover:text-indigo-600 transition-colors cursor-default">STRIPE</span>
+                <span className="text-2xl font-bold text-slate-300 hover:text-green-500 transition-colors cursor-default">SPOTIFY</span>
               </div>
             ))}
           </div>
         </div>
-      </section>
 
-      <Footer />
+        {/* Results Header */}
+        <div className="flex items-center gap-3 mb-8">
+          <h2 className="text-xl font-bold text-slate-700">Experts in Industry: <span className="text-purple-700">IT Services / DevOps</span></h2>
+          <span className="bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md shadow-purple-200">{mentors.length} experts</span>
+        </div>
+
+        {/* Mentors Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {mentors.map((mentor, index) => (
+            <MentorCard key={mentor.id} mentor={mentor} index={index} />
+          ))}
+        </div>
+
+      </div>
+
+      {/* Scroll Animation Styles */}
+      <style>{`
+        @keyframes scroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-scroll {
+          animation: scroll 40s linear infinite;
+          width: max-content;
+        }
+        .hover\\:pause-animation:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
     </div>
   );
 };
