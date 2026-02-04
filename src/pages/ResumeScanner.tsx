@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Upload, FileText, CheckCircle, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, ArrowRight, Loader2, TrendingUp } from 'lucide-react';
 import { analyzeResume, AnalysisResult } from '@/lib/ats-simulator';
 import ScoreGauge from '@/components/resume/ScoreGauge';
 import { motion } from 'framer-motion';
@@ -31,6 +32,11 @@ const ResumeScanner = () => {
         const mockResumeText = "I am a software engineer with React and TypeScript experience. I built a project using Node.js and improved performance by 20%.";
 
         const res = await analyzeResume(mockResumeText, jdText);
+        // Force 'Generative AI' as missing for demo purposes if not present
+        if (!res.missingKeywords.includes('Generative AI')) {
+            res.missingKeywords.push('Generative AI');
+            res.score = Math.max(70, res.score - 5); // Lower score slightly to create urgency
+        }
         setResult(res);
         setIsAnalyzing(false);
     };
@@ -158,35 +164,48 @@ const ResumeScanner = () => {
                                 </CardContent>
                             </Card>
 
-                            {/* Recommendations */}
-                            <Card className="border-purple-100 bg-purple-50/10 dark:border-purple-900/50">
+                            {/* Recommendations (Premium Upsell) */}
+                            <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/10 dark:to-slate-900 shadow-md relative overflow-hidden">
+                                <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">PREMIUM</div>
                                 <CardHeader>
-                                    <CardTitle className="flex items-center text-purple-600">
+                                    <CardTitle className="flex items-center text-amber-700 dark:text-amber-500">
                                         <CheckCircle className="w-5 h-5 mr-2" /> Recommended Actions
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                    {result.missingKeywords.some(k => ['React', 'Next.js', 'Vue'].includes(k)) && (
-                                        <div className="flex items-start p-3 bg-white dark:bg-slate-900 rounded-lg border border-purple-100 shadow-sm">
-                                            <div className="bg-purple-100 p-2 rounded mr-3">
-                                                <FileText className="w-5 h-5 text-purple-600" />
+                                    {/* Premium Gen AI Upsell */}
+                                    {(result.missingKeywords.includes('Generative AI') || result.missingKeywords.includes('LLMs')) && (
+                                        <div className="flex items-start p-3 bg-white dark:bg-slate-900 rounded-lg border border-amber-100 shadow-sm relative overflow-hidden group">
+                                            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-amber-200 to-transparent opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                                            <div className="bg-amber-100 p-2 rounded mr-3 text-amber-600 z-10">
+                                                <TrendingUp className="w-5 h-5" />
                                             </div>
-                                            <div>
-                                                <h4 className="font-semibold text-sm">Course: Full Stack Engineering</h4>
-                                                <p className="text-xs text-slate-500 mt-1">Master React and Next.js to fill your skill gap.</p>
-                                                <Button size="sm" variant="link" className="p-0 h-auto text-purple-600 mt-2">View Course &rarr;</Button>
+                                            <div className="z-10 w-full">
+                                                <h4 className="font-bold text-sm text-slate-900 dark:text-white">Master Generative AI & LLMs</h4>
+                                                <p className="text-xs text-slate-500 mt-1">Bridge your critical skill gap. Learn Prompt Engineering, RAG, and Fine-tuning.</p>
+                                                <div className="flex items-center gap-2 mt-3">
+                                                    <span className="text-xs font-bold text-slate-400 line-through">$199</span>
+                                                    <span className="text-xs font-bold text-green-600 animate-pulse">Save 75%</span>
+                                                </div>
+                                                <Link to="/courses/gen-ai-masterclass">
+                                                    <Button size="sm" className="h-8 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white mt-2 text-xs w-full shadow-md font-bold">
+                                                        Unlock Course ($49) <ArrowRight className="w-3 h-3 ml-1" />
+                                                    </Button>
+                                                </Link>
                                             </div>
                                         </div>
                                     )}
                                     {result.impactScore < 60 && (
-                                        <div className="flex items-start p-3 bg-white dark:bg-slate-900 rounded-lg border border-yellow-100 shadow-sm">
-                                            <div className="bg-yellow-100 p-2 rounded mr-3">
-                                                <FileText className="w-5 h-5 text-yellow-600" />
+                                        <div className="flex items-start p-3 bg-white dark:bg-slate-900 rounded-lg border border-amber-100 shadow-sm">
+                                            <div className="bg-amber-100 p-2 rounded mr-3 text-amber-600">
+                                                <FileText className="w-5 h-5" />
                                             </div>
                                             <div>
                                                 <h4 className="font-semibold text-sm">Workshop: Resume Writing 101</h4>
                                                 <p className="text-xs text-slate-500 mt-1">Learn how to quantify your impact with numbers.</p>
-                                                <Button size="sm" variant="link" className="p-0 h-auto text-yellow-600 mt-2">Join Workshop &rarr;</Button>
+                                                <Button size="sm" className="h-8 bg-amber-600 hover:bg-amber-700 text-white mt-2 text-xs w-full">
+                                                    Join Workshop ($29)
+                                                </Button>
                                             </div>
                                         </div>
                                     )}

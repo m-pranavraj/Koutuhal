@@ -1,5 +1,5 @@
 import { ResumeCard } from "@/components/cards/ResumeCard";
-import { FileText, Target, Crosshair } from 'lucide-react';
+import { FileText, Target, Crosshair, Globe } from 'lucide-react';
 import EvaluationSection from "@/components/resume/EvaluationSection";
 import HowItWorks from "@/components/resume/HowItWorks";
 
@@ -17,7 +17,7 @@ const Resume = () => {
       </div>
 
       {/* Cards Section - Intersecting the Hero */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 pb-20 relative z-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 md:-mt-12 pb-20 relative z-20">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
           {/* Card 1: Create Resume */}
@@ -50,18 +50,18 @@ const Resume = () => {
             ]}
           />
 
-          {/* Card 3: Customize (Placeholders for now) */}
+          {/* Card 3: AI Portfolio Builder */}
           <ResumeCard
-            icon={Crosshair}
-            title="CUSTOMIZE RESUME"
-            subtitle="Tailor resume based on the job description"
+            icon={Globe}
+            title="AI PORTFOLIO BUILDER"
+            subtitle="Turn your resume into a stunning personal website"
             variant="teal"
-            to="/resume-scanner"
+            to="/portfolio-builder"
             features={[
-              "Five-point job fit analysis",
-              "Ready-to-use JD-optimized bullets",
-              "Actionable suggestions with examples",
-              "Predicted interview questions & tips"
+              "One-click generation from resume",
+              "3 stunning themes (Dev, Creative, Minimal)",
+              "SEO-optimized & Mobile responsive",
+              "Shareable custom link"
             ]}
           />
         </div>

@@ -110,7 +110,11 @@
   @apply bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent inline-block;
 }
 
-.bg-gold-light {
-  /* The bottom cards in the gold section of the reference image were WHITE with dark text */
-  @apply bg-white text-slate-900 shadow-sm;
+@apply bg-white text-slate-900 shadow-sm;
+}
+
+@layer utilities {
+  .pause-animation {
+    animation-play-state: paused;
+  }
 }

@@ -41,6 +41,7 @@ export interface ResumeData {
     education: Education[];
     skills: string[];
     projects: Project[];
+    templateId: string;
 }
 
 interface ResumeContextType {
@@ -57,6 +58,7 @@ interface ResumeContextType {
     addProject: () => void;
     updateProject: (id: string, field: keyof Project, value: string) => void;
     removeProject: (id: string) => void;
+    setTemplateId: (id: ResumeData['templateId']) => void;
 }
 
 const initialData: ResumeData = {
@@ -73,6 +75,7 @@ const initialData: ResumeData = {
     education: [],
     skills: [],
     projects: [],
+    templateId: 'modern',
 };
 
 const ResumeContext = createContext<ResumeContextType | undefined>(undefined);
@@ -188,6 +191,10 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
         }));
     };
 
+    const setTemplateId = (id: ResumeData['templateId']) => {
+        setResumeData((prev) => ({ ...prev, templateId: id }));
+    };
+
     return (
         <ResumeContext.Provider
             value={{
@@ -204,6 +211,7 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
                 addProject,
                 updateProject,
                 removeProject,
+                setTemplateId,
             }}
         >
             {children}

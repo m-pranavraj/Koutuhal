@@ -10,6 +10,7 @@ export interface Job {
   description: string;
   skills: string[];
   postedDays?: number;
+  category?: string;
 }
 
 export const jobs: Job[] = [
@@ -24,6 +25,7 @@ export const jobs: Job[] = [
     salary: "9-15 LPA",
     description: "We're looking for a Graphic Designer who thinks in concepts, not just compositions. Design here needs to do work—sell, explain, persuade, disrupt.",
     skills: ["Figma", "Adobe Creative Suite", "Typography", "Motion Design"],
+    category: "Design",
   },
   {
     id: 2,
@@ -36,6 +38,7 @@ export const jobs: Job[] = [
     salary: "10-20 LPA",
     description: "This is your chance to work on defence technologies of national importance, co-develop with India's leading agencies.",
     skills: ["Prototyping", "CAD", "Circuits", "Hardware"],
+    category: "Engineering",
   },
   {
     id: 3,

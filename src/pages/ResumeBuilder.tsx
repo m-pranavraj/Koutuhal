@@ -5,6 +5,7 @@ import { Eye, Save, Download, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ResumeForm from '@/components/resume/ResumeForm';
 import ResumePreview from '@/components/resume/ResumePreview';
+import { TemplateSelector } from '@/components/resume/TemplateSelector';
 
 const ResumeBuilder = () => {
     const { resumeData } = useResume();
@@ -49,21 +50,34 @@ const ResumeBuilder = () => {
             {/* Main Workspace */}
             <div className="flex-1 flex overflow-hidden h-[calc(100vh-80px)]">
 
-                {/* Left Panel: Editor Form */}
-                <div className={`w-full md:w-1/2 lg:w-5/12 overflow-y-auto border-r border-gray-200 dark:border-slate-800 p-6 ${showPreviewMobile ? 'hidden md:block' : 'block'}`}>
+                {/* Left Panel: Editor Form (Fixed Sidebar) */}
+                <div className={`w-full lg:w-[480px] xl:w-[520px] shrink-0 overflow-y-auto border-r border-gray-200 dark:border-slate-800 p-6 bg-white dark:bg-slate-900 ${showPreviewMobile ? 'hidden lg:block' : 'block'}`}>
                     <div className="max-w-2xl mx-auto space-y-8 pb-20">
                         <div className="mb-6">
                             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Editor</h2>
                             <p className="text-gray-500 dark:text-gray-400">Fill in your details to auto-generate your resume.</p>
                         </div>
 
+                        <TemplateSelector />
                         <ResumeForm />
                     </div>
                 </div>
 
-                {/* Right Panel: Live Preview */}
-                <div className={`w-full md:w-1/2 lg:w-7/12 bg-slate-100 dark:bg-slate-950 overflow-y-auto p-8 flex justify-center ${showPreviewMobile ? 'block' : 'hidden md:flex'}`}>
-                    <div className="scale-[0.6] sm:scale-[0.7] md:scale-[0.65] lg:scale-[0.85] origin-top transition-transform">
+                {/* Right Panel: Live Preview (Fluid) */}
+                <div className={`flex-1 bg-slate-200/50 dark:bg-slate-950/50 p-4 lg:p-8 flex items-center justify-center overflow-hidden ${showPreviewMobile ? 'block fixed inset-0 z-50 bg-white' : 'hidden lg:flex'}`}>
+                    {/* Mobile Close Button */}
+                    {showPreviewMobile && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute top-4 right-4 z-50 lg:hidden"
+                            onClick={() => setShowPreviewMobile(false)}
+                        >
+                            <ArrowLeft className="w-6 h-6" />
+                        </Button>
+                    )}
+
+                    <div className="w-full h-full max-w-[1000px] shadow-2xl rounded-lg overflow-hidden ring-1 ring-slate-900/5">
                         <ResumePreview />
                     </div>
                 </div>
