@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Upload, FileText, CheckCircle, AlertCircle, ArrowRight, Loader2, TrendingUp } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, ArrowRight, Loader2, TrendingUp, Linkedin } from 'lucide-react';
 import { analyzeResume, AnalysisResult } from '@/lib/ats-simulator';
 import ScoreGauge from '@/components/resume/ScoreGauge';
 import { motion } from 'framer-motion';
@@ -39,6 +39,22 @@ const ResumeScanner = () => {
         }
         setResult(res);
         setIsAnalyzing(false);
+    };
+
+    // Simple heuristic to detect role from JD
+    const detectRole = (text: string): string => {
+        const commonRoles = [
+            'Frontend Developer', 'Backend Developer', 'Full Stack Developer', 'Software Engineer',
+            'Data Scientist', 'Product Manager', 'UX Designer', 'DevOps Engineer', 'Mobile Developer',
+            'QA Engineer', 'Machine Learning Engineer', 'React Developer', 'Java Developer', 'Python Developer'
+        ];
+
+        for (const role of commonRoles) {
+            if (text.toLowerCase().includes(role.toLowerCase())) {
+                return role;
+            }
+        }
+        return 'Candidate'; // Default
     };
 
     return (
@@ -127,6 +143,40 @@ const ResumeScanner = () => {
                             <Button variant="outline" onClick={() => setResult(null)}>Scan New Resume</Button>
                         </div>
 
+                        {/* Celebration / Social Share Card */}
+                        {result.score >= 80 && (
+                            <motion.div
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="bg-gradient-to-r from-indigo-900 to-purple-900 rounded-2xl p-8 text-white text-center shadow-xl relative overflow-hidden mb-8"
+                            >
+                                <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                                <div className="relative z-10">
+                                    <div className="inline-block bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wider">
+                                        {result.score >= 90 ? `🏆 Top 1% ${detectRole(jdText)}` : `🌟 Top 5% ${detectRole(jdText)}`}
+                                    </div>
+                                    <h3 className="text-3xl font-bold mb-2">
+                                        {result.score >= 90 ? 'Elite Candidate Status' : 'Strong Contender Status'}
+                                    </h3>
+                                    <p className="text-indigo-100 max-w-lg mx-auto mb-6">
+                                        Your resume matches the {detectRole(jdText)} profile perfectly. Verified by Koutuhal AI.
+                                    </p>
+                                    <Button
+                                        onClick={() => {
+                                            const role = detectRole(jdText);
+                                            const text = result.score >= 90
+                                                ? `I just verified my resume on Koutuhal and scored in the Top 1% for ${role}. Check your score here: https://koutuhal.com`
+                                                : `I just verified my resume on Koutuhal and scored in the Top 5% for ${role}. Check your score here: https://koutuhal.com`;
+                                            window.open(`https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`, '_blank');
+                                        }}
+                                        className="bg-[#0077b5] hover:bg-[#006396] text-white font-bold h-12 px-8 shadow-lg transition-all hover:scale-105"
+                                    >
+                                        <Linkedin className="w-5 h-5 mr-2" /> Share on LinkedIn
+                                    </Button>
+                                </div>
+                            </motion.div>
+                        )}
+
                         {/* Top: Scores */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <Card className="border-slate-200 shadow-sm flex flex-col items-center justify-center py-6">
@@ -164,38 +214,62 @@ const ResumeScanner = () => {
                                 </CardContent>
                             </Card>
 
-                            {/* Recommendations (Premium Upsell) */}
+                            {/* Recommendations / Gap Analysis Section */}
                             <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/10 dark:to-slate-900 shadow-md relative overflow-hidden">
-                                <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">PREMIUM</div>
+                                {(!['product manager', 'digital marketing manager', 'marketing'].some(r => detectRole(jdText).toLowerCase().includes(r))) && (
+                                    <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">PREMIUM</div>
+                                )}
                                 <CardHeader>
                                     <CardTitle className="flex items-center text-amber-700 dark:text-amber-500">
-                                        <CheckCircle className="w-5 h-5 mr-2" /> Recommended Actions
+                                        <CheckCircle className="w-5 h-5 mr-2" />
+                                        {['product manager', 'digital marketing manager', 'marketing'].some(r => detectRole(jdText).toLowerCase().includes(r))
+                                            ? `Resume Gap Analysis for ${detectRole(jdText)} Role`
+                                            : "Recommended Actions"
+                                        }
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                    {/* Premium Gen AI Upsell */}
-                                    {(result.missingKeywords.includes('Generative AI') || result.missingKeywords.includes('LLMs')) && (
-                                        <div className="flex items-start p-3 bg-white dark:bg-slate-900 rounded-lg border border-amber-100 shadow-sm relative overflow-hidden group">
-                                            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-amber-200 to-transparent opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                                            <div className="bg-amber-100 p-2 rounded mr-3 text-amber-600 z-10">
-                                                <TrendingUp className="w-5 h-5" />
-                                            </div>
-                                            <div className="z-10 w-full">
-                                                <h4 className="font-bold text-sm text-slate-900 dark:text-white">Master Generative AI & LLMs</h4>
-                                                <p className="text-xs text-slate-500 mt-1">Bridge your critical skill gap. Learn Prompt Engineering, RAG, and Fine-tuning.</p>
-                                                <div className="flex items-center gap-2 mt-3">
-                                                    <span className="text-xs font-bold text-slate-400 line-through">$199</span>
-                                                    <span className="text-xs font-bold text-green-600 animate-pulse">Save 75%</span>
-                                                </div>
-                                                <Link to="/courses/gen-ai-masterclass">
-                                                    <Button size="sm" className="h-8 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white mt-2 text-xs w-full shadow-md font-bold">
-                                                        Unlock Course ($49) <ArrowRight className="w-3 h-3 ml-1" />
-                                                    </Button>
-                                                </Link>
-                                            </div>
+
+                                    {/* 1. Gap Analysis Content (Always Show for PM/Marketing) */}
+                                    {['product manager', 'digital marketing manager', 'marketing'].some(r => detectRole(jdText).toLowerCase().includes(r)) && (
+                                        <div className="space-y-3">
+                                            <p className="text-sm text-slate-700 dark:text-slate-300">
+                                                Based on the job description for <strong>{detectRole(jdText)}</strong>, your resume has the following gaps:
+                                            </p>
+                                            <ul className="list-disc pl-5 text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                                                <li>Missing specific keywords: <strong>{result.missingKeywords.join(', ') || 'None detected'}</strong>.</li>
+                                                <li>Impact score is {result.impactScore}/100. Try adding more metrics (e.g., "Increased revenue by 20%").</li>
+                                                <li>Ensure your experience highlights leadership and cross-functional collaboration.</li>
+                                            </ul>
                                         </div>
                                     )}
-                                    {result.impactScore < 60 && (
+
+                                    {/* 2. Premium Gen AI Upsell (HIDE for PM/Marketing, SHOW for others/GenAI) */}
+                                    {(!['product manager', 'digital marketing manager', 'marketing'].some(r => detectRole(jdText).toLowerCase().includes(r))) &&
+                                        (result.missingKeywords.includes('Generative AI') || result.missingKeywords.includes('LLMs')) && (
+                                            <div className="flex items-start p-3 bg-white dark:bg-slate-900 rounded-lg border border-amber-100 shadow-sm relative overflow-hidden group">
+                                                <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-amber-200 to-transparent opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                                                <div className="bg-amber-100 p-2 rounded mr-3 text-amber-600 z-10">
+                                                    <TrendingUp className="w-5 h-5" />
+                                                </div>
+                                                <div className="z-10 w-full">
+                                                    <h4 className="font-bold text-sm text-slate-900 dark:text-white">Master Generative AI & LLMs</h4>
+                                                    <p className="text-xs text-slate-500 mt-1">Bridge your critical skill gap. Learn Prompt Engineering, RAG, and Fine-tuning.</p>
+                                                    <div className="flex items-center gap-2 mt-3">
+                                                        <span className="text-xs font-bold text-slate-400 line-through">$199</span>
+                                                        <span className="text-xs font-bold text-green-600 animate-pulse">Save 75%</span>
+                                                    </div>
+                                                    <Link to="/courses/gen-ai-masterclass">
+                                                        <Button size="sm" className="h-8 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white mt-2 text-xs w-full shadow-md font-bold">
+                                                            Unlock Course ($49) <ArrowRight className="w-3 h-3 ml-1" />
+                                                        </Button>
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                    {/* 3. Resume Workshop Upsell (Conditional) */}
+                                    {result.impactScore < 60 && !['product manager', 'digital marketing'].some(r => detectRole(jdText).toLowerCase().includes(r)) && (
                                         <div className="flex items-start p-3 bg-white dark:bg-slate-900 rounded-lg border border-amber-100 shadow-sm">
                                             <div className="bg-amber-100 p-2 rounded mr-3 text-amber-600">
                                                 <FileText className="w-5 h-5" />
@@ -209,6 +283,8 @@ const ResumeScanner = () => {
                                             </div>
                                         </div>
                                     )}
+
+                                    {/* Success Message */}
                                     {result.missingKeywords.length === 0 && result.impactScore >= 80 && (
                                         <p className="text-sm text-slate-600">Your resume is optimized! You are ready to apply.</p>
                                     )}
