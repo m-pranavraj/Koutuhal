@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   BookOpen,
   Users,
@@ -14,25 +14,28 @@ import {
   Lightbulb,
   Target,
   Zap,
+  Code2,
+  Monitor,
+  PlayCircle,
   ChevronRight,
-  Play
-} from 'lucide-react';
-import { Header } from '@/components/layout/Header';
+  Cpu,
+  Globe,
+  Mail,
+  Briefcase,
+  Brain,
+  Rocket,
+  MessageSquare,
+} from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
-import { CourseCard } from '@/components/cards/CourseCard';
 import { MentorCard } from '@/components/cards/MentorCard';
-import { courses } from '@/data/courses';
 import { mentors } from '@/data/mentors';
+import { pricingPlans } from '@/data/instructors';
+import ScrollSequence from "@/components/motion/ScrollSequence";
 
+/* ── Rotating Text ─────────────────────── */
 const RotatingText = () => {
-  const words = ["Schools", "Colleges", "Professionals"];
+  const words = ["Schools", "Colleges", "Businesses"];
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -43,374 +46,421 @@ const RotatingText = () => {
   }, []);
 
   return (
-    <span className="block h-[1.8em] overflow-visible mt-4 mb-20">
-      <AnimatePresence mode="wait">
-        <motion.span
-          key={index}
-          className="block bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-extrabold text-5xl md:text-7xl leading-tight py-2"
-          initial={{ y: 50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -50, opacity: 0 }}
-          transition={{
-            y: { type: "spring", stiffness: 100, damping: 20 },
-            opacity: { duration: 0.2 }
-          }}
-        >
-          {words[index]}
-        </motion.span>
-      </AnimatePresence>
-    </span>
+    <AnimatePresence mode="wait">
+      <motion.span
+        key={index}
+        className="text-[#ADFF44]"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{
+          y: { type: "spring", stiffness: 300, damping: 30 },
+          opacity: { duration: 0.1 },
+        }}
+      >
+        {words[index]}
+      </motion.span>
+    </AnimatePresence>
   );
 };
-import { instructors, pricingPlans, faqs } from '@/data/instructors';
 
-const stats = [
-  { label: 'Students Empowered', value: '1500+' },
-  { label: 'AI Tools Access', value: 'Free' },
-  { label: 'Learning Support', value: '24/7' },
-  { label: 'School Friendly', value: 'Gov' },
-];
+/* ── Marquee Component ─────────────────── */
+/* ── Marquee Component ─────────────────── */
+const Marquee = ({ children, reverse = false, duration = 30, className }: { children: React.ReactNode; reverse?: boolean; duration?: number; className?: string }) => (
+  <div className={`flex overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)] ${className}`}>
+    <motion.div
+      className="flex gap-12 shrink-0"
+      animate={{ x: reverse ? ["0%", "-50%"] : ["-50%", "0%"] }}
+      transition={{ duration: duration, repeat: Infinity, ease: "linear" }}
+    >
+      {children}
+      {children}
+    </motion.div>
+  </div>
+);
 
-const features = [
+/* ── Bento Feature Data ────────────────── */
+const bentoFeatures = [
   {
-    icon: Sparkles,
-    title: 'Cutting-Edge Curriculum',
-    description: 'Learn the latest AI technologies including GPT, Computer Vision, and ML algorithms',
-    gradient: 'from-purple-500 to-indigo-500'
+    icon: Brain,
+    title: "AI-Powered Learning",
+    description: "Our adaptive engine customizes your path. Learn exactly what you need, skip what you know.",
+    size: "col-span-2 row-span-2",
+    accent: true,
   },
   {
-    icon: Lightbulb,
-    title: 'Hands-On Projects',
-    description: 'Build real AI applications that you can showcase in your portfolio and interviews',
-    gradient: 'from-amber-400 to-orange-500'
+    icon: Code2,
+    title: "Build Real Projects",
+    description: "Ship production AI apps, not toy examples.",
+    size: "col-span-1 row-span-1",
+  },
+  {
+    icon: Monitor,
+    title: "Any Device",
+    description: "Browser-based. No GPU required.",
+    size: "col-span-1 row-span-1",
   },
   {
     icon: Users,
-    title: 'Personal Mentorship',
-    description: '1-on-1 guidance from industry experts to accelerate your learning journey',
-    gradient: 'from-blue-400 to-cyan-500'
+    title: "1-on-1 Mentorship",
+    description: "Weekly calls with industry professionals from Google, Microsoft, and Amazon.",
+    size: "col-span-2 row-span-1",
   },
   {
-    icon: Zap,
-    title: 'AI Tools Access',
-    description: 'Easy-to-use AI tools available on any device with no special hardware required',
-    gradient: 'from-emerald-400 to-teal-500'
+    icon: Rocket,
+    title: "Career Launch",
+    description: "Resume, portfolio, and interview prep built in.",
+    size: "col-span-1 row-span-1",
   },
   {
     icon: Award,
-    title: 'Industry Recognition',
-    description: 'Earn certificates and credentials recognized by top tech companies in India',
-    gradient: 'from-rose-400 to-pink-500'
-  },
-  {
-    icon: Target,
-    title: 'Career Support',
-    description: 'Job placement assistance, interview prep, and direct industry connections',
-    gradient: 'from-violet-500 to-fuchsia-500'
+    title: "Certified",
+    description: "Industry-recognized credentials.",
+    size: "col-span-1 row-span-1",
   },
 ];
 
+/* ── Call Features ─────────────────────── */
 const callFeatures = [
-  { icon: Users, title: 'Mock Interview' },
-  { icon: BookOpen, title: 'Resume Review' },
-  { icon: Target, title: 'Role Fit Assessment' },
-  { icon: Lightbulb, title: 'Industry Understanding' },
-  { icon: Users, title: 'Networking Guidance' },
-  { icon: GraduationCap, title: 'Career Clarity' },
+  { icon: BookOpen, title: "Mock Interviews" },
+  { icon: Target, title: "Goal Setting" },
+  { icon: Lightbulb, title: "Project Reviews" },
+  { icon: MessageSquare, title: "Career Advice" },
+  { icon: Code2, title: "Code Reviews" },
+  { icon: Star, title: "Portfolio Audit" },
 ];
 
+/* ── Stat Counter ──────────────────────── */
+const AnimatedStat = ({ value, label }: { value: string; label: string }) => (
+  <div className="text-center">
+    <motion.p
+      className="text-5xl md:text-6xl font-display font-black text-[#ADFF44] tracking-tight"
+      initial={{ opacity: 0, scale: 0.5 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true }}
+      transition={{ type: "spring", bounce: 0.4, duration: 0.8 }}
+    >
+      {value}
+    </motion.p>
+    <p className="text-neutral-500 text-sm font-medium mt-2 uppercase tracking-widest">{label}</p>
+  </div>
+);
+
+/* ════════════════════════════════════════ */
+/*                HOME PAGE                */
+/* ════════════════════════════════════════ */
 const Home = () => {
-  const { scrollYProgress } = useScroll();
-  const y = useTransform(scrollYProgress, [0, 1], [0, -50]);
-
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 30 },
-    show: { opacity: 1, y: 0, transition: { type: "spring" as const, bounce: 0.4 } }
-  };
+  const heroRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
+  const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0]);
+  const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.95]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-black text-white overflow-x-hidden">
 
-      {/* Hero Section - Thematic Premium Design */}
-      <section className="relative overflow-hidden bg-slate-900 pb-20 pt-28 lg:pb-32 lg:pt-40">
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <motion.div
-            animate={{
-              scale: [1, 1.2, 1],
-              opacity: [0.3, 0.5, 0.3],
-            }}
-            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-[20%] -right-[10%] h-[800px] w-[800px] rounded-full bg-purple-600/20 blur-3xl"
-          ></motion.div>
-          <motion.div
-            animate={{
-              scale: [1, 1.1, 1],
-              x: [0, 30, 0],
-            }}
-            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-[20%] -left-[10%] h-[600px] w-[600px] rounded-full bg-blue-600/10 blur-3xl"
-          ></motion.div>
-        </div>
+      {/* ━━━ HERO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section ref={heroRef} className="relative min-h-[150vh] flex flex-col bg-black overflow-hidden">
+        {/* Grid Pattern Background (Parallax Effect) */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(173,255,68,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(173,255,68,0.03)_1px,transparent_1px)] bg-[size:60px_60px] pointer-events-none z-0" />
+        {/* Glow Orbs */}
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full bg-[#ADFF44]/5 blur-[120px] pointer-events-none z-0" />
 
-        <div className="container relative mx-auto max-w-7xl px-4 text-center z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <Badge className="mb-8 bg-white/10 text-white border-white/20 px-6 py-2 text-sm font-medium backdrop-blur-md shadow-xl">
-              <Sparkles className="w-4 h-4 mr-2 text-amber-400 inline" />
-              AI Education for Everyone
-            </Badge>
-          </motion.div>
+        {/* Sticky Container for Animation + Content */}
+        <div className="sticky top-0 h-screen w-full flex items-center justify-center z-10 pointer-events-none">
 
-          <motion.h1
-            className="mb-8 text-5xl font-bold tracking-tight text-white md:text-7xl leading-tight"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            Ready to Start Your{' '}
-            <span className="relative whitespace-nowrap">
-              <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-amber-400 animate-gradient-x">
-                AI Journey?
-              </span>
-              <span className="absolute bottom-1 left-0 w-full h-4 bg-purple-500/20 -z-0 rounded-full blur-sm"></span>
-            </span>
-          </motion.h1>
+          <div className="relative z-10 w-full max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between h-full md:pl-44">
 
-          <motion.p
-            className="mb-10 text-xl text-slate-300 md:text-2xl leading-relaxed max-w-3xl mx-auto font-light"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-          >
-            Join thousands of students transforming their careers.
-            Explore tailored programs for
-            <RotatingText />
-          </motion.p>
-
-          <motion.div
-            className="flex flex-col sm:flex-row gap-5 justify-center"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
-            <Link to="/courses">
-              <Button size="lg" className="h-14 px-10 text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105 transition-all shadow-xl shadow-purple-500/25 rounded-xl border-0">
-                Enroll Now
-              </Button>
-            </Link>
-            <Link to="/courses/clarity">
-              <Button size="lg" className="h-14 px-10 text-lg bg-slate-800/80 hover:bg-slate-700 text-white border border-slate-700 backdrop-blur-sm rounded-xl transition-all hover:scale-105">
-                <Play className="w-5 h-5 mr-2 fill-current" /> Watch Demo
-              </Button>
-            </Link>
-          </motion.div>
-
-          {/* Floating UI Elements Mockup */}
-          <motion.div
-            style={{ y }}
-            className="mt-20 relative mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur-sm shadow-2xl hidden md:block"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-          >
-            <div className="rounded-xl overflow-hidden bg-slate-900 border border-slate-800 relative aspect-video flex items-center justify-center group cursor-pointer shadow-inner">
-              <img
-                src="/dashboard-mockup.png"
-                alt="Koutuhal AI Learning Dashboard"
-                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+            {/* LEFT: Robot Animation (Top on Mobile, Left on Desktop) */}
+            <div className="w-full md:w-3/12 lg:w-3/12 h-[25vh] md:h-[400px] flex items-center justify-center order-1 md:order-1 mt-0 md:mt-0 relative overflow-visible">
+              <ScrollSequence
+                frameCount={80}
+                path="/3d-sequence/ezgif-frame-"
+                digits={3}
+                className="w-full h-full scale-100 md:scale-90 origin-center"
+                scrollRef={heroRef}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 to-transparent pointer-events-none"></div>
+              {/* Mobile Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black pointer-events-none md:hidden" />
             </div>
-          </motion.div>
-        </div>
-      </section>
 
-      {/* 1:1 Calls Section (Gold/Dark Contrast) */}
-      <section className="py-24 relative overflow-hidden">
-        <div className="absolute inset-0 bg-slate-900 -skew-y-3 origin-top-left scale-110 z-0 border-t border-white/5"></div>
-        <div className="container relative z-10 mx-auto max-w-7xl px-4">
-          <div className="text-center mb-16">
-            <Badge className="mb-4 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-4 py-1">Premium Support</Badge>
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
-              1:1 Calls for <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">100% Prep</span>
-            </h2>
-          </div>
+            {/* SPACER REMOVED to give text more room */}
 
-          <motion.div
-            variants={container}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-100px" }}
-            className="grid grid-cols-2 lg:grid-cols-6 gap-4"
-          >
-            {callFeatures.map((feature, i) => (
+            {/* RIGHT: Text Content (Bottom on Mobile, Right on Desktop) */}
+            <motion.div
+              style={{ opacity: heroOpacity, scale: heroScale }}
+              className="w-full md:w-auto md:flex-1 text-center md:text-left order-2 md:order-2 px-4 pt-2 md:pt-0 h-auto md:h-full flex flex-col justify-start md:justify-center z-20 md:pl-24"
+            >
+              {/* Badge */}
               <motion.div
-                key={feature.title}
-                variants={item}
-                className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all hover:-translate-y-2 cursor-pointer text-center"
-              >
-                <div className="mb-4 mx-auto w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center group-hover:bg-amber-500 transition-colors">
-                  <feature.icon className="h-5 w-5 text-amber-400 group-hover:text-white transition-colors" />
-                </div>
-                <span className="text-sm font-bold text-slate-300 group-hover:text-white transition-colors leading-tight block">{feature.title}</span>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Stats Section - Floating Cards */}
-      <section className="py-12 -mt-10 z-20 relative px-4">
-        <div className="container mx-auto max-w-7xl">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { label: "Partner Workplaces", value: "750+", color: "bg-blue-500" },
-              { label: "Partner Colleges", value: "200+", color: "bg-purple-500" },
-              { label: "Expert Mentors", value: "1,000+", color: "bg-emerald-500" }
-            ].map((stat, i) => (
-              <motion.div
-                key={i}
                 initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-white rounded-2xl p-8 shadow-xl shadow-slate-200/50 flex items-center justify-between border border-slate-100"
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
               >
-                <div>
-                  <p className="text-4xl font-bold text-slate-900 mb-1">{stat.value}</p>
-                  <p className="text-slate-500 font-medium">{stat.label}</p>
-                </div>
-                <div className={`w-12 h-12 rounded-full ${stat.color} opacity-20`}></div>
+                <Badge className="mb-6 bg-[#ADFF44]/10 text-[#ADFF44] border border-[#ADFF44]/20 px-5 py-2 text-sm font-display tracking-wider backdrop-blur-xl">
+                  <span className="w-2 h-2 rounded-full bg-[#ADFF44] inline-block mr-3 animate-pulse" />
+                  NOW ENROLLING — COHORT 1
+                </Badge>
               </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* Features - Grid with Hover Effects */}
-      <section id="features" className="py-24 bg-white">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="mb-16 text-center max-w-3xl mx-auto">
-            <h2 className="mb-6 text-4xl font-bold text-slate-900">
-              Why Choose Koutuhal?
-            </h2>
-            <p className="text-xl text-slate-500">
-              We provide everything you need to become an AI professional, packaged in a world-class learning experience.
-            </p>
-          </div>
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature, i) => (
+              {/* Headline */}
+              <motion.h1
+                className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display font-black tracking-tight leading-[0.95] mb-8"
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.15 }}
+              >
+                <span className="block text-white">AI Education</span>
+                <span className="flex items-baseline justify-center md:justify-start gap-[0.3em] mt-2 flex-nowrap whitespace-nowrap">
+                  <span>for</span>
+                  <RotatingText />
+                </span>
+              </motion.h1>
+
+              {/* Sub-headline */}
+              <motion.p
+                className="text-lg md:text-xl text-neutral-400 max-w-2xl mx-auto md:mx-0 mb-10 leading-relaxed font-light"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+              >
+                From zero to deploying production AI — with mentors from top companies,
+                hands-on projects, and career support that actually works.
+              </motion.p>
+
+              {/* CTA Buttons */}
               <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="group rounded-3xl border border-slate-100 bg-slate-50 p-8 transition-all hover:shadow-2xl hover:shadow-purple-500/10 hover:bg-white hover:-translate-y-1"
+                className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.45 }}
               >
-                <div className={`mb-6 h-14 w-14 rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center text-white shadow-lg`}>
-                  <feature.icon className="h-7 w-7" />
-                </div>
-                <h3 className="mb-3 text-xl font-bold text-slate-900">{feature.title}</h3>
-                <p className="text-slate-600 leading-relaxed">{feature.description}</p>
+                <Link to="/courses">
+                  <Button size="lg" className="h-14 px-10 text-base bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-bold rounded-full shadow-[0_0_40px_rgba(173,255,68,0.3)] hover:shadow-[0_0_60px_rgba(173,255,68,0.4)] transition-all hover:scale-105 border-0">
+                    Explore for Free <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
               </motion.div>
-            ))}
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Mentors Preview */}
-      <section id="mentors" className="py-24 bg-[#F8FAFC]">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
-            <div>
-              <Badge className="mb-4 bg-purple-100 text-purple-700 px-3 py-1 border-0">World-Class Faculty</Badge>
-              <h2 className="text-4xl font-bold text-slate-900 mb-4">
-                Learn from Industry Leaders
-              </h2>
-              <p className="text-lg text-slate-500 max-w-xl">
-                Get personalized guidance from top AI professionals working at companies like Google, Microsoft, and Amazon.
-              </p>
-            </div>
-            <Link to="/mentors">
-              <Button size="lg" variant="outline" className="rounded-full px-6 border-slate-300 hover:border-purple-500 hover:text-purple-600">
-                View All Mentors <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {mentors.slice(0, 4).map((mentor, i) => (
-              <motion.div
-                key={mentor.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-              >
-                <MentorCard mentor={mentor} index={i} />
-              </motion.div>
-            ))}
-          </div>
-        </div>
+      {/* ━━━ BRAND MARQUEE (Overlap) ━━━━━━━━━━━━━━━━━━━ */}
+      <section className="relative z-20 bg-black py-12 border-y border-neutral-900 -mt-[50vh]">
+        <p className="text-center text-xs text-neutral-600 uppercase tracking-[0.3em] mb-8 font-medium">Trusted by leading institutions</p>
+        <Marquee>
+          {["IIT Bombay", "BITS Pilani", "NIT Trichy", "VIT", "Manipal", "IIIT Hyderabad", "SRM", "Anna University", "NSUT Delhi", "DTU"].map((name) => (
+            <span key={name} className="text-neutral-600 text-lg font-semibold whitespace-nowrap tracking-wide">{name}</span>
+          ))}
+        </Marquee>
       </section>
 
-      {/* Featured Courses - Dark Mode Contrast */}
-      <section className="bg-slate-900 py-24 text-white relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
-        <div className="container relative z-10 mx-auto max-w-7xl px-4">
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 text-4xl font-bold">
-              Popular Programs
+
+
+      {/* ━━━ BENTO FEATURES ━━━━━━━━━━━━━━━━━━ */}
+      <section className="relative z-20 bg-black py-24 px-4 overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <motion.div className="text-center mb-16" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
+            <Badge className="mb-6 bg-[#ADFF44]/10 text-[#ADFF44] border-[#ADFF44]/20 px-4 py-1 text-xs font-display tracking-wider">WHY KOUTUHAL</Badge>
+            <h2 className="text-4xl md:text-6xl font-display font-black tracking-tight">
+              Everything you need.
+              <br />
+              <span className="text-neutral-500">Nothing you don't.</span>
             </h2>
-            <p className="text-xl text-slate-400">
-              Start your journey with our most loved courses
-            </p>
-          </div>
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {courses.slice(0, 3).map((course) => (
-              <div key={course.id} className="transform hover:-translate-y-2 transition-transform duration-300">
-                <CourseCard course={course} />
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-6 md:grid-rows-2 gap-4 auto-rows-fr">
+            {/* Main Feature - AI Learning */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="md:col-span-3 md:row-span-2 relative group rounded-[2rem] bg-[#ADFF44] p-8 md:p-10 flex flex-col justify-between overflow-hidden min-h-[320px] md:min-h-[500px]"
+            >
+              <div className="relative z-10">
+                <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center mb-6">
+                  <Brain className="h-6 w-6 text-[#ADFF44]" />
+                </div>
+                <h3 className="text-3xl font-display font-bold text-black mb-3">AI-Powered Learning</h3>
+                <p className="text-black/80 font-medium leading-relaxed max-w-sm">
+                  Our adaptive engine customizes your path in real-time. Skip what you know, focus on what matters.
+                </p>
               </div>
-            ))}
+
+              {/* Decorative visual for main card */}
+              <div className="absolute bottom-0 right-0 w-full h-1/2 opacity-20 pointer-events-none">
+                <svg viewBox="0 0 400 200" className="w-full h-full text-black fill-current">
+                  <path d="M0,100 C50,150 100,50 150,100 C200,150 250,50 300,100 C350,150 400,50 450,100 V200 H0 Z" />
+                </svg>
+              </div>
+              <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-black/5 rounded-full blur-3xl" />
+            </motion.div>
+
+            {/* Build Real Projects */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="md:col-span-3 md:row-span-1 group relative rounded-[2rem] border border-neutral-800 bg-neutral-900/40 p-8 overflow-hidden hover:border-neutral-700 transition-colors min-h-[200px]"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-[#ADFF44]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative z-10 h-full flex items-start gap-6">
+                <div className="w-12 h-12 bg-neutral-800 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-[#ADFF44] transition-colors duration-300">
+                  <Code2 className="h-6 w-6 text-[#ADFF44] group-hover:text-black transition-colors duration-300" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-display font-bold text-white mb-2 group-hover:text-[#ADFF44] transition-colors">Build Real Projects</h3>
+                  <p className="text-neutral-400 text-sm leading-relaxed">No toy examples. Ship production-grade AI applications that solve real problems.</p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Any Device */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="md:col-span-1 md:row-span-1 group relative rounded-[2rem] border border-neutral-800 bg-neutral-900/40 p-6 flex flex-col justify-center items-center text-center overflow-hidden hover:border-neutral-700 transition-colors"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-[#ADFF44]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <Monitor className="h-8 w-8 text-[#ADFF44] mb-3 group-hover:scale-110 transition-transform duration-300" />
+              <h3 className="text-sm font-bold text-white">Any Device</h3>
+            </motion.div>
+
+            {/* Mentorship */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+              className="md:col-span-2 md:row-span-1 group relative rounded-[2rem] border border-neutral-800 bg-neutral-900/40 p-8 overflow-hidden hover:border-neutral-700 transition-colors"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-[#ADFF44]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-4">
+                  <Users className="h-6 w-6 text-[#ADFF44]" />
+                  <h3 className="text-lg font-display font-bold text-white">1-on-1 Mentorship</h3>
+                </div>
+                <p className="text-neutral-400 text-sm">Weekly calls with engineers from Google, Amazon, and Microsoft.</p>
+              </div>
+            </motion.div>
           </div>
-          <div className="mt-16 text-center">
-            <Link to="/courses">
-              <Button size="lg" className="h-14 px-10 rounded-full bg-white text-slate-900 hover:bg-slate-200 font-bold">
-                Browse All Courses
-                <ArrowRight className="ml-2 h-5 w-5" />
+        </div>
+      </section>
+
+      {/* ━━━ 1:1 CALLS SECTION ━━━━━━━━━━━━━━━ */}
+      < section className="py-28 relative overflow-hidden" >
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-b from-black via-neutral-950 to-black" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[#ADFF44]/5 blur-[150px]" />
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4">
+          <div className="flex flex-col lg:flex-row items-center gap-16">
+            {/* Left: Content */}
+            <div className="flex-1">
+              <Badge className="mb-6 bg-[#ADFF44]/10 text-[#ADFF44] border-[#ADFF44]/20 px-4 py-1 text-xs font-display">PREMIUM SUPPORT</Badge>
+              <h2 className="text-4xl md:text-6xl font-display font-black tracking-tight mb-6">
+                1-on-1 Calls.
+                <br />
+                <span className="text-[#ADFF44]">100% Prep.</span>
+              </h2>
+              <p className="text-neutral-400 text-lg mb-10 max-w-xl leading-relaxed">
+                Every student gets direct access to industry mentors. Not group calls — real, personalized guidance for your career.
+              </p>
+              <Link to="/search-experts">
+                <Button size="lg" className="h-14 px-10 bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-bold rounded-full shadow-[0_0_30px_rgba(173,255,68,0.2)] transition-all hover:scale-105 border-0">
+                  Find Your Mentor <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+            </div>
+
+            {/* Right: Feature Grid */}
+            <div className="flex-1 w-full">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {callFeatures.map((feature, i) => (
+                  <motion.div
+                    key={feature.title}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.08 }}
+                    className="group bg-neutral-900/80 border border-neutral-800 rounded-2xl p-5 text-center hover:border-[#ADFF44]/30 hover:bg-neutral-900 transition-all cursor-pointer"
+                  >
+                    <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-neutral-800 flex items-center justify-center group-hover:bg-[#ADFF44] transition-colors">
+                      <feature.icon className="h-5 w-5 text-[#ADFF44] group-hover:text-black transition-colors" />
+                    </div>
+                    <span className="text-sm font-semibold text-neutral-300 group-hover:text-white transition-colors">{feature.title}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+
+
+
+      {/* ━━━ MENTORS ━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section className="py-24 px-4 bg-neutral-950 relative overflow-hidden">
+        {/* Background Decoration */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[#ADFF44]/5 blur-[120px] rounded-full pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <Badge className="mb-4 bg-[#ADFF44]/10 text-[#ADFF44] border-0 px-3 py-1 text-xs font-display">WORLD-CLASS FACULTY</Badge>
+            <h2 className="text-4xl md:text-5xl font-display font-black tracking-tight mb-6">
+              Learn from the <span className="text-[#ADFF44]">best</span>.
+            </h2>
+            <p className="text-neutral-500 text-lg max-w-2xl mx-auto">
+              Our mentors lead teams at the world's most innovative companies.
+            </p>
+          </div>
+
+          <div className="relative py-10 border-y border-neutral-900 bg-neutral-900/20 backdrop-blur-sm">
+            <Marquee duration={40}>
+              {[
+                "Google", "Microsoft", "Amazon", "Meta", "Netflix",
+                "Uber", "Airbnb", "McKinsey", "Bain", "Goldman Sachs",
+                "Apple", "Tesla", "NVIDIA", "OpenAI"
+              ].map((company) => (
+                <div key={company} className="mx-8 flex items-center gap-4 group cursor-default">
+                  <span className="text-2xl md:text-4xl font-display font-bold text-neutral-700 group-hover:text-white transition-colors duration-500">
+                    {company}
+                  </span>
+                </div>
+              ))}
+            </Marquee>
+          </div>
+
+          <div className="mt-14 text-center">
+            <Link to="/search-experts">
+              <Button size="lg" variant="outline" className="rounded-full px-8 h-12 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-600 hover:bg-neutral-900 transition-all">
+                Meet Roles & Mentors <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Pricing - Cards */}
-      <section id="pricing" className="py-24 bg-white">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-4xl font-bold text-slate-900 mb-6">
-              Invest in Your Future
+      {/* ━━━ PRICING ━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section className="py-28 px-4 bg-neutral-950">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <Badge className="mb-4 bg-[#ADFF44]/10 text-[#ADFF44] border-[#ADFF44]/20 px-4 py-1 text-xs font-display">PRICING</Badge>
+            <h2 className="text-4xl md:text-6xl font-display font-black tracking-tight">
+              Invest in <span className="text-[#ADFF44]">your future</span>.
             </h2>
-            <p className="text-xl text-slate-500">
-              Flexible learning packages designed for every stage of your journey.
+            <p className="text-neutral-500 text-lg mt-4 max-w-xl mx-auto">
+              Flexible packages designed for every stage of your journey.
             </p>
           </div>
-          <div className="grid gap-8 md:grid-cols-3 max-w-5xl mx-auto">
+
+          <div className="grid gap-6 md:grid-cols-3">
             {pricingPlans.map((plan, index) => (
               <motion.div
                 key={plan.id}
@@ -419,67 +469,71 @@ const Home = () => {
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
                 whileHover={{ y: -8 }}
-                className={`relative overflow-hidden rounded-2xl border p-8 transition-all ${plan.isPopular
-                  ? 'border-purple-200 bg-purple-50/50 shadow-2xl shadow-purple-200/50'
-                  : 'border-slate-100 bg-white shadow-lg shadow-slate-200/50'
+                className={`relative overflow-hidden rounded-3xl border p-8 transition-all group
+                  ${plan.isPopular
+                    ? 'border-[#ADFF44]/40 bg-[#ADFF44]/5 shadow-[0_0_60px_rgba(173,255,68,0.08)]'
+                    : 'border-neutral-800 bg-neutral-900/50 hover:border-neutral-700'
                   }`}
               >
+                {/* Hover glow */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-[#ADFF44]/5 to-transparent" />
+
                 {plan.isPopular && (
-                  <div className="absolute top-0 right-0 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-bold px-4 py-1 rounded-bl-xl shadow-lg">
+                  <div className="absolute top-0 right-0 bg-[#ADFF44] text-black text-[10px] font-black px-4 py-1.5 rounded-bl-2xl tracking-wider">
                     MOST POPULAR
                   </div>
                 )}
-                <h3 className="mb-2 text-xl font-bold text-slate-900">{plan.name}</h3>
-                <div className="mb-4">
-                  <span className="text-4xl font-bold text-slate-900">{plan.price}</span>
-                  <span className="text-slate-500"> / total</span>
+                <div className="relative z-10">
+                  <h3 className="mb-2 text-xl font-bold text-white">{plan.name}</h3>
+
+                  <p className="mb-8 text-xs text-neutral-500 font-medium bg-neutral-800/50 inline-block px-3 py-1.5 rounded-full">{plan.duration}</p>
+                  <ul className="mb-8 space-y-4">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-3 text-sm text-neutral-400">
+                        <CheckCircle className="h-4 w-4 text-[#ADFF44] shrink-0 mt-0.5" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    className={`w-full h-12 text-sm font-bold rounded-xl transition-all ${plan.isPopular
+                      ? 'bg-[#ADFF44] hover:bg-[#9BE63D] text-black border-0 shadow-[0_0_20px_rgba(173,255,68,0.15)]'
+                      : 'bg-transparent border border-neutral-700 text-white hover:border-[#ADFF44] hover:text-[#ADFF44]'
+                      }`}
+                  >
+                    Get a Demo Class
+                  </Button>
                 </div>
-                <p className="mb-8 text-sm text-slate-500 font-medium bg-slate-100 inline-block px-3 py-1 rounded-full">{plan.duration}</p>
-                <ul className="mb-8 space-y-4">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-3 text-sm text-slate-600">
-                      <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className={`w-full h-12 text-base font-bold rounded-xl ${plan.isPopular
-                    ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:shadow-lg hover:shadow-purple-500/25 text-white border-0'
-                    : 'bg-white border-2 border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                >
-                  Start Learning
-                </Button>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
+      {/* ━━━ FINAL CTA ━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <section className="py-32 px-4 relative overflow-hidden">
+        {/* Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full bg-[#ADFF44]/5 blur-[150px]" />
 
-      {/* CTA - Gradient Banner */}
-      <section className="py-24 px-4 bg-[#F8FAFC]">
-        <div className="container mx-auto max-w-6xl">
-          <div className="rounded-[3rem] bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-12 lg:p-24 text-center text-white shadow-2xl shadow-purple-900/30 relative overflow-hidden">
-            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] animate-pulse"></div>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              className="relative z-10"
-            >
-              <h2 className="mb-6 text-4xl md:text-6xl font-bold tracking-tight">
-                Ready to Transform Your Future?
-              </h2>
-              <p className="mb-10 text-xl text-purple-100 max-w-2xl mx-auto">
-                Join the program and start your AI journey today. Limited seats available for the upcoming cohort.
-              </p>
-              <Link to="/courses">
-                <Button size="lg" className="h-16 px-12 text-lg bg-white text-purple-700 hover:bg-purple-50 hover:scale-105 transition-all shadow-xl rounded-full font-bold">
-                  Join the Program <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-            </motion.div>
-          </div>
+        <div className="relative z-10 max-w-4xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-5xl md:text-7xl font-display font-black tracking-tight mb-8 leading-[1.05]">
+              Ready to build
+              <br />
+              <span className="text-[#ADFF44]">the future?</span>
+            </h2>
+            <p className="text-neutral-500 text-lg mb-12 max-w-xl mx-auto">
+              Join 1,500+ students already transforming their careers with AI. Limited seats for the upcoming cohort.
+            </p>
+            <Link to="/courses">
+              <Button size="lg" className="h-16 px-14 text-lg bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-bold rounded-full shadow-[0_0_60px_rgba(173,255,68,0.3)] hover:shadow-[0_0_80px_rgba(173,255,68,0.4)] transition-all hover:scale-105 border-0">
+                Join the Program <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+          </motion.div>
         </div>
       </section>
     </div>

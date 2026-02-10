@@ -20,16 +20,16 @@ const legalLinks = [
 
 export const Footer = () => {
   return (
-    <footer className="border-t bg-slate-900 text-slate-300">
+    <footer className="border-t border-neutral-800 bg-black text-neutral-400">
       <div className="container mx-auto max-w-7xl px-4 py-12">
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div className="space-y-4">
             <Link to="/" className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-primary">
-                <span className="text-lg font-bold text-white">K</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#ADFF44]">
+                <span className="text-lg font-bold text-black">K</span>
               </div>
-              <span className="text-xl font-bold text-white">Koutuhal</span>
+              <span className="text-xl font-display font-bold text-white">Koutuhal</span>
             </Link>
             <p className="text-sm leading-relaxed text-slate-400">
               Empowering the next generation of AI professionals with world-class education and practical skills for the future of technology.
@@ -85,10 +85,10 @@ export const Footer = () => {
             <div className="mt-6">
               <h4 className="mb-3 text-sm font-semibold text-white">Follow Us</h4>
               <div className="flex gap-3">
-                <a href="#" className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 transition-colors hover:bg-slate-700">
+                <a href="#" className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900 transition-colors hover:bg-[#ADFF44] hover:text-black">
                   <Linkedin className="h-4 w-4" />
                 </a>
-                <a href="#" className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 transition-colors hover:bg-slate-700">
+                <a href="#" className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900 transition-colors hover:bg-[#ADFF44] hover:text-black">
                   <Twitter className="h-4 w-4" />
                 </a>
                 <a href="#" className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 transition-colors hover:bg-slate-700">
@@ -108,17 +108,17 @@ export const Footer = () => {
               <Input
                 type="email"
                 placeholder="Enter your email"
-                className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                className="bg-neutral-900 border-neutral-800 text-white placeholder:text-neutral-600"
               />
-              <Button className="gradient-primary text-white">
+              <Button className="bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-bold">
                 Subscribe
               </Button>
             </div>
             <div className="mt-6 flex gap-2">
-              <Button variant="outline" size="sm" className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">
+              <Button variant="outline" size="sm" className="border-neutral-800 text-neutral-400 hover:bg-neutral-900 hover:text-[#ADFF44]">
                 Book a Call
               </Button>
-              <Button variant="outline" size="sm" className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">
+              <Button variant="outline" size="sm" className="border-neutral-800 text-neutral-400 hover:bg-neutral-900 hover:text-[#ADFF44]">
                 Contact Us
               </Button>
             </div>
@@ -126,15 +126,15 @@ export const Footer = () => {
         </div>
 
         {/* Bottom */}
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-800 pt-8 md:flex-row">
+        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-neutral-800 pt-8 md:flex-row">
           <p className="text-sm text-slate-400">
             © 2025 Koutuhal. All rights reserved. Made with ❤️ for Indian students.
           </p>
           <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1 rounded bg-emerald-900/30 px-2 py-1 text-xs text-emerald-400">
+            <span className="flex items-center gap-1 rounded bg-[#ADFF44]/10 px-2 py-1 text-xs text-[#ADFF44]">
               🇮🇳 Made in India
             </span>
-            <span className="flex items-center gap-1 rounded bg-slate-800 px-2 py-1 text-xs text-slate-400">
+            <span className="flex items-center gap-1 rounded bg-neutral-900 px-2 py-1 text-xs text-neutral-500">
               ISO 27001 Certified
             </span>
           </div>

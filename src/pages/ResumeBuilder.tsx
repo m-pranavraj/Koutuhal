@@ -12,9 +12,9 @@ const ResumeBuilder = () => {
     const [showPreviewMobile, setShowPreviewMobile] = useState(false);
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col pt-16">
+        <div className="min-h-screen bg-neutral-900 dark:bg-black flex flex-col pt-16">
             {/* Builder Header */}
-            <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between sticky top-16 z-20">
+            <header className="bg-neutral-900 dark:bg-black border-b border-gray-200 dark:border-neutral-800 px-6 py-4 flex items-center justify-between sticky top-16 z-20">
                 <div className="flex items-center gap-4">
                     <Link to="/resume-active">
                         <Button variant="ghost" size="icon" className="rounded-full">
@@ -40,7 +40,7 @@ const ResumeBuilder = () => {
                         <Save className="w-4 h-4 mr-2" />
                         Save Draft
                     </Button>
-                    <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+                    <Button className="bg-[#ADFF44] hover:bg-[#9BE63D] text-black">
                         <Download className="w-4 h-4 mr-2" />
                         Download PDF
                     </Button>
@@ -51,7 +51,7 @@ const ResumeBuilder = () => {
             <div className="flex-1 flex overflow-hidden h-[calc(100vh-80px)]">
 
                 {/* Left Panel: Editor Form (Fixed Sidebar) */}
-                <div className={`w-full lg:w-[480px] xl:w-[520px] shrink-0 overflow-y-auto border-r border-gray-200 dark:border-slate-800 p-6 bg-white dark:bg-slate-900 ${showPreviewMobile ? 'hidden lg:block' : 'block'}`}>
+                <div className={`w-full lg:w-[480px] xl:w-[520px] shrink-0 overflow-y-auto border-r border-gray-200 dark:border-neutral-800 p-6 bg-neutral-900 dark:bg-black ${showPreviewMobile ? 'hidden lg:block' : 'block'}`}>
                     <div className="max-w-2xl mx-auto space-y-8 pb-20">
                         <div className="mb-6">
                             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Editor</h2>
@@ -64,7 +64,7 @@ const ResumeBuilder = () => {
                 </div>
 
                 {/* Right Panel: Live Preview (Fluid) */}
-                <div className={`flex-1 bg-slate-200/50 dark:bg-slate-950/50 p-4 lg:p-8 flex items-center justify-center overflow-hidden ${showPreviewMobile ? 'block fixed inset-0 z-50 bg-white' : 'hidden lg:flex'}`}>
+                <div className={`flex-1 bg-slate-200/50 dark:bg-black/50 p-4 lg:p-8 flex items-center justify-center overflow-hidden ${showPreviewMobile ? 'block fixed inset-0 z-50 bg-neutral-900' : 'hidden lg:flex'}`}>
                     {/* Mobile Close Button */}
                     {showPreviewMobile && (
                         <Button

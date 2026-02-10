@@ -27,11 +27,11 @@ const ResumePreview = () => {
     }, [resumeData]);
 
     if (!isClient) {
-        return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-purple-600" /></div>;
+        return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-[#ADFF44]" /></div>;
     }
 
     return (
-        <div className="w-full h-full min-h-[600px] shadow-2xl bg-slate-900 rounded-lg overflow-hidden relative">
+        <div className="w-full h-full min-h-[600px] shadow-2xl bg-black rounded-lg overflow-hidden relative">
             <PDFViewer
                 width="100%"
                 height="100%"
@@ -42,7 +42,7 @@ const ResumePreview = () => {
             </PDFViewer>
 
             {isUpdating && (
-                <div className="absolute top-4 right-4 bg-slate-900/80 text-white px-3 py-1 rounded-full text-xs flex items-center gap-2 backdrop-blur-sm shadow-xl z-50">
+                <div className="absolute top-4 right-4 bg-black/80 text-white px-3 py-1 rounded-full text-xs flex items-center gap-2 backdrop-blur-sm shadow-xl z-50">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     Updating Preview...
                 </div>

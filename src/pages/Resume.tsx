@@ -5,13 +5,13 @@ import HowItWorks from "@/components/resume/HowItWorks";
 
 const Resume = () => {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-neutral-900 dark:bg-black">
       {/* Hero Section */}
-      <div className="bg-white dark:bg-slate-900 pb-20 pt-32 text-center px-4 border-b border-gray-100 dark:border-slate-800">
-        <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white mb-6">
-          Perfect Your <span className="text-purple-600">Resume</span>
+      <div className="bg-neutral-900 dark:bg-black pb-20 pt-32 text-center px-4 border-b border-gray-100 dark:border-neutral-800">
+        <h1 className="text-4xl md:text-5xl font-extrabold text-white dark:text-white mb-6">
+          Perfect Your <span className="text-[#ADFF44]">Resume</span>
         </h1>
-        <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+        <p className="text-lg text-neutral-500 dark:text-neutral-500 max-w-2xl mx-auto">
           Build from Scratch • Improve Your Resume • Customize for Jobs
         </p>
       </div>
@@ -74,16 +74,16 @@ const Resume = () => {
       <HowItWorks />
 
       {/* Trusted By Section */}
-      <div className="bg-white dark:bg-slate-900 py-16 border-t border-gray-100 dark:border-slate-800">
+      <div className="bg-neutral-900 dark:bg-black py-16 border-t border-gray-100 dark:border-neutral-800">
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-10">Trusted By The Best</h3>
+          <h3 className="text-2xl font-bold text-white dark:text-white mb-10">Trusted By The Best</h3>
 
           {/* Logo Marquee (Using text for now as placeholders, icons would be better relative paths if available) */}
-          <div className="flex flex-wrap justify-center items-center gap-12 text-slate-400 font-bold text-xl grayscale opacity-70">
+          <div className="flex flex-wrap justify-center items-center gap-12 text-neutral-500 font-bold text-xl grayscale opacity-70">
             <span className="flex items-center gap-2"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" className="h-8" alt="Amazon" /></span>
             <span className="flex items-center gap-2"><img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Spotify_logo_with_text.svg" className="h-8" alt="Spotify" /></span>
-            <span className="flex items-center gap-2 text-2xl font-serif text-slate-600">McKinsey & Company</span>
-            <span className="flex items-center gap-2 text-2xl font-serif text-slate-600">BCG</span>
+            <span className="flex items-center gap-2 text-2xl font-serif text-neutral-400">McKinsey & Company</span>
+            <span className="flex items-center gap-2 text-2xl font-serif text-neutral-400">BCG</span>
             <span className="flex items-center gap-2"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" className="h-8" alt="PayPal" /></span>
             <span className="flex items-center gap-2"><img src="https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg" className="h-8" alt="Netflix" /></span>
             {/* Fallback for others */}

@@ -16,7 +16,7 @@ const EvaluationSection = () => {
     ];
 
     return (
-        <section className="bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 py-20 text-white relative overflow-hidden">
+        <section className="bg-gradient-to-r from-black via-neutral-900 to-black py-20 text-white relative overflow-hidden">
 
             {/* Background Pattern */}
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
@@ -27,8 +27,8 @@ const EvaluationSection = () => {
                 {/* 5 Icons Row */}
                 <div className="flex flex-wrap justify-center gap-6 mb-16">
                     {dimensions.map((d, i) => (
-                        <div key={i} className="bg-white text-slate-900 w-40 h-40 rounded-2xl flex flex-col items-center justify-center p-4 shadow-xl hover:scale-105 transition-transform">
-                            <d.icon className="w-10 h-10 text-slate-800 mb-4" />
+                        <div key={i} className="bg-neutral-900 text-white w-40 h-40 rounded-2xl flex flex-col items-center justify-center p-4 shadow-xl hover:scale-105 transition-transform">
+                            <d.icon className="w-10 h-10 text-white mb-4" />
                             <p className="font-semibold text-sm leading-tight">{d.title}</p>
                         </div>
                     ))}
@@ -37,9 +37,9 @@ const EvaluationSection = () => {
                 {/* 3 Stats Row */}
                 <div className="flex flex-wrap justify-center gap-6">
                     {stats.map((s, i) => (
-                        <div key={i} className="bg-white text-slate-900 rounded-2xl py-4 px-8 shadow-xl min-w-[280px] flex flex-col justify-center">
-                            <h4 className="font-bold text-lg text-slate-800">{s.title}</h4>
-                            <p className="text-slate-500 text-sm">{s.subtitle}</p>
+                        <div key={i} className="bg-neutral-900 text-white rounded-2xl py-4 px-8 shadow-xl min-w-[280px] flex flex-col justify-center">
+                            <h4 className="font-bold text-lg text-white">{s.title}</h4>
+                            <p className="text-neutral-500 text-sm">{s.subtitle}</p>
                         </div>
                     ))}
                 </div>

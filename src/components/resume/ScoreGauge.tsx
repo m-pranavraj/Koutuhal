@@ -32,7 +32,7 @@ const ScoreGauge = ({ score, size = 120, strokeWidth = 10, label = "Match Score"
                         stroke="currentColor"
                         strokeWidth={strokeWidth}
                         fill="transparent"
-                        className="text-slate-100 dark:text-slate-800"
+                        className="text-slate-100 dark:text-white"
                     />
                     {/* Foreground Circle */}
                     <motion.circle
@@ -50,12 +50,12 @@ const ScoreGauge = ({ score, size = 120, strokeWidth = 10, label = "Match Score"
                     />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-3xl font-bold text-slate-900 dark:text-white">
+                    <span className="text-3xl font-bold text-white dark:text-white">
                         {score}%
                     </span>
                 </div>
             </div>
-            <span className="mt-2 text-sm font-medium text-slate-500 uppercase tracking-wider">
+            <span className="mt-2 text-sm font-medium text-neutral-500 uppercase tracking-wider">
                 {label}
             </span>
         </div>

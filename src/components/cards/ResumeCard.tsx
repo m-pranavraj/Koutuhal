@@ -26,9 +26,9 @@ export const ResumeCard = ({
     const styles = {
         blue: {
             header: "bg-[#1e3a8a]", // Dark Blue
-            iconBg: "bg-blue-500/20",
+            iconBg: "bg-[#ADFF44]/20",
             button: "bg-[#1e3a8a] hover:bg-[#172554]",
-            border: "border-blue-100"
+            border: "border-[#ADFF44]/20"
         },
         green: {
             header: "bg-[#0f766e]", // Teal/Green
@@ -47,14 +47,14 @@ export const ResumeCard = ({
     const style = styles[variant] || styles.blue;
 
     return (
-        <div className={`flex flex-col h-full bg-white rounded-2xl shadow-lg overflow-hidden border ${style.border} hover:-translate-y-1 transition-transform duration-300`}>
+        <div className={`flex flex-col h-full bg-neutral-900 rounded-2xl shadow-lg overflow-hidden border ${style.border} hover:-translate-y-1 transition-transform duration-300`}>
             {/* Solid Header */}
             <div className={`${style.header} p-8 text-center text-white`}>
                 <div className={`w-16 h-16 mx-auto rounded-2xl ${style.iconBg} backdrop-blur-sm flex items-center justify-center mb-4`}>
                     <Icon className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold mb-2 uppercase tracking-wide">{title}</h3>
-                {subtitle && <p className="text-blue-100/90 text-sm font-medium opacity-90">{subtitle}</p>}
+                {subtitle && <p className="text-[#ADFF44]/80/90 text-sm font-medium opacity-90">{subtitle}</p>}
             </div>
 
             {/* Content Body */}

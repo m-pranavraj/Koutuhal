@@ -27,9 +27,9 @@ export const CourseCard = ({ course, variant = 'default' }: CourseCardProps) => 
             variant="secondary"
             className={cn(
               'text-xs',
-              course.level === 'Beginner' && 'bg-emerald-100 text-emerald-700',
-              course.level === 'Intermediate' && 'bg-blue-100 text-blue-700',
-              course.level === 'Advanced' && 'bg-purple-100 text-purple-700'
+              course.level === 'Beginner' && 'bg-[#ADFF44]/10 text-[#ADFF44]',
+              course.level === 'Intermediate' && 'bg-[#ADFF44]/10 text-[#ADFF44]',
+              course.level === 'Advanced' && 'bg-[#ADFF44]/10 text-[#ADFF44]'
             )}
           >
             {course.level}
@@ -72,7 +72,7 @@ export const CourseCard = ({ course, variant = 'default' }: CourseCardProps) => 
                 className={cn(
                   'h-4 w-4',
                   i < Math.floor(course.rating)
-                    ? 'fill-amber-400 text-amber-400'
+                    ? 'fill-amber-400 text-[#ADFF44]'
                     : 'text-slate-200'
                 )}
               />

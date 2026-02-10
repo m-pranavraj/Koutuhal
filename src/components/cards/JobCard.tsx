@@ -13,38 +13,38 @@ export const JobCard = ({ job }: { job: Job }) => {
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -5 }}
       transition={{ duration: 0.3 }}
-      className="group relative bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300"
+      className="group relative bg-neutral-900 rounded-2xl border border-neutral-800 p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300"
     >
       {/* Header */}
       <div className="flex justify-between items-start mb-4">
         <div className="flex gap-4">
-          <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100 group-hover:bg-purple-50 transition-colors">
-            <Briefcase className="w-6 h-6 text-gray-400 group-hover:text-purple-600 transition-colors" />
+          <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100 group-hover:bg-[#ADFF44]/5 transition-colors">
+            <Briefcase className="w-6 h-6 text-gray-400 group-hover:text-[#ADFF44] transition-colors" />
           </div>
           <div>
-            <h3 className="font-bold text-lg text-gray-900 group-hover:text-purple-700 transition-colors line-clamp-1">
+            <h3 className="font-bold text-lg text-gray-900 group-hover:text-[#ADFF44] transition-colors line-clamp-1">
               {job.title}
             </h3>
             <p className="text-sm font-medium text-gray-500">{job.company}</p>
           </div>
         </div>
-        <button className="text-gray-400 hover:text-purple-600 transition-colors p-1 rounded-full hover:bg-purple-50">
+        <button className="text-gray-400 hover:text-[#ADFF44] transition-colors p-1 rounded-full hover:bg-[#ADFF44]/5">
           <Share2 className="w-5 h-5" />
         </button>
       </div>
 
       {/* Type Tags */}
       <div className="flex flex-wrap gap-2 mb-4">
-        <Badge variant="outline" className="rounded-full px-3 py-0.5 font-normal border-gray-200 text-gray-600 bg-white hover:bg-gray-50">
+        <Badge variant="outline" className="rounded-full px-3 py-0.5 font-normal border-gray-200 text-gray-600 bg-neutral-900 hover:bg-gray-50">
           {job.type}
         </Badge>
-        <Badge variant="outline" className="rounded-full px-3 py-0.5 font-normal border-gray-200 text-gray-600 bg-white hover:bg-gray-50">
+        <Badge variant="outline" className="rounded-full px-3 py-0.5 font-normal border-gray-200 text-gray-600 bg-neutral-900 hover:bg-gray-50">
           WFO
         </Badge>
       </div>
 
       {/* Info Row (Location | Exp | Salary) */}
-      <div className="flex items-center gap-3 text-sm text-gray-500 mb-5 bg-slate-50/50 p-3 rounded-lg border border-slate-100/50">
+      <div className="flex items-center gap-3 text-sm text-gray-500 mb-5 bg-neutral-900/50 p-3 rounded-lg border border-neutral-800/50">
         <div className="flex items-center gap-1.5 shrink-0">
           <MapPin className="w-3.5 h-3.5" />
           <span className="truncate max-w-[100px]">{job.location}</span>
@@ -69,7 +69,7 @@ export const JobCard = ({ job }: { job: Job }) => {
       {/* Skills/Tags (Purple background) */}
       <div className="mb-6 flex flex-wrap gap-2">
         {tags.slice(0, 3).map(tag => (
-          <span key={tag} className="px-2 py-1 bg-purple-50 text-purple-700 text-xs rounded font-medium">
+          <span key={tag} className="px-2 py-1 bg-[#ADFF44]/5 text-[#ADFF44] text-xs rounded font-medium">
             {tag}
           </span>
         ))}

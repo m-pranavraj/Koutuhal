@@ -26,7 +26,7 @@ const CourseCatalog = () => {
 
 
       {/* Hero */}
-      <section className="bg-slate-50 dark:bg-slate-900/50 py-20 pt-32">
+      <section className="bg-neutral-900 dark:bg-black/50 py-20 pt-32">
         <div className="container mx-auto max-w-7xl px-4 text-center">
           <h1 className="mb-4 text-4xl font-bold text-foreground">Course Catalog</h1>
           <p className="text-lg text-muted-foreground">

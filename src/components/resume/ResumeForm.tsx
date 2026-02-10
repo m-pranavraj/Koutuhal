@@ -60,9 +60,9 @@ const ResumeForm = () => {
     return (
         <div className="space-y-6">
             {/* Resume Score */}
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm flex items-center justify-between mb-4">
+            <div className="bg-neutral-900 dark:bg-black p-4 rounded-xl border border-gray-200 dark:border-neutral-800 shadow-sm flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-100 text-purple-600 rounded-full">
+                    <div className="p-2 bg-[#ADFF44]/10 text-[#ADFF44] rounded-full">
                         <Sparkles className="w-5 h-5" />
                     </div>
                     <div>
@@ -73,11 +73,11 @@ const ResumeForm = () => {
                 <div className="flex items-center gap-3 w-1/3">
                     <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                         <div
-                            className="h-full bg-gradient-to-r from-purple-500 to-indigo-600 transition-all duration-500"
+                            className="h-full bg-gradient-to-r from-[#ADFF44] to-[#8BCC36] transition-all duration-500"
                             style={{ width: `${calculateScore()}%` }}
                         />
                     </div>
-                    <span className="font-bold text-sm text-purple-700">{calculateScore()}%</span>
+                    <span className="font-bold text-sm text-[#ADFF44]">{calculateScore()}%</span>
                 </div>
             </div>
 
@@ -87,7 +87,7 @@ const ResumeForm = () => {
                         <TabsTrigger
                             key={tab.id}
                             value={tab.id}
-                            className="flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-2 text-xs md:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm transition-all"
+                            className="flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-2 text-xs md:text-sm data-[state=active]:bg-neutral-900 dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm transition-all"
                         >
                             <tab.icon className="w-4 h-4" />
                             <span className="hidden md:inline">{tab.label}</span>
@@ -98,7 +98,7 @@ const ResumeForm = () => {
                 <div className="min-h-[400px]">
                     {/* 1. Personal Details */}
                     <TabsContent value="personal" className="mt-0">
-                        <section className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm space-y-4">
+                        <section className="bg-neutral-900 dark:bg-black p-6 rounded-xl border border-gray-200 dark:border-neutral-800 shadow-sm space-y-4">
                             <div className="flex items-center justify-between mb-2">
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Personal Details</h3>
                             </div>
@@ -122,7 +122,7 @@ const ResumeForm = () => {
                                 <div className="col-span-1 md:col-span-2 space-y-2">
                                     <div className="flex justify-between items-center">
                                         <Label>Professional Summary</Label>
-                                        <Button variant="ghost" size="sm" className="h-6 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50">
+                                        <Button variant="ghost" size="sm" className="h-6 text-xs text-[#ADFF44] hover:text-[#ADFF44] hover:bg-[#ADFF44]/5">
                                             <Sparkles className="w-3 h-3 mr-1" /> AI Write
                                         </Button>
                                     </div>
@@ -134,7 +134,7 @@ const ResumeForm = () => {
 
                     {/* 2. Experience */}
                     <TabsContent value="experience" className="mt-0">
-                        <section className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm">
+                        <section className="bg-neutral-900 dark:bg-black p-6 rounded-xl border border-gray-200 dark:border-neutral-800 shadow-sm">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Experience</h3>
                                 <Button variant="outline" size="sm" onClick={addExperience}><Plus className="w-4 h-4 mr-2" /> Add Job</Button>
@@ -158,7 +158,7 @@ const ResumeForm = () => {
 
                     {/* 3. Education - Only minor fix to ensure proper re-rendering handling if needed, but structure is ok */}
                     <TabsContent value="education" className="mt-0">
-                        <section className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm">
+                        <section className="bg-neutral-900 dark:bg-black p-6 rounded-xl border border-gray-200 dark:border-neutral-800 shadow-sm">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Education</h3>
                                 <Button variant="outline" size="sm" onClick={addEducation}><Plus className="w-4 h-4 mr-2" /> Add Education</Button>
@@ -184,10 +184,10 @@ const ResumeForm = () => {
 
                     {/* 4. Skills */}
                     <TabsContent value="skills" className="mt-0">
-                        <section className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm">
+                        <section className="bg-neutral-900 dark:bg-black p-6 rounded-xl border border-gray-200 dark:border-neutral-800 shadow-sm">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Skills</h3>
-                                <Button variant="ghost" size="sm" className="h-8 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50" onClick={() => updateSkills([...resumeData.skills, "Python", "React", "Leadership"])}>
+                                <Button variant="ghost" size="sm" className="h-8 text-xs text-[#ADFF44] hover:text-[#ADFF44] hover:bg-[#ADFF44]/5" onClick={() => updateSkills([...resumeData.skills, "Python", "React", "Leadership"])}>
                                     <Sparkles className="w-3 h-3 mr-1" /> Suggest Skills
                                 </Button>
                             </div>
@@ -200,7 +200,7 @@ const ResumeForm = () => {
 
                     {/* 5. Projects */}
                     <TabsContent value="projects" className="mt-0">
-                        <section className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm">
+                        <section className="bg-neutral-900 dark:bg-black p-6 rounded-xl border border-gray-200 dark:border-neutral-800 shadow-sm">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Projects</h3>
                                 <Button variant="outline" size="sm" onClick={addProject}><Plus className="w-4 h-4 mr-2" /> Add Project</Button>
@@ -217,7 +217,7 @@ const ResumeForm = () => {
                                             <div className="space-y-2">
                                                 <div className="flex justify-between items-center">
                                                     <Label>Description</Label>
-                                                    <Button variant="ghost" size="sm" className="h-5 text-[10px] text-purple-600">
+                                                    <Button variant="ghost" size="sm" className="h-5 text-[10px] text-[#ADFF44]">
                                                         <Sparkles className="w-3 h-3 mr-1" /> AI Enhance
                                                     </Button>
                                                 </div>
@@ -254,9 +254,9 @@ const SortableExperienceItem = ({ exp, updateExperience, removeExperience }: { e
 
     return (
         <div ref={setNodeRef} style={style} className="mb-2 touch-none">
-            <AccordionItem value={exp.id} className="border rounded-lg bg-slate-50 dark:bg-slate-800/50 px-2 overflow-hidden">
+            <AccordionItem value={exp.id} className="border rounded-lg bg-neutral-900 dark:bg-slate-800/50 px-2 overflow-hidden">
                 <div className="flex items-center">
-                    <button {...attributes} {...listeners} className="p-3 cursor-grab hover:text-purple-600 active:cursor-grabbing">
+                    <button {...attributes} {...listeners} className="p-3 cursor-grab hover:text-[#ADFF44] active:cursor-grabbing">
                         <GripVertical className="w-5 h-5 text-gray-400" />
                     </button>
                     <AccordionTrigger className="hover:no-underline flex-1 py-3 pr-4">
@@ -285,7 +285,7 @@ const SortableExperienceItem = ({ exp, updateExperience, removeExperience }: { e
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">
                             <Label>Description (Bullet Points)</Label>
-                            <Button variant="ghost" size="sm" className="h-6 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50">
+                            <Button variant="ghost" size="sm" className="h-6 text-xs text-[#ADFF44] hover:text-[#ADFF44] hover:bg-[#ADFF44]/5">
                                 <Sparkles className="w-3 h-3 mr-1" /> AI Enhance
                             </Button>
                         </div>
