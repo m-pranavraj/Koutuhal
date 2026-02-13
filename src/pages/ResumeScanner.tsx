@@ -6,19 +6,29 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Upload, FileText, CheckCircle, AlertCircle, ArrowRight, Loader2, TrendingUp, Linkedin } from 'lucide-react';
-import { analyzeResume, AnalysisResult } from '@/lib/ats-simulator';
 import ScoreGauge from '@/components/resume/ScoreGauge';
 import { motion } from 'framer-motion';
+
+// Define the shape of the backend response
+export interface AnalysisResult {
+    score: number;
+    missingKeywords: string[];
+    foundKeywords: string[];
+    structureScore: number;
+    impactScore: number;
+}
 
 const ResumeScanner = () => {
     const [file, setFile] = useState<File | null>(null);
     const [jdText, setJdText] = useState('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [result, setResult] = useState<AnalysisResult | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setFile(e.target.files[0]);
+            setError(null);
         }
     };
 
@@ -26,21 +36,31 @@ const ResumeScanner = () => {
         if (!file || !jdText) return;
 
         setIsAnalyzing(true);
-        // Simulate text extraction from PDF (In real app, backend does this)
-        const mockResumeText = "I am a software engineer with React and TypeScript experience. I built a project using Node.js and improved performance by 20%.";
+        setError(null);
 
-        const res = await analyzeResume(mockResumeText, jdText);
+        const formData = new FormData();
+        formData.append('resume', file);
+        formData.append('jd_text', jdText);
 
-        // LOGIC FIX: Only force 'Generative AI' if the JD is related to AI/Gen AI
-        const isGenAiRole = /gen\s*ai|generative\s*ai|llm|large\s*language\s*model|artificial\s*intelligence/i.test(jdText);
+        try {
+            const response = await fetch('/ai/analyze-resume', {
+                method: 'POST',
+                body: formData,
+            });
 
-        if (isGenAiRole && !res.missingKeywords.includes('Generative AI')) {
-            res.missingKeywords.push('Generative AI');
-            res.score = Math.max(70, res.score - 5);
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.message || 'Analysis failed. Please try again.');
+            }
+
+            const data: AnalysisResult = await response.json();
+            setResult(data);
+        } catch (err: any) {
+            console.error("Analysis Error:", err);
+            setError(err.message || "An unexpected error occurred.");
+        } finally {
+            setIsAnalyzing(false);
         }
-
-        setResult(res);
-        setIsAnalyzing(false);
     };
 
     // Simple heuristic to detect role from JD
@@ -145,6 +165,11 @@ const ResumeScanner = () => {
                                         </>
                                     )}
                                 </Button>
+                                {error && (
+                                    <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl text-center mt-4 flex items-center justify-center gap-2">
+                                        <AlertCircle className="w-5 h-5" /> {error}
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </div>

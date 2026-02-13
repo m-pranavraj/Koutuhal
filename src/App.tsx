@@ -4,10 +4,12 @@ import { ResumeProvider } from "@/context/ResumeContext";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import ScrollToTop from "@/components/layout/ScrollToTop";
+import { Loader2 } from "lucide-react";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 // Pages
 import Home from "@/pages/Home";
@@ -31,9 +33,50 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { Navigate, Outlet } from "react-router-dom";
 import LoginPage from "@/pages/LoginPage";
 
-const ProtectedRoute = () => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+import OnboardingRolePage from "@/pages/OnboardingRolePage";
+import SignUpPage from "@/pages/SignUpPage";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+
+const ProtectedRoute = ({ requireOnboarding = false, requireAdmin = false }: { requireOnboarding?: boolean; requireAdmin?: boolean }) => {
+  const { isAuthenticated, user, isLoading } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 className="h-8 w-8 text-[#ADFF44] animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
+
+  // Logic: 
+  // If accessing /onboarding (requireOnboarding=true):
+  //    - If already completed -> Redirect to dashboard
+  //    - If not completed -> Allow
+  if (requireOnboarding) {
+    if (user?.onboarding_completed) {
+      return <Navigate to="/dashboard" replace />;
+    }
+    return <Outlet />;
+  }
+
+  // If accessing Admin (requireAdmin=true):
+  if (requireAdmin) {
+    if (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') {
+      return <Navigate to="/dashboard" replace />;
+    }
+    return <Outlet />;
+  }
+
+  // If accessing normal protected routes (requireOnboarding=false/undefined):
+  //    - If not completed -> Redirect to onboarding
+  if (!user?.onboarding_completed) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  return <Outlet />;
 };
 
 const App = () => (
@@ -44,39 +87,51 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <BrowserRouter>
-              <Header />
-              <ScrollToTop />
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<Home />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/about" element={<AboutPage />} />
-                <Route path="/contact" element={<ContactPage />} />
-                <Route path="/courses" element={<CourseCatalog />} />
-                <Route path="/courses/:id" element={<CourseDetail />} />
+            <ErrorBoundary>
+              <BrowserRouter>
+                <Header />
+                <ScrollToTop />
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/" element={<Home />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<SignUpPage />} />
+                  <Route path="/about" element={<AboutPage />} />
+                  <Route path="/contact" element={<ContactPage />} />
 
-                {/* Protected Routes */}
-                <Route element={<ProtectedRoute />}>
-                  <Route path="/search-experts" element={<SearchMentors />} />
-                  <Route path="/jobs" element={<Jobs />} />
-                  <Route path="/resume-active" element={<Resume />} />
-                  <Route path="/resume-builder" element={<ResumeBuilder />} />
-                  <Route path="/resume-scanner" element={<ResumeScanner />} />
-                  <Route path="/portfolio-builder" element={<PortfolioBuilder />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  {/* <Route path="/ai-tutor" element={<AiTutor />} /> */}
-                </Route>
+                  <Route element={<ProtectedRoute requireOnboarding={true} />}>
+                    <Route path="/onboarding" element={<OnboardingRolePage />} />
+                  </Route>
 
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-              <Footer />
-            </BrowserRouter>
+                  {/* Admin Routes */}
+                  <Route element={<ProtectedRoute requireAdmin={true} />}>
+                    <Route path="/admin" element={<AdminDashboard />} />
+                  </Route>
+
+                  {/* Protected Routes (Dashboard etc) */}
+                  <Route element={<ProtectedRoute />}>
+                    <Route path="/courses" element={<CourseCatalog />} />
+                    <Route path="/courses/:id" element={<CourseDetail />} />
+                    <Route path="/search-experts" element={<SearchMentors />} />
+                    <Route path="/jobs" element={<Jobs />} />
+                    <Route path="/resume-active" element={<Resume />} />
+                    <Route path="/resume-builder" element={<ResumeBuilder />} />
+                    <Route path="/resume-scanner" element={<ResumeScanner />} />
+                    <Route path="/portfolio-builder" element={<PortfolioBuilder />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    {/* <Route path="/ai-tutor" element={<AiTutor />} /> */}
+                  </Route>
+
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <Footer />
+              </BrowserRouter>
+            </ErrorBoundary>
           </TooltipProvider>
         </ResumeProvider>
       </AuthProvider>
     </QueryClientProvider>
-  </ThemeProvider>
+  </ThemeProvider >
 );
 
 export default App;

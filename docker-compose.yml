@@ -1,0 +1,74 @@
+# Docker Compose for Koutuhal Pathways
+
+services:
+  # Frontend Service
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: koutuhal-frontend
+    restart: always
+    ports:
+      - "3000:8080" # Mapping internal Nginx 8080 (Cloud Run setup) to 3000 for local use
+    depends_on:
+      - api
+
+  # Backend API Service
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: koutuhal-api
+    restart: always
+    ports:
+      - "8000:8000"
+    env_file: ./backend/.env
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Background Worker
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: koutuhal-worker
+    restart: always
+    env_file: ./backend/.env
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./backend:/app
+    command: python -m app.worker
+
+  # Cache / Queue
+  redis:
+    image: redis:7-alpine
+    container_name: koutuhal-redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  # Database
+  db:
+    image: postgres:15-alpine
+    container_name: koutuhal-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-koutuhal}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+
+
+

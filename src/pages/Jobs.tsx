@@ -1,9 +1,9 @@
 import { JobCard } from "@/components/cards/JobCard";
-import { jobs as initialJobs, Job } from "@/data/jobs";
+import type { Job } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Search, Bell, SlidersHorizontal, Upload, CheckCircle2, Loader2, TrendingUp, Briefcase, Sparkles } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ApplicationStatusDashboard } from "@/components/jobs/ApplicationStatusDashboard";
 import { JobDetailsSheet } from "@/components/jobs/JobDetailsSheet";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,7 +13,9 @@ import { Badge } from "@/components/ui/badge";
 const JobsContent = () => {
   const [isMatching, setIsMatching] = useState(false);
   const [matchComplete, setMatchComplete] = useState(false);
-  const [jobs, setJobs] = useState(initialJobs);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedResume, setSelectedResume] = useState<File | null>(null);
 
   // Navigation State
@@ -25,46 +27,73 @@ const JobsContent = () => {
 
   const { appliedJobs } = useApplications();
 
+  useEffect(() => {
+    fetchJobs();
+  }, []);
+
+  const fetchJobs = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/v1/jobs');
+      if (!response.ok) throw new Error('Failed to fetch jobs');
+      const data = await response.json();
+      // Map backend fields to frontend Job interface
+      const mapped = data.map((j: any) => ({
+        id: j.id,
+        title: j.title,
+        company: j.company,
+        type: j.job_type || 'Full-time',
+        mode: j.location?.toLowerCase().includes('remote') ? 'Remote' : 'WFO',
+        location: j.location,
+        experience: 'Open',
+        salary: 'Competitive',
+        description: j.description,
+        skills: j.skills || [],
+        category: j.job_type || 'Engineering',
+        postedDays: j.created_at ? Math.floor((Date.now() - new Date(j.created_at).getTime()) / 86400000) : 0,
+      }));
+      setJobs(mapped);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load jobs. Please try again later.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleResumeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedResume(e.target.files[0]);
     }
   };
 
-  const runMatchingEngine = () => {
+  const runMatchingEngine = async () => {
     if (!selectedResume) return;
     setIsMatching(true);
+    setMatchComplete(false);
 
-    // Simulate AI Analysis of the Resume File
-    const filename = selectedResume.name.toLowerCase();
-    const keywords = ['engineer', 'developer', 'designer', 'manager', 'marketing', 'sales', 'product', 'data'];
-    let foundKeywords = keywords.filter(k => filename.includes(k));
+    const formData = new FormData();
+    formData.append('resume', selectedResume);
 
-    // Fallback for demo: if no keywords found, assume "Engineer" to show *some* matching behavior
-    if (foundKeywords.length === 0) foundKeywords = ['engineer', 'developer'];
-
-    setTimeout(() => {
-      setIsMatching(false);
-      setMatchComplete(true);
-
-      const sorted = [...initialJobs].sort((a, b) => {
-        // Calculate artificial match score
-        let scoreA = 0;
-        let scoreB = 0;
-
-        foundKeywords.forEach(k => {
-          const term = k.toLowerCase();
-          if (a.title.toLowerCase().includes(term) || a.category?.toLowerCase().includes(term)) scoreA += 50;
-          if (b.title.toLowerCase().includes(term) || b.category?.toLowerCase().includes(term)) scoreB += 50;
-        });
-
-        // Add some noise/randomness for realism if tie
-        if (scoreA === scoreB) return b.id - a.id;
-        return scoreB - scoreA;
+    try {
+      const response = await fetch('/api/v1/ai/match-jobs', {
+        method: 'POST',
+        body: formData,
       });
 
-      setJobs(sorted);
-    }, 2000); // 2 second "Scanning" delay
+      if (!response.ok) throw new Error('AI Matching failed');
+
+      const matches = await response.json();
+
+      // Matches should be an array of jobs, potentially with scores
+      setJobs(matches);
+      setMatchComplete(true);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to run AI matching. Please try again.");
+    } finally {
+      setIsMatching(false);
+    }
   };
 
   const openJobDetails = (job: Job) => {
@@ -285,31 +314,47 @@ const JobsContent = () => {
                 </div>
 
                 <div className="grid gap-6">
-                  <AnimatePresence>
-                    {jobs.map((job, index) => {
-                      const isTopMatch = matchComplete && index < 3;
-                      const matchScore = isTopMatch ? (98 - (index * 2)) : 0;
-                      return (
-                        <motion.div
-                          key={job.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="relative group block"
-                          onClick={() => openJobDetails(job)}
-                        >
-                          {isTopMatch && (
-                            <div className="absolute -top-3 -right-3 z-10 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg flex items-center gap-1">
-                              <TrendingUp className="w-3 h-3" /> {matchScore}% Match
+                  {isLoading && (
+                    <div className="flex flex-col items-center justify-center py-20">
+                      <Loader2 className="w-10 h-10 text-[#ADFF44] animate-spin mb-4" />
+                      <p className="text-gray-500">Loading opportunities...</p>
+                    </div>
+                  )}
+
+                  {error && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl text-center">
+                      {error}
+                      <Button variant="link" onClick={fetchJobs} className="text-red-400 underline ml-2">Try Again</Button>
+                    </div>
+                  )}
+
+                  {!isLoading && !error && (
+                    <AnimatePresence>
+                      {jobs.map((job, index) => {
+                        const isTopMatch = matchComplete && index < 3;
+                        const matchScore = isTopMatch ? (98 - (index * 2)) : 0;
+                        return (
+                          <motion.div
+                            key={job.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="relative group block"
+                            onClick={() => openJobDetails(job)}
+                          >
+                            {isTopMatch && (
+                              <div className="absolute -top-3 -right-3 z-10 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg flex items-center gap-1">
+                                <TrendingUp className="w-3 h-3" /> {matchScore}% Match
+                              </div>
+                            )}
+                            <div className="cursor-pointer">
+                              <JobCard job={job} />
                             </div>
-                          )}
-                          <div className="cursor-pointer">
-                            <JobCard job={job} />
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </AnimatePresence>
+                          </motion.div>
+                        );
+                      })}
+                    </AnimatePresence>
+                  )}
                 </div>
               </div>
             </div>

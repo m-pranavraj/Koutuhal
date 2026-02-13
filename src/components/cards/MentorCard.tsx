@@ -1,7 +1,7 @@
 import { BadgeCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import type { Mentor } from '@/data/mentors';
+import type { Mentor } from '@/types';
 import { motion } from 'framer-motion';
 import { Star, MessageSquare, Calendar, Linkedin, MoreHorizontal } from 'lucide-react';
 

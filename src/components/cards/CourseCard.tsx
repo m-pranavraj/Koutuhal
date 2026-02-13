@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import type { Course } from '@/data/courses';
+import type { Course } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface CourseCardProps {
@@ -50,11 +50,11 @@ export const CourseCard = ({ course, variant = 'default' }: CourseCardProps) => 
             {course.category}
           </Badge>
         </div>
-        
+
         <h3 className="mb-2 line-clamp-2 font-semibold text-foreground group-hover:text-primary">
           {course.title}
         </h3>
-        
+
         <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">
           {course.description}
         </p>

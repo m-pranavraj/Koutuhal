@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
-import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import {
   BookOpen,
   Users,
@@ -28,54 +28,70 @@ import {
 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MentorCard } from '@/components/cards/MentorCard';
-import { mentors } from '@/data/mentors';
-import { pricingPlans } from '@/data/instructors';
 import ScrollSequence from "@/components/motion/ScrollSequence";
+
+// Landing page pricing (static page content — NOT API mock data)
+const pricingPlans = [
+  {
+    id: 1, name: "Silver", price: "₹15,000", duration: "2 months program",
+    features: ["8 interactive AI learning sessions", "4 sessions with industry experts", "1 hands-on live project", "5 interactive quizzes", "Basic AI tools introduction", "Community forum access", "Certificate of completion"],
+    isPopular: false,
+  },
+  {
+    id: 2, name: "Gold", price: "₹40,000", duration: "4 months program",
+    features: ["12 interactive AI learning sessions", "8 sessions with industry experts", "3 hands-on live projects", "10 interactive quizzes", "Advanced AI tools training", "Project certificates", "Priority community support", "Parent progress reports"],
+    isPopular: true,
+  },
+  {
+    id: 3, name: "Platinum", price: "₹75,000", duration: "12 weeks program",
+    features: ["20 interactive AI learning sessions", "20 sessions with industry experts", "5 hands-on live projects", "15 interactive quizzes", "Personal 1:1 mentorship", "Advanced project portfolio", "Direct mentor access", "Career guidance for young learners", "Exclusive AI tools access"],
+    isPopular: false,
+  },
+];
 
 /* ── Rotating Text ─────────────────────── */
 const RotatingText = () => {
-  const words = ["Schools", "Colleges", "Businesses"];
+  const words = ["Schools", "Colleges", "Businesses", "Professionals"];
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setIndex((prev) => (prev + 1) % words.length);
-    }, 2000);
+    }, 3000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.span
-        key={index}
-        className="text-[#ADFF44]"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{
-          y: { type: "spring", stiffness: 300, damping: 30 },
-          opacity: { duration: 0.1 },
-        }}
-      >
-        {words[index]}
-      </motion.span>
-    </AnimatePresence>
+    <div className="relative inline-flex h-[1.2em] items-center overflow-hidden px-4 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={index}
+          className="bg-clip-text text-transparent bg-gradient-to-r from-[#ADFF44] to-[#44ff9e] font-black italic tracking-tight"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -15 }}
+          transition={{
+            y: { type: "spring", stiffness: 200, damping: 25 },
+            opacity: { duration: 0.2 },
+          }}
+        >
+          {words[index]}
+        </motion.span>
+      </AnimatePresence>
+    </div>
   );
 };
 
 /* ── Marquee Component ─────────────────── */
-/* ── Marquee Component ─────────────────── */
 const Marquee = ({ children, reverse = false, duration = 30, className }: { children: React.ReactNode; reverse?: boolean; duration?: number; className?: string }) => (
-  <div className={`flex overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)] ${className}`}>
-    <motion.div
-      className="flex gap-12 shrink-0"
-      animate={{ x: reverse ? ["0%", "-50%"] : ["-50%", "0%"] }}
-      transition={{ duration: duration, repeat: Infinity, ease: "linear" }}
-    >
+  <div
+    className={`flex overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)] group ${className}`}
+    style={{ '--duration': `${duration}s` } as any}
+  >
+    <div className={`flex gap-12 shrink-0 ${reverse ? 'animate-marquee-reverse' : 'animate-marquee'} group-hover:[animation-play-state:paused]`}>
       {children}
       {children}
-    </motion.div>
+    </div>
   </div>
 );
 
@@ -147,48 +163,66 @@ const AnimatedStat = ({ value, label }: { value: string; label: string }) => (
 );
 
 /* ════════════════════════════════════════ */
-/*                HOME PAGE                */
-/* ════════════════════════════════════════ */
 const Home = () => {
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0]);
   const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.95]);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const { clientX, clientY } = e;
+    setMousePos({ x: clientX, y: clientY });
+  };
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-x-hidden">
+    <div className="min-h-screen bg-black text-white overflow-x-hidden" onMouseMove={handleMouseMove}>
 
       {/* ━━━ HERO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section ref={heroRef} className="relative min-h-[150vh] flex flex-col bg-black overflow-hidden">
-        {/* Grid Pattern Background (Parallax Effect) */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(173,255,68,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(173,255,68,0.03)_1px,transparent_1px)] bg-[size:60px_60px] pointer-events-none z-0" />
-        {/* Glow Orbs */}
-        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full bg-[#ADFF44]/5 blur-[120px] pointer-events-none z-0" />
+      <section ref={heroRef} className="relative min-h-[125vh] flex flex-col bg-black overflow-hidden select-none">
+        {/* State-of-the-art Mesh Background */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {/* Reactive Mouse Glow */}
+          <motion.div
+            animate={{
+              x: mousePos.x - 400,
+              y: mousePos.y - 400,
+            }}
+            transition={{ type: "spring", damping: 50, stiffness: 200, mass: 0.5 }}
+            className="absolute w-[800px] h-[800px] rounded-full bg-[#ADFF44]/[0.05] blur-[150px] z-0"
+          />
+
+          <div className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] bg-[radial-gradient(circle_at_center,#ADFF44_0%,transparent_70%)] opacity-[0.08] blur-[120px] animate-[pulse_8s_ease-in-out_infinite]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-[radial-gradient(circle_at_center,#44ff9e_0%,transparent_70%)] opacity-[0.05] blur-[100px]" />
+
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(173,255,68,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(173,255,68,0.02)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(circle_at_center,white,transparent_80%)]" />
+        </div>
 
         {/* Sticky Container for Animation + Content */}
         <div className="sticky top-0 h-screen w-full flex items-center justify-center z-10 pointer-events-none">
 
-          <div className="relative z-10 w-full max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between h-full md:pl-44">
+          <div className="relative z-10 w-full max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-center h-full gap-8 md:gap-16 font-display">
 
-            {/* LEFT: Robot Animation (Top on Mobile, Left on Desktop) */}
-            <div className="w-full md:w-3/12 lg:w-3/12 h-[25vh] md:h-[400px] flex items-center justify-center order-1 md:order-1 mt-0 md:mt-0 relative overflow-visible">
-              <ScrollSequence
-                frameCount={80}
-                path="/3d-sequence/ezgif-frame-"
-                digits={3}
-                className="w-full h-full scale-100 md:scale-90 origin-center"
-                scrollRef={heroRef}
-              />
-              {/* Mobile Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black pointer-events-none md:hidden" />
+            {/* LEFT: Robot Animation */}
+            <div className="w-full md:w-5/12 lg:w-4/12 flex items-center justify-center order-1 md:order-1 relative">
+              {/* Backglow for Robot */}
+              <div className="absolute inset-0 bg-[#ADFF44]/15 blur-[100px] rounded-full scale-75 animate-pulse" />
+
+              <div className="relative w-full aspect-square max-w-[200px] md:max-w-[300px]">
+                <ScrollSequence
+                  frameCount={80}
+                  path="/3d-sequence/ezgif-frame-"
+                  digits={3}
+                  className="w-full h-full scale-100 drop-shadow-[0_0_30px_rgba(173,255,68,0.2)]"
+                  scrollRef={heroRef}
+                />
+              </div>
             </div>
 
-            {/* SPACER REMOVED to give text more room */}
-
-            {/* RIGHT: Text Content (Bottom on Mobile, Right on Desktop) */}
+            {/* RIGHT: Text Content */}
             <motion.div
               style={{ opacity: heroOpacity, scale: heroScale }}
-              className="w-full md:w-auto md:flex-1 text-center md:text-left order-2 md:order-2 px-4 pt-2 md:pt-0 h-auto md:h-full flex flex-col justify-start md:justify-center z-20 md:pl-24"
+              className="w-full md:flex-1 text-center md:text-left order-2 md:order-2 px-4 flex flex-col justify-center z-20 pointer-events-auto"
             >
               {/* Badge */}
               <motion.div
@@ -196,48 +230,66 @@ const Home = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <Badge className="mb-6 bg-[#ADFF44]/10 text-[#ADFF44] border border-[#ADFF44]/20 px-5 py-2 text-sm font-display tracking-wider backdrop-blur-xl">
-                  <span className="w-2 h-2 rounded-full bg-[#ADFF44] inline-block mr-3 animate-pulse" />
-                  NOW ENROLLING — COHORT 1
+                <Badge className="mb-8 bg-white/5 text-[#ADFF44]/90 border border-white/10 px-4 py-1.5 text-[10px] sm:text-xs tracking-[0.2em] backdrop-blur-xl uppercase font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#ADFF44] inline-block mr-3 animate-pulse shadow-[0_0_8px_#ADFF44]" />
+                  Enrollment Live — Cohort 01
                 </Badge>
               </motion.div>
 
               {/* Headline */}
               <motion.h1
-                className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display font-black tracking-tight leading-[0.95] mb-8"
+                className="text-5xl sm:text-6xl lg:text-8xl font-black tracking-tighter leading-[0.9] mb-8"
                 initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.15 }}
               >
-                <span className="block text-white">AI Education</span>
-                <span className="flex items-baseline justify-center md:justify-start gap-[0.3em] mt-2 flex-nowrap whitespace-nowrap">
-                  <span>for</span>
+                <span className="block bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">The AI Career</span>
+                <span className="block text-white mt-1">Accelerator</span>
+                <div className="flex items-center justify-center md:justify-start gap-4 mt-6 text-xl sm:text-2xl md:text-3xl">
+                  <span className="text-neutral-500 font-medium tracking-tight">Purpose-built for</span>
                   <RotatingText />
-                </span>
+                </div>
               </motion.h1>
 
               {/* Sub-headline */}
               <motion.p
-                className="text-lg md:text-xl text-neutral-400 max-w-2xl mx-auto md:mx-0 mb-10 leading-relaxed font-light"
+                className="text-base md:text-lg text-neutral-400 max-w-xl mx-auto md:mx-0 mb-10 leading-relaxed font-normal"
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3 }}
               >
-                From zero to deploying production AI — with mentors from top companies,
-                hands-on projects, and career support that actually works.
+                From zero to deploying production AI. Master the stack with industry-leading mentors
+                and build projects that secure your future in the AI economy.
               </motion.p>
 
               {/* CTA Buttons */}
               <motion.div
-                className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start"
+                className="flex flex-col sm:flex-row gap-5 justify-center md:justify-start"
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.45 }}
               >
                 <Link to="/courses">
-                  <Button size="lg" className="h-14 px-10 text-base bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-bold rounded-full shadow-[0_0_40px_rgba(173,255,68,0.3)] hover:shadow-[0_0_60px_rgba(173,255,68,0.4)] transition-all hover:scale-105 border-0">
-                    Explore for Free <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
+                  <motion.button
+                    whileHover="hover"
+                    className="relative px-10 h-14 bg-[#ADFF44] text-black font-black text-sm uppercase tracking-widest rounded-full shadow-[0_0_50px_rgba(173,255,68,0.3)] flex items-center group overflow-hidden"
+                  >
+                    <motion.div
+                      variants={{
+                        initial: { width: 0, opacity: 0, marginRight: 0 },
+                        hover: { width: "auto", opacity: 1, marginRight: 12 }
+                      }}
+                      initial="initial"
+                      className="flex items-center justify-center shrink-0"
+                    >
+                      <ArrowRight className="w-5 h-5 -rotate-45 group-hover:rotate-0 transition-transform duration-500" />
+                    </motion.div>
+
+                    <span className="relative z-10 transition-transform duration-500 group-hover:translate-x-1">Get Started Free</span>
+
+                    {/* Shimmer */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none" />
+                  </motion.button>
                 </Link>
               </motion.div>
             </motion.div>
@@ -245,14 +297,51 @@ const Home = () => {
         </div>
       </section>
 
-      {/* ━━━ BRAND MARQUEE (Overlap) ━━━━━━━━━━━━━━━━━━━ */}
-      <section className="relative z-20 bg-black py-12 border-y border-neutral-900 -mt-[50vh]">
-        <p className="text-center text-xs text-neutral-600 uppercase tracking-[0.3em] mb-8 font-medium">Trusted by leading institutions</p>
-        <Marquee>
-          {["IIT Bombay", "BITS Pilani", "NIT Trichy", "VIT", "Manipal", "IIIT Hyderabad", "SRM", "Anna University", "NSUT Delhi", "DTU"].map((name) => (
-            <span key={name} className="text-neutral-600 text-lg font-semibold whitespace-nowrap tracking-wide">{name}</span>
-          ))}
-        </Marquee>
+      {/* ━━━ FEATURES MARQUEE (Overlap) ━━━━━━━━━━━━━━━━━━━ */}
+      <section className="relative z-20 bg-black pt-24 pb-16 border-y border-white/5 md:-mt-[25vh] -mt-[15vh] overflow-hidden">
+        <div className="space-y-8">
+          {/* Row 1: Primary Features */}
+          <Marquee duration={25}>
+            {[
+              "Expert Led Courses",
+              "Full-Time Jobs",
+              "Paid Internships",
+              "Expert Mentors",
+              "Smart Resume Builder",
+              "AI ATS Analyzer",
+              "Deep Resume Matcher",
+              "Expert Led Courses",
+              "Full-Time Jobs",
+              "Paid Internships",
+            ].map((feature, i) => (
+              <span key={i} className="text-white text-2xl md:text-4xl font-display font-black whitespace-nowrap tracking-tight mx-4">
+                <span className="text-[#ADFF44] mr-4">•</span>
+                {feature.toUpperCase()}
+              </span>
+            ))}
+          </Marquee>
+
+          {/* Row 2: Extra Features (Reverse) */}
+          <Marquee duration={30} reverse>
+            {[
+              "AI Mock Interviews",
+              "Skill-Based Pathways",
+              "Dynamic Portfolio",
+              "24/7 AI Tutor",
+              "Industry Projects",
+              "Career Roadmaps",
+              "AI Mock Interviews",
+              "Skill-Based Pathways",
+              "Dynamic Portfolio",
+              "24/7 AI Tutor",
+            ].map((feature, i) => (
+              <span key={i} className="text-neutral-500 text-xl md:text-3xl font-display font-bold whitespace-nowrap tracking-tight mx-4">
+                <span className="text-neutral-800 mr-4">•</span>
+                {feature.toUpperCase()}
+              </span>
+            ))}
+          </Marquee>
+        </div>
       </section>
 
 
@@ -351,7 +440,7 @@ const Home = () => {
       </section>
 
       {/* ━━━ 1:1 CALLS SECTION ━━━━━━━━━━━━━━━ */}
-      < section className="py-28 relative overflow-hidden" >
+      <section className="py-28 relative overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-b from-black via-neutral-950 to-black" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[#ADFF44]/5 blur-[150px]" />

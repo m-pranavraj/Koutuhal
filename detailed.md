@@ -90,12 +90,10 @@ The ultimate goal is not just to grade, but to *convert* users into learners.
     *   If `Missing Skill` == "React" OR "Next.js" $\rightarrow$ Recommend **"Advanced Frontend Patterns"** Course.
     *   If `Impact Score` < 50% $\rightarrow$ Recommend **"Resume Writing Masterclass"**.
 
-#### C. Backend Implementation Plan (The "System")
-Since we are pausing full backend build-out, the suggested immediate implementation is a **Client-Side Simulation** that validates the UI/UX.
+#### C. Backend Implementation (Current State)
+We have transitioned from simulation to a **Real, Dynamic Backend** using Docker.
 
-*   **Mock Engine**: We will build the *exact* UI flow described.
-*   **Logic**: We will use a local dictionary of *common tech keywords* to simulate the gap analysis immediately in the browser.
-*   **Course Mapping**:
-    *   `React`, `Vue`, `Frontend` -> Recommend *Full Stack Web Development*.
-    *   `Python`, `AI`, `ML` -> Recommend *AI/ML Engineering*.
-    *   `Marketing`, `SEO` -> Recommend *Digital Marketing*.
+- **Infrastructure**: One-click orchestration via `docker-compose` (FastAPI, Worker, PostgreSQL, Redis).
+- **Real Extraction**: Using `text_extractor.py` and `storage.py` for real file handling.
+- **Dynamic AI**: Seamless integration with OpenAI/Gemini/DeepSeek via `LLM_BASE_URL`.
+- **Zero-Mocks**: All demonstration code has been cleaned to ensure production-ready logic for local auditing.

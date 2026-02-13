@@ -1,7 +1,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Job } from "@/data/jobs";
+import { Job } from "@/types";
 import { Briefcase, MapPin, Banknote, Building2, CheckCircle2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useApplications } from "@/context/ApplicationContext";
@@ -19,17 +19,22 @@ export const JobDetailsSheet = ({ job, open, onOpenChange, onDashboardOpen }: Jo
 
     if (!job) return null;
 
-    const applied = hasApplied(job.id);
+    const applied = hasApplied(job.id as number);
 
-    const handleApply = () => {
+    const handleApply = async () => {
         setIsApplying(true);
-        setTimeout(() => {
-            const rank = Math.floor(Math.random() * 5) + 2;
-            applyToJob(job, 95);
-            setIsApplying(false);
+        try {
+            const application = await applyToJob(job, 95); // Match score is hardcoded for now, ideal would be to get it from context/props
             onOpenChange(false);
-            onDashboardOpen(job.title, rank, true);
-        }, 1500); // Sending simulation
+            // Rank is now determined by backend, but we can pass a placeholder or get it from the new application object if we refactor further.
+            // For now, we open the dashboard which will show the loading state or the new rank.
+            onDashboardOpen(job.title, application.rank, true);
+        } catch (error) {
+            console.error("Failed to apply:", error);
+            // Optionally show an error toast here
+        } finally {
+            setIsApplying(false);
+        }
     };
 
     return (

@@ -18,6 +18,19 @@ Changes made via Lovable will be committed automatically to this repo.
 
 If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
 
+### Option A: One-Click Docker Start (Recommended) 🐳
+
+The fastest way to run the entire app (Frontend + Backend + DB) without installing Node.js/Python/Postgres:
+
+1.  Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+2.  Run this command in the project root:
+    ```sh
+    docker-compose up -d --build
+    ```
+3.  Open [http://localhost:3000](http://localhost:3000).
+
+### Option B: Manual Setup (Node.js & npm)
+
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
 Follow these steps:

@@ -1,50 +1,93 @@
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Clock, Users, Award, CheckCircle, ArrowLeft, Play, Download, Sparkles } from 'lucide-react';
+import { Clock, Users, Award, CheckCircle, ArrowLeft, Play, Download, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CurriculumAccordion } from '@/components/features/CurriculumAccordion';
-import { curriculum } from '@/data/instructors';
-import { courses } from '@/data/courses';
+// Curriculum data comes from course.details (API)
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 
-const programData: Record<string, keyof typeof curriculum> = {
-  '1': 'bootcamp',
-  '2': 'business',
-  '6': 'schools',
-  'schools': 'schools',
-  'bootcamp': 'bootcamp',
-  'business': 'business',
-};
+// Define the API response type locally
+interface Course {
+  id: string;
+  title: string;
+  instructor?: string;
+  level?: string;
+  duration?: string;
+  price: number;
+  rating?: number;
+  category?: string;
+  image_url?: string;
+  tags?: string[];
+  description: string;
+  details?: any; // Contains toolsList, projectsList etc.
+}
 
 const CourseDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const programKey = programData[id || ''] || 'schools';
-  const program = curriculum[programKey];
 
-  // Find matching course for additional info
-  const course = courses.find((c) => {
-    if (programKey === 'bootcamp') return c.id === 1;
-    if (programKey === 'business') return c.id === 2;
-    if (programKey === 'schools') return c.id === 6;
-    return c.id === parseInt(id || '1');
-  }) || courses[0];
+  const [course, setCourse] = useState<Course | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const fetchCourse = async () => {
+      try {
+        // Fetch all courses and find the one matching ID
+        // (Optimization: Add GET /courses/:id endpoint in future)
+        const res = await fetch('/api/v1/payments/courses');
+        if (!res.ok) throw new Error('Failed to load course data');
+
+        const data: Course[] = await res.json();
+        const found = data.find(c => c.id === id);
+
+        if (found) {
+          setCourse(found);
+        } else {
+          setError("Course not found");
+        }
+      } catch (err) {
+        console.error(err);
+        setError("Failed to connect to server");
+        toast.error("Could not load course details");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) fetchCourse();
+  }, [id]);
+
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="w-10 h-10 text-[#ADFF44] animate-spin" /></div>;
+
+  if (error || !course) return (
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center text-center p-4">
+      <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
+      <h2 className="text-white text-2xl font-bold">Course Not Found</h2>
+      <Link to="/courses"><Button className="mt-4 bg-[#ADFF44] text-black hover:bg-[#baff66]">Back to Catalog</Button></Link>
+    </div>
+  );
+
+  // Use course details from API (stored in DB as JSON)
+  const toolsList = course.details?.toolsList || [];
+  const projectsList = course.details?.projectsList || [];
+  const duration = course.duration || 'Self-paced';
+  const weeks = course.details?.weeks || course.details?.curriculum || [];
+
+  // Animation Variants
   const container = {
     hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
+    show: { opacity: 1, transition: { staggerChildren: 0.1 } }
   };
 
   const item = {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 }
   };
+
 
   return (
     <div className="min-h-screen bg-black dark:bg-black transition-colors duration-300">
@@ -79,7 +122,7 @@ const CourseDetail = () => {
                 Premium Certification
               </Badge>
               <h1 className="mb-6 text-4xl font-bold leading-tight tracking-tight md:text-6xl bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400">
-                {program.title}
+                {course.title}
               </h1>
               <p className="mb-8 text-lg text-neutral-400 leading-relaxed max-w-xl">
                 {course.description}
@@ -88,15 +131,15 @@ const CourseDetail = () => {
               <div className="flex flex-wrap items-center gap-4 mb-8">
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-900/5 border border-white/10 backdrop-blur-md">
                   <Clock className="h-5 w-5 text-[#ADFF44]" />
-                  <span className="font-medium text-sm">{program.duration}</span>
+                  <span className="font-medium text-sm">{duration}</span>
                 </div>
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-900/5 border border-white/10 backdrop-blur-md">
                   <Users className="h-5 w-5 text-[#ADFF44]" />
-                  <span className="font-medium text-sm">{program.tools}+ AI Tools</span>
+                  <span className="font-medium text-sm">{toolsList.length}+ AI Tools</span>
                 </div>
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-900/5 border border-white/10 backdrop-blur-md">
                   <Award className="h-5 w-5 text-[#ADFF44]" />
-                  <span className="font-medium text-sm">{program.projects} Projects</span>
+                  <span className="font-medium text-sm">{projectsList.length} Projects</span>
                 </div>
               </div>
 
@@ -119,14 +162,18 @@ const CourseDetail = () => {
             >
               <div className="absolute inset-0 bg-gradient-to-br from-[#ADFF44]/20 to-[#8BCC36]/20 rounded-[2rem] transform rotate-3"></div>
               <div className="absolute inset-0 bg-slate-800 rounded-[2rem] border border-white/10 shadow-2xl overflow-hidden transform -rotate-2 flex items-center justify-center">
-                {/* Placeholder for Program Image */}
-                <div className="text-center p-8">
-                  <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#ADFF44] to-[#8BCC36] mx-auto mb-6 flex items-center justify-center shadow-lg">
-                    <Sparkles className="w-10 h-10 text-white" />
+                {/* Use course image_url if available, else placeholder */}
+                {course.image_url ? (
+                  <img src={course.image_url} alt={course.title} className="w-full h-full object-cover rounded-[2rem] opacity-80" />
+                ) : (
+                  <div className="text-center p-8">
+                    <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#ADFF44] to-[#8BCC36] mx-auto mb-6 flex items-center justify-center shadow-lg">
+                      <Sparkles className="w-10 h-10 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Master AI Today</h3>
+                    <p className="text-neutral-500">Join the top 1% of AI professionals</p>
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-2">Master AI Today</h3>
-                  <p className="text-neutral-500">Join the top 1% of AI professionals</p>
-                </div>
+                )}
               </div>
             </motion.div>
           </div>
@@ -178,7 +225,7 @@ const CourseDetail = () => {
             </div>
 
             <div className="grid md:grid-cols-2 gap-x-12 gap-y-6">
-              {program.learnings.map((learning, index) => (
+              {(course.details?.learnings || course.details?.perfectFor || []).map((learning: string, index: number) => (
                 <motion.div
                   initial={{ opacity: 0, x: -10 }}
                   whileInView={{ opacity: 1, x: 0 }}
@@ -210,7 +257,7 @@ const CourseDetail = () => {
           </div>
 
           <div className="max-w-4xl mx-auto">
-            <CurriculumAccordion weeks={program.weeks} />
+            <CurriculumAccordion weeks={weeks} />
           </div>
         </div>
       </section>
@@ -229,7 +276,7 @@ const CourseDetail = () => {
                 Get hands-on experience with the industry's most powerful AI platforms and libraries.
               </p>
               <div className="flex flex-wrap justify-center gap-3">
-                {program.toolsList.map((tool, i) => (
+                {toolsList.map((tool: string, i: number) => (
                   <motion.div
                     key={tool}
                     initial={{ opacity: 0, scale: 0.9 }}
@@ -252,7 +299,7 @@ const CourseDetail = () => {
         <div className="container mx-auto max-w-7xl px-4">
           <h2 className="mb-12 text-3xl font-bold text-white dark:text-slate-100 text-center">Projects You'll Build</h2>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {program.projectsList.map((project, index) => (
+            {projectsList.map((project: string, index: number) => (
               <motion.div
                 whileHover={{ y: -8 }}
                 key={project}

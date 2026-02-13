@@ -1,7 +1,7 @@
 import { MapPin, Banknote, Briefcase, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import type { Job } from '@/data/jobs';
+import type { Job } from '@/types';
 import { motion } from 'framer-motion';
 
 export const JobCard = ({ job }: { job: Job }) => {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface Experience {
@@ -46,7 +46,9 @@ export interface ResumeData {
 
 interface ResumeContextType {
     resumeData: ResumeData;
-    setResumeData: React.Dispatch<React.SetStateAction<ResumeData>>;
+    isFetching: boolean;
+    isSaving: boolean;
+    saveError: string | null;
     updatePersonal: (field: keyof ResumeData['personal'], value: string) => void;
     addExperience: () => void;
     updateExperience: (id: string, field: keyof Experience, value: any) => void;
@@ -82,6 +84,110 @@ const ResumeContext = createContext<ResumeContextType | undefined>(undefined);
 
 export const ResumeProvider = ({ children }: { children: ReactNode }) => {
     const [resumeData, setResumeData] = useState<ResumeData>(initialData);
+    const [resumeId, setResumeId] = useState<string | null>(null);
+    const [isFetching, setIsFetching] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    // Refs to track initial load and avoid saving on mount
+    const isFirstLoad = useRef(true);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Initial load: Fetch existing or create new
+    useEffect(() => {
+        const loadResume = async () => {
+            const token = localStorage.getItem('koutuhal_token');
+            if (!token) {
+                setIsFetching(false);
+                return;
+            }
+
+            try {
+                // 1. Try to fetch latest resume
+                const response = await fetch('/resumes/latest', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.resume) {
+                        setResumeData(data.resume);
+                        setResumeId(data.id);
+                    } else {
+                        // 2. Create if none exists
+                        await createNewResume(token);
+                    }
+                } else if (response.status === 404) {
+                    await createNewResume(token);
+                }
+            } catch (err) {
+                console.error("Failed to load resume:", err);
+            } finally {
+                setIsFetching(false);
+                isFirstLoad.current = false;
+            }
+        };
+
+        const createNewResume = async (token: string) => {
+            const response = await fetch('/resumes', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(initialData)
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setResumeId(data.id);
+            }
+        };
+
+        loadResume();
+    }, []);
+
+    // Debounced Autosave Logic
+    useEffect(() => {
+        if (isFirstLoad.current || !resumeId) return;
+
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+        timeoutRef.current = setTimeout(() => {
+            saveResume();
+        }, 2000); // 2 second debounce
+
+        return () => {
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        };
+    }, [resumeData, resumeId]);
+
+    const saveResume = async () => {
+        const token = localStorage.getItem('koutuhal_token');
+        if (!token || !resumeId) return;
+
+        setIsSaving(true);
+        setSaveError(null);
+
+        try {
+            const response = await fetch(`/resumes/${resumeId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(resumeData)
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to autosave resume data");
+            }
+        } catch (err: any) {
+            setSaveError(err.message);
+            console.error(err);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const updatePersonal = (field: keyof ResumeData['personal'], value: string) => {
         setResumeData((prev) => ({
@@ -199,7 +305,9 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
         <ResumeContext.Provider
             value={{
                 resumeData,
-                setResumeData,
+                isFetching,
+                isSaving,
+                saveError,
                 updatePersonal,
                 addExperience,
                 updateExperience,

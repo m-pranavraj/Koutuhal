@@ -7,9 +7,14 @@ export default defineConfig({
   server: {
     host: "::",
     port: 8080,
-    hmr: {
-      overlay: false,
+    proxy: {
+      '/api': 'http://localhost:8000',
+      '/auth': {
+        target: 'http://localhost:8000/api/v1',
+        changeOrigin: true
+      }
     },
+    hmr: true,
   },
   plugins: [react()],
   resolve: {
