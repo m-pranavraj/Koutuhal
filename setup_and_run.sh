@@ -21,7 +21,7 @@ echo -e "${NC}"
 echo ""
 
 # Supabase project details
-PROJECT_REF="nudmtgbbqkjgwqwztveo"
+PROJECT_REF="qgncpqjntwapfvvuhmog"
 DB_HOST="db.${PROJECT_REF}.supabase.co"
 
 echo -e "${GREEN}✓${NC} Detected Supabase project: ${PROJECT_REF}"
