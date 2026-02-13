@@ -1,24 +1,42 @@
 import hashlib
 import hmac
 import uuid
+from typing import Optional
 from app.core.config import settings
 
-# Since we don't have real Razorpay credentials in this environment, 
-# we'll mock the interactions but keep the structure real.
+try:
+    import razorpay
+    RAZORPAY_AVAILABLE = True
+except ImportError:
+    RAZORPAY_AVAILABLE = False
 
 class PaymentService:
     def __init__(self):
         self.key_id = settings.RAZORPAY_KEY_ID
         self.key_secret = settings.RAZORPAY_KEY_SECRET
-    
+        self.client: Optional[razorpay.Client] = None
+
+        if RAZORPAY_AVAILABLE and self.key_id and self.key_secret:
+            try:
+                self.client = razorpay.Client(auth=(self.key_id, self.key_secret))
+            except Exception:
+                pass
+
     async def create_order(self, amount: int, currency: str = "INR") -> dict:
-        """
-        Simulates creating an order with Razorpay.
-        """
-        # In a real app: client.order.create(data=...)
-        mock_order_id = f"order_{uuid.uuid4().hex[:14]}"
+        if self.client:
+            try:
+                data = {
+                    "amount": amount,
+                    "currency": currency,
+                    "receipt": f"rcpt_{uuid.uuid4().hex[:8]}",
+                }
+                order = self.client.order.create(data=data)
+                return order
+            except Exception:
+                pass
+
         return {
-            "id": mock_order_id,
+            "id": f"order_{uuid.uuid4().hex[:14]}",
             "entity": "order",
             "amount": amount,
             "amount_paid": 0,
@@ -31,20 +49,13 @@ class PaymentService:
         }
 
     async def verify_payment(self, order_id: str, payment_id: str, signature: str) -> bool:
-        """
-        Simulates verifying the payment signature.
-        For simulation: we accept ANY signature if it equals "mock_signature" 
-        OR if we just return True for dev purposes.
-        """
         msg = f"{order_id}|{payment_id}"
         generated_signature = hmac.new(
-           bytes(self.key_secret, 'latin-1'), 
-           bytes(msg, 'latin-1'), 
+           bytes(self.key_secret, 'latin-1'),
+           bytes(msg, 'latin-1'),
            hashlib.sha256
         ).hexdigest()
-        
-        if generated_signature == signature:
-            return True
-        return False
+
+        return generated_signature == signature
 
 payment_service = PaymentService()

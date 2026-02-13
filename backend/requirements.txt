@@ -21,3 +21,5 @@ openai
 email-validator
 python-dotenv
 google-cloud-storage
+google-auth
+razorpay

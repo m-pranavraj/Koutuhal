@@ -12,14 +12,6 @@ interface ApplicationStatusDashboardProps {
     showSuccess?: boolean; // New prop to trigger success animation
 }
 
-const mockApplicants = [
-    { name: "Alex Chen", score: 98, role: "Senior Dev" },
-    { name: "Sarah Jones", score: 95, role: "Tech Lead" },
-    { name: "Michael Ross", score: 92, role: "Full Stack" },
-    // User will be inserted here
-    { name: "David Kim", score: 89, role: "Frontend Dev" },
-    { name: "Emily White", score: 85, role: "React Dev" },
-];
 
 export const ApplicationStatusDashboard = ({ open, onOpenChange, jobTitle, initialRank, showSuccess = false }: ApplicationStatusDashboardProps) => {
     const [rank, setRank] = useState(initialRank);

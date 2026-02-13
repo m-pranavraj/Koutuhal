@@ -1,28 +1,27 @@
 import asyncio
 import time
 import json
-import random
+import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update, func
 from app.core.database import SessionLocal
+from app.core.config import settings
 from app.models.ai_job import AIJob, JobStatus
 from app.services.ai_queue import queue_service
 
 import logging
 from app.core.logging import setup_logging
 
-# Setup Logging for Worker
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# Real Services
 from app.services.llm.factory import get_llm_provider
 from app.services.text_extractor import text_extractor
 from app.services.storage import storage_service
 from app.models.file import UploadedFile
 from app.models.job import Job
-
-# ... imports ...
+from app.models.application import Application
+from app.models.resume import Resume
 
 async def process_resume_analysis(job: AIJob, db: AsyncSession) -> dict:
     """
@@ -56,9 +55,7 @@ async def process_resume_analysis(job: AIJob, db: AsyncSession) -> dict:
     return analysis
 
 async def process_application_scoring(job: AIJob, db: AsyncSession) -> dict:
-    from app.models.application import Application
-    from app.models.resume import Resume
-    from app.models.job import Job as JobModel # Alias to avoid confusion
+    JobModel = Job
 
     # 1. Fetch Application
     app_id = uuid.UUID(job.input_ref)
@@ -162,7 +159,6 @@ async def worker_loop():
                 logger.info(f"Picked Job {job_id} ({job_type})", extra={"job_id": job_id})
                 
                 async with SessionLocal() as db:
-                    from sqlalchemy import update
                     stmt = (
                         update(AIJob)
                         .where(AIJob.id == job_id)

@@ -10,14 +10,6 @@ interface ApplicationSuccessModalProps {
     jobTitle: string;
 }
 
-const mockApplicants = [
-    { name: "Alex Chen", score: 98, role: "Senior Dev" },
-    { name: "Sarah Jones", score: 95, role: "Tech Lead" },
-    { name: "Michael Ross", score: 92, role: "Full Stack" },
-    { name: "YOU", score: 94, role: "Candidate", isUser: true }, // Initial rank
-    { name: "David Kim", score: 89, role: "Frontend Dev" },
-    { name: "Emily White", score: 85, role: "React Dev" },
-];
 
 export const ApplicationSuccessModal = ({ open, onOpenChange, jobTitle }: ApplicationSuccessModalProps) => {
     const [stage, setStage] = useState<'analyzing' | 'ranking' | 'success'>('analyzing');
