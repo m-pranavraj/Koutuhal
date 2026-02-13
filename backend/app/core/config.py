@@ -8,32 +8,32 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     
     # Database
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
-    POSTGRES_SERVER: str
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_SERVER: str = "localhost"
     POSTGRES_PORT: str = "5432"
-    POSTGRES_DB: str = "koutuhal"
-    
+    POSTGRES_DB: str = "postgres"
+
     # SQLALCHEMY_DATABASE_URI will be assembled or can be overridden
     SQLALCHEMY_DATABASE_URI: Optional[str] = None
-    
+
     # Storage
     STORAGE_TYPE: str = "local" # options: local, gcs
     LOCAL_STORAGE_PATH: str = ".storage"
     GCS_BUCKET_NAME: Optional[str] = None
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None
-    
+
     # Security
-    SECRET_KEY: str # No default!
+    SECRET_KEY: str = "temp-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    
+
     # Google Auth
-    GOOGLE_CLIENT_ID: str
-    
+    GOOGLE_CLIENT_ID: str = "placeholder-google-client-id"
+
     # Payments (Razorpay)
-    RAZORPAY_KEY_ID: str
-    RAZORPAY_KEY_SECRET: str
+    RAZORPAY_KEY_ID: str = "placeholder-razorpay-key"
+    RAZORPAY_KEY_SECRET: str = "placeholder-razorpay-secret"
     
     # File Upload Limits
     MAX_UPLOAD_MB: int = 5
