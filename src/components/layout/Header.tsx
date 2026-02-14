@@ -20,6 +20,9 @@ import { useAuth } from "@/context/AuthContext";
 /* ── Nav Links Config ───────────────── */
 const navLinks = [
   { to: "/", label: "HOME" },
+  { to: "/#mentors", label: "MENTORS" },
+  { to: "/#reviews", label: "SUCCESS STORIES" },
+  { to: "/career-check", label: "CAREER CHECK" },
   { to: "/about", label: "ABOUT" },
   { to: "/contact", label: "CONTACT US" },
 ];
@@ -34,8 +37,19 @@ const NavItem = ({
   label: string;
   isActive?: boolean;
 }) => {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (to.startsWith("/#")) {
+      const id = to.replace("/#", "");
+      const element = document.getElementById(id);
+      if (element) {
+        e.preventDefault();
+        element.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  };
+
   return (
-    <Link to={to} className="relative group cursor-pointer outline-none">
+    <Link to={to} onClick={handleClick} className="relative group cursor-pointer outline-none">
       <div
         className={cn(
           "px-5 py-2 text-xs font-bold tracking-wider rounded-full transition-all duration-300",

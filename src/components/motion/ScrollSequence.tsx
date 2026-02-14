@@ -10,6 +10,9 @@ interface ScrollSequenceProps {
     scrollRef?: React.RefObject<HTMLElement>; // Optional ref to track
 }
 
+/**
+ * Enhanced ScrollSequence with Fallback for Missing Images
+ */
 export default function ScrollSequence({
     frameCount = 80,
     path = "/3d-sequence/ezgif-frame-",
@@ -21,12 +24,12 @@ export default function ScrollSequence({
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [images, setImages] = useState<HTMLImageElement[]>([]);
     const [isLoaded, setIsLoaded] = useState(false);
+    const [hasError, setHasError] = useState(false); // Track if critical loading errors occurred
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-    const [errorCount, setErrorCount] = useState(0);
 
     // Scroll Progress
     const { scrollYProgress } = useScroll({
-        target: scrollRef || undefined, // Track specific container or window
+        target: scrollRef || undefined,
         offset: ["start start", "end end"],
     });
 
@@ -35,10 +38,15 @@ export default function ScrollSequence({
 
     // Preload Images
     useEffect(() => {
-        console.log(`[ScrollSequence] Starting preload of ${frameCount} frames from ${path}`);
         let loadedCount = 0;
         let localErrorCount = 0;
         const imgArray: HTMLImageElement[] = [];
+
+        // Safety check: if frameCount is unreasonably high or low
+        if (frameCount <= 0) {
+            setHasError(true);
+            return;
+        }
 
         for (let i = 1; i <= frameCount; i++) {
             const img = new Image();
@@ -47,103 +55,30 @@ export default function ScrollSequence({
 
             img.onload = () => {
                 loadedCount++;
-                if (loadedCount + localErrorCount === frameCount) {
-                    console.log(`[ScrollSequence] Preload complete. Errors: ${localErrorCount}`);
-                    setIsLoaded(true);
-                }
+                checkCompletion();
             };
 
             img.onerror = () => {
-                console.error(`[ScrollSequence] Failed to load frame ${i}: ${img.src}`);
                 localErrorCount++;
-                setErrorCount(prev => prev + 1);
-                if (loadedCount + localErrorCount === frameCount) {
-                    setIsLoaded(true);
-                }
+                checkCompletion();
             };
 
             imgArray.push(img);
         }
-        setImages(imgArray);
-    }, [frameCount, path, extension, digits]);
 
-    // Render Frame
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        const context = canvas?.getContext("2d");
-        if (!canvas || !context || images.length === 0) return;
-
-        const render = (index: number) => {
-            const img = images[Math.round(index)];
-            if (!img || canvas.width === 0 || canvas.height === 0) return;
-
-            // "Cover" Fit Logic + Zoom (1.1x) to hide watermark
-            const canvasRatio = canvas.width / canvas.height;
-            const imgRatio = img.width / img.height;
-
-            let drawWidth = canvas.width;
-            let drawHeight = canvas.height;
-            let offsetX = 0;
-            let offsetY = 0;
-
-            const scale = 1.1; // 10% Zoom to crop edges
-
-            // Calculate dimensions to COVER the canvas
-            if (canvasRatio > imgRatio) {
-                // Canvas is wider than image -> Scale image width to match canvas width
-                drawWidth = canvas.width * scale;
-                drawHeight = (drawWidth / imgRatio);
-            } else {
-                // Canvas is taller/narrower -> Scale image height to match canvas height
-                drawHeight = canvas.height * scale;
-                drawWidth = (drawHeight * imgRatio);
-            }
-
-            // Center image
-            offsetX = (canvas.width - drawWidth) / 2;
-            offsetY = (canvas.height - drawHeight) / 2;
-
-            context.clearRect(0, 0, canvas.width, canvas.height);
-            context.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
-
-            // Chroma Key (Remove Dark Background)
-            if (canvas.width > 0 && canvas.height > 0) {
-                try {
-                    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                    const data = imageData.data;
-                    const threshold = 40; // Slightly lower threshold for safety
-                    const fadeWidth = 20;
-
-                    for (let i = 0; i < data.length; i += 4) {
-                        const r = data[i];
-                        const g = data[i + 1];
-                        const b = data[i + 2];
-                        const brightness = (r + g + b) / 3;
-
-                        if (brightness < threshold) {
-                            data[i + 3] = 0;
-                        } else if (brightness < threshold + fadeWidth) {
-                            const alpha = ((brightness - threshold) / fadeWidth) * 255;
-                            data[i + 3] = alpha;
-                        }
-                    }
-                    context.putImageData(imageData, 0, 0);
-                } catch (e) {
-                    console.error("[ScrollSequence] Render error:", e);
+        function checkCompletion() {
+            if (loadedCount + localErrorCount === frameCount) {
+                if (loadedCount === 0) {
+                    console.warn(`[ScrollSequence] Failed to load ALL ${frameCount} frames. Falling back.`);
+                    setHasError(true); // Trigger fallback
+                } else {
+                    console.log(`[ScrollSequence] Loaded ${loadedCount}/${frameCount} frames.`);
+                    setImages(imgArray);
+                    setIsLoaded(true);
                 }
             }
-        };
-
-        // Initial render
-        render(frameIndex.get());
-
-        // Subscribe to scroll changes
-        const unsubscribe = frameIndex.on("change", (latest) => {
-            requestAnimationFrame(() => render(latest));
-        });
-
-        return () => unsubscribe();
-    }, [isLoaded, frameIndex, images, dimensions]);
+        }
+    }, [frameCount, path, extension, digits]);
 
     // Handle Resize (High-DPI Support)
     useEffect(() => {
@@ -158,9 +93,107 @@ export default function ScrollSequence({
         };
         window.addEventListener("resize", handleResize);
         handleResize();
-        setTimeout(handleResize, 100);
-        return () => window.removeEventListener("resize", handleResize);
+        // Debounce resize
+        const timer = setTimeout(handleResize, 100);
+        return () => {
+            window.removeEventListener("resize", handleResize);
+            clearTimeout(timer);
+        };
     }, []);
+
+    // Render Frame Loop
+    useEffect(() => {
+        if (!isLoaded || images.length === 0 || hasError) return;
+
+        const canvas = canvasRef.current;
+        const context = canvas?.getContext("2d");
+        if (!canvas || !context) return;
+
+        const render = (index: number) => {
+            const imgIdx = Math.round(index);
+            const img = images[imgIdx];
+
+            // Skip invalid images
+            if (!img || !img.complete || img.naturalWidth === 0) return;
+
+            // "Cover" Fit Logic + Zoom (1.1x) to hide watermark
+            const canvasRatio = canvas.width / canvas.height;
+            const imgRatio = img.width / img.height;
+
+            let drawWidth = canvas.width;
+            let drawHeight = canvas.height;
+            let offsetX = 0;
+            let offsetY = 0;
+
+            const scale = 1.1; // 10% Zoom
+
+            // Calculate dimensions to COVER the canvas
+            if (canvasRatio > imgRatio) {
+                drawWidth = canvas.width * scale;
+                drawHeight = (drawWidth / imgRatio);
+            } else {
+                drawHeight = canvas.height * scale;
+                drawWidth = (drawHeight * imgRatio);
+            }
+
+            // Center image
+            offsetX = (canvas.width - drawWidth) / 2;
+            offsetY = (canvas.height - drawHeight) / 2;
+
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+
+            // Chroma Key (Remove Dark Background) optimized
+            if (canvas.width > 0 && canvas.height > 0) {
+                try {
+                    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+                    const threshold = 40;
+                    const fadeWidth = 20;
+
+                    for (let i = 0; i < data.length; i += 4) {
+                        const r = data[i];
+                        const g = data[i + 1];
+                        const b = data[i + 2];
+                        // Simple brightness
+                        if (r < threshold && g < threshold && b < threshold) {
+                            const brightness = (r + g + b) / 3;
+                            if (brightness < threshold) {
+                                data[i + 3] = 0;
+                            } else if (brightness < threshold + fadeWidth) {
+                                data[i + 3] = ((brightness - threshold) / fadeWidth) * 255;
+                            }
+                        }
+                    }
+                    context.putImageData(imageData, 0, 0);
+                } catch (e) {
+                    // Ignore transient errors
+                }
+            }
+        };
+
+        // Initial render
+        render(frameIndex.get());
+
+        // Subscribe to scroll changes
+        const unsubscribe = frameIndex.on("change", (latest) => {
+            requestAnimationFrame(() => render(latest));
+        });
+
+        return () => unsubscribe();
+    }, [isLoaded, frameIndex, images, hasError, dimensions]);
+
+    // Render Fallback if critical error (e.g., missing images)
+    if (hasError) {
+        return (
+            <div className={`relative overflow-hidden flex items-center justify-center ${className}`}>
+                <div className="w-[60%] h-[60%] bg-[#ADFF44]/20 rounded-full animate-pulse blur-xl" />
+                <div className="absolute inset-0 flex items-center justify-center text-[#ADFF44]/50 text-xs font-mono">
+                    3D_ASSET_OFFLINE
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className={`relative overflow-hidden ${className}`}>
@@ -168,17 +201,16 @@ export default function ScrollSequence({
                 ref={canvasRef}
                 className="w-full h-full"
                 style={{
-                    filter: 'contrast(1.2) brightness(1.1)'
+                    filter: 'contrast(1.2) brightness(1.1)',
+                    opacity: isLoaded ? 1 : 0,
+                    transition: 'opacity 0.5s ease-in'
                 }}
             />
 
             {/* Loading State overlay */}
-            {!isLoaded && (
+            {!isLoaded && !hasError && (
                 <div className="absolute inset-0 flex items-center justify-center bg-transparent z-10">
-                    <div className="flex flex-col items-center gap-2">
-                        <div className="w-8 h-8 border-4 border-[#ADFF44] border-t-transparent rounded-full animate-spin" />
-                        <span className="text-[10px] text-[#ADFF44] font-mono uppercase tracking-tighter">Initializing...</span>
-                    </div>
+                    <div className="w-8 h-8 border-4 border-[#ADFF44] border-t-transparent rounded-full animate-spin" />
                 </div>
             )}
         </div>

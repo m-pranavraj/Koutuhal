@@ -22,6 +22,7 @@ import Dashboard from "@/pages/Dashboard";
 // import AiTutor from "@/pages/AiTutor"; // Commented out — re-enable when needed
 import CourseCatalog from "@/pages/CourseCatalog";
 import CourseDetail from "@/pages/CourseDetail"; // Changed to default import
+import CareerReadiness from "@/pages/CareerReadiness";
 import NotFound from "@/pages/NotFound";
 
 import PortfolioBuilder from "@/pages/PortfolioBuilder";
@@ -98,6 +99,7 @@ const App = () => (
                   <Route path="/register" element={<SignUpPage />} />
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/contact" element={<ContactPage />} />
+                  <Route path="/career-check" element={<CareerReadiness />} />
 
                   <Route element={<ProtectedRoute requireOnboarding={true} />}>
                     <Route path="/onboarding" element={<OnboardingRolePage />} />

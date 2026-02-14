@@ -47,14 +47,21 @@ class Settings(BaseSettings):
     LLM_API_KEY: Optional[str] = None 
     LLM_BASE_URL: str = "https://api.openai.com/v1" # Default to OpenAI
     LLM_MODEL: str = "gpt-4-turbo-preview" 
-    
+
+    # Career Readiness Integration
+    GROQ_API_KEY: Optional[str] = None
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_SERVICE_KEY: Optional[str] = None
+    SEARCHAPI_KEY: Optional[str] = None    
     # Provider presets (optional helpers, but user can just set BASE_URL)
     # If LLM_BASE_URL is set to "https://api.perplexity.ai", etc.
     
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:5173", 
         "http://localhost:3000",
-        "http://localhost:8000"
+        "http://localhost:8000",
+        "http://localhost:8080",
+        "https://koutuhal-pathways.vercel.app" # Placeholder for production domain
     ]
 
     model_config = SettingsConfigDict(

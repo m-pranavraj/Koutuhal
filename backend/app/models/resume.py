@@ -10,9 +10,14 @@ class Resume(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
-    title: Mapped[str] = mapped_column(String, nullable=False)
-    content: Mapped[Any] = mapped_column(JSONB, nullable=False)
+    title: Mapped[str] = mapped_column(String, nullable=True)
+    content: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
     template_id: Mapped[str] = mapped_column(String, nullable=False, default="modern")
+    
+    # New fields for Career Readiness integration
+    file_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    resume_text: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

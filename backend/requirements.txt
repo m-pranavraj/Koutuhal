@@ -18,6 +18,8 @@ redis
 pypdf
 python-docx
 openai
+groq
+supabase
 email-validator
 python-dotenv
 google-cloud-storage

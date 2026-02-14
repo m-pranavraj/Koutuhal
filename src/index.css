@@ -91,6 +91,10 @@
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground font-sans;
   }
@@ -126,16 +130,31 @@
   .pause-animation {
     animation-play-state: paused;
   }
+
+  .mask-linear-fade {
+    mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+  }
 }
 
 @keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
 }
 
 @keyframes marquee-reverse {
-  0% { transform: translateX(-50%); }
-  100% { transform: translateX(0); }
+  0% {
+    transform: translateX(-50%);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
 }
 
 .animate-marquee {
@@ -144,4 +163,36 @@
 
 .animate-marquee-reverse {
   animation: marquee-reverse var(--duration, 30s) linear infinite;
+}
+
+/* --- Career Readiness Check Styles --- */
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
+.career-readiness-page {
+  --neon: #ADFF44;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+}
+
+.premium-shell {
+  background: rgba(12, 12, 12, 0.72);
+  border: 1px solid rgba(173, 255, 68, 0.2);
+  border-radius: 32px;
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.45);
+}
+
+.form-panel {
+  background: rgba(8, 8, 8, 0.82);
+  border: 1px solid rgba(173, 255, 68, 0.25);
+  border-radius: 22px;
+}
+
+.role-chip {
+  background: rgba(173, 255, 68, 0.08);
+  border: 1px solid rgba(173, 255, 68, 0.3);
+  color: #ADFF44;
+}
+
+.score-text {
+  color: #ADFF44;
+  font-family: "Sora", sans-serif;
 }

@@ -6,3 +6,5 @@ from app.models.payment import Course, Order, UserEntitlement
 from app.models.file import UploadedFile
 from app.models.ai_job import AIJob
 from app.models.audit import AuditLog
+from app.models.mentor_session import MentorSession
+from app.models.analysis import Analysis
