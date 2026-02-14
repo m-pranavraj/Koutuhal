@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     # OPENAI_API_KEY / GEMINI_API_KEY can still be used, but we prefer a generic LLM_API_KEY + LLM_BASE_URL
     LLM_API_KEY: Optional[str] = None 
     LLM_BASE_URL: str = "https://api.openai.com/v1" # Default to OpenAI
-    LLM_MODEL: str = "llama-3.3-70b-versatile" 
+    LLM_MODEL: str = "llama-3.1-8b-instant" 
 
     # Career Readiness Integration
     GROQ_API_KEY: Optional[str] = None
