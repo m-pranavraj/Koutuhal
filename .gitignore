@@ -29,3 +29,14 @@ backend/.env.*
 *.sw?
 .vercel
 .env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+backend/__pycache__/
+backend/app/**/__pycache__/
+
+# OS files
+.DS_Store
+Thumbs.db
