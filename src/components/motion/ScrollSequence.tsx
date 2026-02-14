@@ -14,7 +14,7 @@ interface ScrollSequenceProps {
  * Enhanced ScrollSequence with Fallback for Missing Images
  */
 export default function ScrollSequence({
-    frameCount = 80,
+    frameCount = 40,
     path = "/3d-sequence/ezgif-frame-",
     extension = ".jpg",
     digits = 3,
@@ -50,7 +50,7 @@ export default function ScrollSequence({
 
         for (let i = 1; i <= frameCount; i++) {
             const img = new Image();
-            const num = i.toString().padStart(digits, "0");
+            const num = (i * 2 - 1).toString().padStart(digits, "0"); // Skip every other frame for speed
             img.src = `${path}${num}${extension}`;
 
             img.onload = () => {
@@ -142,34 +142,6 @@ export default function ScrollSequence({
 
             context.clearRect(0, 0, canvas.width, canvas.height);
             context.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
-
-            // Chroma Key (Remove Dark Background) optimized
-            if (canvas.width > 0 && canvas.height > 0) {
-                try {
-                    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                    const data = imageData.data;
-                    const threshold = 40;
-                    const fadeWidth = 20;
-
-                    for (let i = 0; i < data.length; i += 4) {
-                        const r = data[i];
-                        const g = data[i + 1];
-                        const b = data[i + 2];
-                        // Simple brightness
-                        if (r < threshold && g < threshold && b < threshold) {
-                            const brightness = (r + g + b) / 3;
-                            if (brightness < threshold) {
-                                data[i + 3] = 0;
-                            } else if (brightness < threshold + fadeWidth) {
-                                data[i + 3] = ((brightness - threshold) / fadeWidth) * 255;
-                            }
-                        }
-                    }
-                    context.putImageData(imageData, 0, 0);
-                } catch (e) {
-                    // Ignore transient errors
-                }
-            }
         };
 
         // Initial render
@@ -202,6 +174,7 @@ export default function ScrollSequence({
                 className="w-full h-full"
                 style={{
                     filter: 'contrast(1.2) brightness(1.1)',
+                    mixBlendMode: 'screen', // Hardware accelerated background removal
                     opacity: isLoaded ? 1 : 0,
                     transition: 'opacity 0.5s ease-in'
                 }}

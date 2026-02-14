@@ -77,26 +77,43 @@ const MobileNavItem = ({
   isActive: boolean;
   onClick: () => void;
   index: number;
-}) => (
-  <motion.div
-    initial={{ opacity: 0, x: -20 }}
-    animate={{ opacity: 1, x: 0 }}
-    transition={{ delay: index * 0.05, duration: 0.3 }}
-  >
-    <Link to={to} onClick={onClick} className="block w-full">
-      <div
-        className={cn(
-          "flex items-center gap-4 px-5 py-4 rounded-xl transition-all",
-          isActive
-            ? "bg-[#ADFF44] text-black"
-            : "hover:bg-neutral-900 text-neutral-400 hover:text-white"
-        )}
-      >
-        <span className="text-sm font-bold tracking-wider">{label}</span>
-      </div>
-    </Link>
-  </motion.div>
-);
+}) => {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    onClick(); // Close menu
+    if (to.startsWith("/#")) {
+      const id = to.replace("/#", "");
+      const element = document.getElementById(id);
+      if (element) {
+        e.preventDefault();
+        // Give menu time to close before scrolling
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: "smooth" });
+        }, 300);
+      }
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.05, duration: 0.3 }}
+    >
+      <Link to={to} onClick={handleClick} className="block w-full">
+        <div
+          className={cn(
+            "flex items-center gap-4 px-5 py-4 rounded-xl transition-all",
+            isActive
+              ? "bg-[#ADFF44] text-black"
+              : "hover:bg-neutral-900 text-neutral-400 hover:text-white"
+          )}
+        >
+          <span className="text-sm font-bold tracking-wider">{label}</span>
+        </div>
+      </Link>
+    </motion.div>
+  );
+};
 
 /* ═════════════════════════════════════ */
 /*               HEADER                 */
