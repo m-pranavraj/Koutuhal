@@ -1,6 +1,6 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
-from typing import List, Optional
+from typing import List, Optional, Any
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Koutuhal Pathways API"
@@ -61,8 +61,16 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://localhost:8000",
         "http://localhost:8080",
-        "https://koutuhal-pathways.vercel.app" # Placeholder for production domain
     ]
+
+    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Any) -> Any:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",")]
+        elif isinstance(v, (list, str)):
+            return v
+        raise ValueError(v)
 
     model_config = SettingsConfigDict(
         env_file=".env",
