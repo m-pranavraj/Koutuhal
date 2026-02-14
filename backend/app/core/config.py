@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     # Provider presets (optional helpers, but user can just set BASE_URL)
     # If LLM_BASE_URL is set to "https://api.perplexity.ai", etc.
     
-    BACKEND_CORS_ORIGINS: List[str] = [
+    BACKEND_CORS_ORIGINS: Any = [
         "http://localhost:5173", 
         "http://localhost:3000",
         "http://localhost:8000",
