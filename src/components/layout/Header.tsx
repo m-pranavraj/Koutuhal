@@ -121,9 +121,61 @@ const MobileNavItem = ({
 export const Header = () => {
   const location = useLocation();
   const { isAuthenticated, logout, user } = useAuth();
-  const isActive = (path: string) => location.pathname === path;
+  const [activeSection, setActiveSection] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  // Scroll Spy for Home Page Sections
+  useEffect(() => {
+    if (location.pathname !== '/') {
+      setActiveSection(null);
+      return;
+    }
+
+    const observerOptions = {
+      root: null,
+      rootMargin: '-40% 0px -40% 0px',
+      threshold: 0
+    };
+
+    const handleIntersect = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          setActiveSection(entry.target.id);
+        }
+      });
+    };
+
+    const observer = new IntersectionObserver(handleIntersect, observerOptions);
+    const sections = ['mentors', 'reviews'];
+    sections.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+
+    // Handle home (hero) separately
+    const handleScroll = () => {
+      if (window.scrollY < 300) {
+        setActiveSection(null); // Back to "HOME"
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [location.pathname]);
+
+  const isActive = (path: string) => {
+    if (path === '/') {
+      return location.pathname === '/' && !activeSection;
+    }
+    if (path.startsWith('/#')) {
+      return activeSection === path.replace('/#', '');
+    }
+    return location.pathname === path;
+  };
 
   const { scrollY } = useScroll();
 
