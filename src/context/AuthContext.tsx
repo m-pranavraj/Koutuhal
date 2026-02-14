@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface User {
     id: string;
@@ -30,86 +32,135 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [authError, setAuthError] = useState<string | null>(null);
 
-    // Restore session on mount
-    useEffect(() => {
-        const restoreSession = async () => {
-            const storedToken = localStorage.getItem('koutuhal_token');
-            if (!storedToken) {
-                setIsLoading(false);
-                return;
+    const fetchUserProfile = async (authUser: SupabaseUser): Promise<User | null> => {
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', authUser.id)
+                .maybeSingle();
+
+            if (error) {
+                console.error('Error fetching user profile:', error);
+                return null;
             }
-            setToken(storedToken);
 
+            if (!data) {
+                const newUser = {
+                    id: authUser.id,
+                    email: authUser.email!,
+                    name: authUser.user_metadata?.name || authUser.email!.split('@')[0],
+                    role: 'STUDENT' as const,
+                    avatar_url: authUser.user_metadata?.avatar_url,
+                    onboarding_completed: false,
+                    bio: null,
+                    company: null
+                };
+
+                const { data: insertedUser, error: insertError } = await supabase
+                    .from('users')
+                    .insert([newUser])
+                    .select()
+                    .single();
+
+                if (insertError) {
+                    console.error('Error creating user profile:', insertError);
+                    return null;
+                }
+
+                return {
+                    id: insertedUser.id,
+                    name: insertedUser.name,
+                    email: insertedUser.email,
+                    avatar: insertedUser.avatar_url || undefined,
+                    role: insertedUser.role,
+                    onboarding_completed: insertedUser.onboarding_completed
+                };
+            }
+
+            return {
+                id: data.id,
+                name: data.name,
+                email: data.email,
+                avatar: data.avatar_url || undefined,
+                role: data.role,
+                onboarding_completed: data.onboarding_completed
+            };
+        } catch (error) {
+            console.error('Error in fetchUserProfile:', error);
+            return null;
+        }
+    };
+
+    useEffect(() => {
+        const initializeAuth = async () => {
             try {
-                const response = await fetch('/api/v1/auth/me', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+                const { data: { session } } = await supabase.auth.getSession();
 
-                if (response.ok) {
-                    const data = await response.json();
-                    setUser(data);
-                    setIsAuthenticated(true);
-                } else {
-                    localStorage.removeItem('koutuhal_token');
+                if (session?.user) {
+                    const userProfile = await fetchUserProfile(session.user);
+                    if (userProfile) {
+                        setUser(userProfile);
+                        setIsAuthenticated(true);
+                        setToken(session.access_token);
+                    }
                 }
             } catch (error) {
-                console.error("Session restoration failed:", error);
-                localStorage.removeItem('koutuhal_token');
+                console.error('Error initializing auth:', error);
             } finally {
                 setIsLoading(false);
             }
         };
 
-        restoreSession();
+        initializeAuth();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_IN' && session?.user) {
+                const userProfile = await fetchUserProfile(session.user);
+                if (userProfile) {
+                    setUser(userProfile);
+                    setIsAuthenticated(true);
+                    setToken(session.access_token);
+                }
+            } else if (event === 'SIGNED_OUT') {
+                setUser(null);
+                setIsAuthenticated(false);
+                setToken(null);
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
     }, []);
 
     const login = async (credentials: { email?: string; password?: string; method: 'google' | 'email'; id_token?: string }) => {
         setIsLoading(true);
         setAuthError(null);
         try {
-            let url = '/api/v1/auth/login/json';
-            let body: any = { email: credentials.email, password: credentials.password };
+            if (credentials.method === 'email' && credentials.email && credentials.password) {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: credentials.email,
+                    password: credentials.password,
+                });
 
-            if (credentials.method === 'google') {
-                url = '/api/v1/auth/google';
-                body = { id_token: credentials.id_token };
-            }
+                if (error) throw new Error(error.message);
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-            });
-
-            if (!response.ok) {
-                let errorMessage = 'Login failed';
-                try {
-                    const errorData = await response.json();
-                    if (typeof errorData.detail === 'string') {
-                        errorMessage = errorData.detail;
-                    } else if (Array.isArray(errorData.detail)) {
-                        errorMessage = errorData.detail.map((e: any) => e.msg || String(e)).join(', ');
-                    } else if (errorData.message) {
-                        errorMessage = errorData.message;
-                    }
-                } catch (e) {
-                    if (response.status === 500) {
-                        errorMessage = "Server error (500). Please ensure your PostgreSQL database is running.";
-                    } else {
-                        errorMessage = `Server error (${response.status})`;
+                if (data.user) {
+                    const userProfile = await fetchUserProfile(data.user);
+                    if (userProfile) {
+                        setUser(userProfile);
+                        setIsAuthenticated(true);
+                        setToken(data.session?.access_token || null);
                     }
                 }
-                throw new Error(errorMessage);
+            } else if (credentials.method === 'google') {
+                const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                });
+
+                if (error) throw new Error(error.message);
             }
-
-            const data = await response.json();
-            setIsAuthenticated(true);
-            setUser(data.user);
-            setToken(data.access_token);
-            localStorage.setItem('koutuhal_token', data.access_token);
-
         } catch (error: any) {
             setAuthError(error.message);
             throw error;
@@ -122,32 +173,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsLoading(true);
         setAuthError(null);
         try {
-            const response = await fetch('/api/v1/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(userData),
-            });
-
-            if (!response.ok) {
-                let errorMessage = 'Registration failed';
-                try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.message || errorData.detail || errorMessage;
-                } catch (e) {
-                    if (response.status === 500) {
-                        errorMessage = "Server error (500). Please ensure your PostgreSQL database is running and tables are created.";
-                    } else {
-                        errorMessage = `Server error (${response.status})`;
+            const { data, error } = await supabase.auth.signUp({
+                email: userData.email,
+                password: userData.password,
+                options: {
+                    data: {
+                        name: userData.name,
                     }
                 }
-                throw new Error(errorMessage);
-            }
+            });
 
-            const data = await response.json();
-            setIsAuthenticated(true);
-            setUser(data.user);
-            setToken(data.access_token);
-            localStorage.setItem('koutuhal_token', data.access_token);
+            if (error) throw new Error(error.message);
+
+            if (data.user) {
+                const { error: profileError } = await supabase
+                    .from('users')
+                    .insert([{
+                        id: data.user.id,
+                        email: userData.email,
+                        name: userData.name,
+                        role: userData.role as 'STUDENT' | 'MENTOR' | 'ORGANISATION' | 'ADMIN' | 'SUPER_ADMIN',
+                        onboarding_completed: false
+                    }]);
+
+                if (profileError && profileError.code !== '23505') {
+                    throw new Error(profileError.message);
+                }
+
+                const userProfile = await fetchUserProfile(data.user);
+                if (userProfile) {
+                    setUser(userProfile);
+                    setIsAuthenticated(true);
+                    setToken(data.session?.access_token || null);
+                }
+            }
         } catch (error: any) {
             setAuthError(error.message);
             throw error;
@@ -160,24 +219,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsLoading(true);
         setAuthError(null);
         try {
-            const token = localStorage.getItem('koutuhal_token');
-            const response = await fetch('/api/v1/users/set-role', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ role: profileData.role }),
-            });
+            if (!user) throw new Error('No user logged in');
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'Role assignment failed');
+            const { data, error } = await supabase
+                .from('users')
+                .update({
+                    role: profileData.role as 'STUDENT' | 'MENTOR' | 'ORGANISATION' | 'ADMIN' | 'SUPER_ADMIN',
+                    bio: profileData.bio || null,
+                    company: profileData.company || null,
+                    onboarding_completed: true
+                })
+                .eq('id', user.id)
+                .select()
+                .single();
+
+            if (error) throw new Error(error.message);
+
+            if (data) {
+                setUser({
+                    id: data.id,
+                    name: data.name,
+                    email: data.email,
+                    avatar: data.avatar_url || undefined,
+                    role: data.role,
+                    onboarding_completed: data.onboarding_completed
+                });
             }
-
-            const updatedUser = await response.json();
-            setUser(updatedUser);
-
         } catch (error: any) {
             setAuthError(error.message);
             throw error;
@@ -189,19 +256,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const logout = async () => {
         setIsLoading(true);
         try {
-            const token = localStorage.getItem('koutuhal_token');
-            if (token) {
-                await fetch('/api/v1/auth/logout', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-            }
+            await supabase.auth.signOut();
         } catch (error) {
             console.error("Logout request failed:", error);
         } finally {
             setIsAuthenticated(false);
             setUser(null);
-            localStorage.removeItem('koutuhal_token');
+            setToken(null);
             setIsLoading(false);
             window.location.href = '/login';
         }

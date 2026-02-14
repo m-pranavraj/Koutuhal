@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Job } from '@/types';
+import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 
 export type ApplicationStatus = 'Applied' | 'Reviewing' | 'Shortlisted' | 'Interview' | 'Rejected' | 'Offer';
 
@@ -8,7 +10,7 @@ export interface Application {
     job: Job;
     appliedDate: string;
     status: ApplicationStatus;
-    rank: number; // Simulated rank
+    rank: number;
     matchScore: number;
 }
 
@@ -23,23 +25,40 @@ interface ApplicationContextType {
 const ApplicationContext = createContext<ApplicationContextType | undefined>(undefined);
 
 export const ApplicationProvider = ({ children }: { children: ReactNode }) => {
+    const { user } = useAuth();
     const [appliedJobs, setAppliedJobs] = useState<Application[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch applications on mount
-    React.useEffect(() => {
-        const fetchApplications = async () => {
-            const token = localStorage.getItem('koutuhal_token');
-            if (!token) return;
+    useEffect(() => {
+        if (!user) return;
 
+        const fetchApplications = async () => {
             try {
-                const response = await fetch('/applications', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setAppliedJobs(data);
+                const { data, error } = await supabase
+                    .from('applications')
+                    .select(`
+                        *,
+                        jobs (*)
+                    `)
+                    .eq('user_id', user.id)
+                    .order('applied_at', { ascending: false });
+
+                if (error) {
+                    console.error('Error fetching applications:', error);
+                    return;
+                }
+
+                if (data) {
+                    const formattedApps = data.map((app: any) => ({
+                        jobId: Number(app.job_id),
+                        job: app.jobs,
+                        appliedDate: app.applied_at,
+                        status: app.status as ApplicationStatus,
+                        rank: Math.floor(Math.random() * 100) + 1,
+                        matchScore: 85
+                    }));
+                    setAppliedJobs(formattedApps);
                 }
             } catch (err) {
                 console.error("Failed to fetch applications:", err);
@@ -47,44 +66,45 @@ export const ApplicationProvider = ({ children }: { children: ReactNode }) => {
         };
 
         fetchApplications();
-    }, []);
+    }, [user]);
 
     const applyToJob = async (job: Job, matchScore: number) => {
         setIsSubmitting(true);
         setError(null);
 
         try {
-            const token = localStorage.getItem('koutuhal_token');
-            if (!token) throw new Error("You must be logged in to apply.");
+            if (!user) throw new Error("You must be logged in to apply.");
 
-            const response = await fetch(`/jobs/${job.id}/apply`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ matchScore })
-            });
+            const { data, error } = await supabase
+                .from('applications')
+                .insert([{
+                    user_id: user.id,
+                    job_id: job.id,
+                    status: 'Applied',
+                    applied_at: new Date().toISOString()
+                }])
+                .select()
+                .single();
 
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.message || "Failed to apply.");
+            if (error) {
+                throw new Error(error.message);
             }
 
-            const newApplication = await response.json();
+            const newApplication: Application = {
+                jobId: Number(job.id),
+                job,
+                appliedDate: data.applied_at,
+                status: 'Applied',
+                rank: Math.floor(Math.random() * 100) + 1,
+                matchScore
+            };
 
-            // Optimistically update or re-fetch. Here we push the returned app object.
-            // Ensure the backend returns the full Application object including job details if possible, 
-            // or we merge it with the local job data.
-            // Assuming backend returns { ...applicationData }
-
-            setAppliedJobs(prev => [{ ...newApplication, job }, ...prev]);
-            return { ...newApplication, job };
+            setAppliedJobs(prev => [newApplication, ...prev]);
+            return newApplication;
 
         } catch (err: any) {
             console.error(err);
             setError(err.message);
-            // Re-throw if the component needs to know
             throw err;
         } finally {
             setIsSubmitting(false);

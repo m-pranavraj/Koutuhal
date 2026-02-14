@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 
 export interface Experience {
     id: string;
@@ -83,42 +85,43 @@ const initialData: ResumeData = {
 const ResumeContext = createContext<ResumeContextType | undefined>(undefined);
 
 export const ResumeProvider = ({ children }: { children: ReactNode }) => {
+    const { user } = useAuth();
     const [resumeData, setResumeData] = useState<ResumeData>(initialData);
     const [resumeId, setResumeId] = useState<string | null>(null);
     const [isFetching, setIsFetching] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
-    // Refs to track initial load and avoid saving on mount
     const isFirstLoad = useRef(true);
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Initial load: Fetch existing or create new
     useEffect(() => {
+        if (!user) {
+            setIsFetching(false);
+            return;
+        }
+
         const loadResume = async () => {
-            const token = localStorage.getItem('koutuhal_token');
-            if (!token) {
-                setIsFetching(false);
-                return;
-            }
-
             try {
-                // 1. Try to fetch latest resume
-                const response = await fetch('/resumes/latest', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                const { data, error } = await supabase
+                    .from('resumes')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('updated_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
 
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.resume) {
-                        setResumeData(data.resume);
-                        setResumeId(data.id);
-                    } else {
-                        // 2. Create if none exists
-                        await createNewResume(token);
-                    }
-                } else if (response.status === 404) {
-                    await createNewResume(token);
+                if (error && error.code !== 'PGRST116') {
+                    console.error('Error loading resume:', error);
+                    setIsFetching(false);
+                    return;
+                }
+
+                if (data) {
+                    setResumeData(data.content as ResumeData);
+                    setResumeId(data.id);
+                } else {
+                    await createNewResume();
                 }
             } catch (err) {
                 console.error("Failed to load resume:", err);
@@ -128,58 +131,68 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
             }
         };
 
-        const createNewResume = async (token: string) => {
-            const response = await fetch('/resumes', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(initialData)
-            });
-            if (response.ok) {
-                const data = await response.json();
+        loadResume();
+    }, [user]);
+
+    const createNewResume = async () => {
+        if (!user) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('resumes')
+                .insert([{
+                    user_id: user.id,
+                    title: 'My Resume',
+                    content: initialData
+                }])
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Error creating resume:', error);
+                return;
+            }
+
+            if (data) {
                 setResumeId(data.id);
             }
-        };
+        } catch (err) {
+            console.error('Failed to create resume:', err);
+        }
+    };
 
-        loadResume();
-    }, []);
-
-    // Debounced Autosave Logic
     useEffect(() => {
-        if (isFirstLoad.current || !resumeId) return;
+        if (isFirstLoad.current || !resumeId || !user) return;
 
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
         timeoutRef.current = setTimeout(() => {
             saveResume();
-        }, 2000); // 2 second debounce
+        }, 2000);
 
         return () => {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
         };
-    }, [resumeData, resumeId]);
+    }, [resumeData, resumeId, user]);
 
     const saveResume = async () => {
-        const token = localStorage.getItem('koutuhal_token');
-        if (!token || !resumeId) return;
+        if (!user || !resumeId) return;
 
         setIsSaving(true);
         setSaveError(null);
 
         try {
-            const response = await fetch(`/resumes/${resumeId}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(resumeData)
-            });
+            const { error } = await supabase
+                .from('resumes')
+                .update({
+                    content: resumeData,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', resumeId)
+                .eq('user_id', user.id);
 
-            if (!response.ok) {
-                throw new Error("Failed to autosave resume data");
+            if (error) {
+                throw new Error(error.message);
             }
         } catch (err: any) {
             setSaveError(err.message);
@@ -196,7 +209,6 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
         }));
     };
 
-    // Experience Actions
     const addExperience = () => {
         setResumeData((prev) => ({
             ...prev,
@@ -232,7 +244,6 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
         }));
     };
 
-    // Education Actions
     const addEducation = () => {
         setResumeData((prev) => ({
             ...prev,
@@ -265,12 +276,10 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
         }));
     };
 
-    // Skills Actions
     const updateSkills = (skills: string[]) => {
         setResumeData((prev) => ({ ...prev, skills }));
     };
 
-    // Project Actions
     const addProject = () => {
         setResumeData((prev) => ({
             ...prev,
