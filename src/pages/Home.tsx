@@ -34,7 +34,7 @@ import shireenImg from '@/assets/mentors/shireen.png.jpeg';
 import adityaImg from '@/assets/mentors/aditya.png.jpeg';
 // Importing Coach Images (Assuming Screenshots correspond to User upload)
 import pritamImg from '@/assets/mentors/Screenshot 2026-02-14 134010.png';
-import agrimImg from '@/assets/mentors/Screenshot 2026-02-14 134026.png';
+import sumitraImg from '@/assets/mentors/sumitra.png';
 // Shuchi's image not found in assets, using placeholder or public path fallback
 const shuchiImg = "/mentors/shuchi.jpg";
 
@@ -599,7 +599,7 @@ const Home = () => {
             {[
               { name: "Pritam", role: "AI Automation Expert", desc: "18+ years in AI Automation. Expert in developing intelligent systems.", tags: ["Enterprise AI", "Automation"], image: pritamImg },
               { name: "Shuchi", role: "AI Coach", desc: "10+ years expertise in training students and professionals in AI/ML.", tags: ["Machine Learning", "Training"], image: shuchiImg },
-              { name: "Agrim Mehta", role: "Generative AI Expert", desc: "GenAI Engineer at Koutuhal AI. Building AI-first learning products.", tags: ["GenAI", "AI Agents"], image: agrimImg },
+              { name: "Sumitra P", role: "Automation Expert", desc: "Worked with 10+ Companies , and has experience in automation.", tags: ["Automation", "AI Agents"], image: sumitraImg },
             ].map((coach, i) => (
               <div key={i} className="bg-neutral-900 border border-neutral-800 p-8 rounded-3xl text-center hover:border-[#ADFF44]/50 transition-colors group relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#ADFF44]/5 rounded-full blur-2xl group-hover:bg-[#ADFF44]/10 transition-colors" />

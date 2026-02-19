@@ -102,15 +102,27 @@ const ContactPage = () => {
                                             />
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-neutral-400">Email</label>
-                                        <input
-                                            name="email"
-                                            type="email"
-                                            required
-                                            className="w-full h-11 rounded-xl bg-neutral-950 border border-neutral-800 px-4 text-white focus:outline-none focus:border-[#ADFF44] transition-all"
-                                            placeholder="jane@example.com"
-                                        />
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-neutral-400">Email</label>
+                                            <input
+                                                name="email"
+                                                type="email"
+                                                required
+                                                className="w-full h-11 rounded-xl bg-neutral-950 border border-neutral-800 px-4 text-white focus:outline-none focus:border-[#ADFF44] transition-all"
+                                                placeholder="jane@example.com"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-neutral-400">Mobile Number</label>
+                                            <input
+                                                name="mobile"
+                                                type="tel"
+                                                required
+                                                className="w-full h-11 rounded-xl bg-neutral-950 border border-neutral-800 px-4 text-white focus:outline-none focus:border-[#ADFF44] transition-all"
+                                                placeholder="+91 98765 43210"
+                                            />
+                                        </div>
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-neutral-400">Message</label>
