@@ -1,4 +1,4 @@
-from .llm.factory import get_llm_provider
+from app.services.llm.factory import get_llm_provider
 from typing import Dict, Any, List
 import logging
 import json

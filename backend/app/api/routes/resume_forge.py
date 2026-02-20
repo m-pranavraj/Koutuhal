@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
-from ...services.resume_tailor import resume_tailor_service
+from app.services.resume_tailor import resume_tailor_service
 import logging
 
 router = APIRouter()
