@@ -1,4 +1,18 @@
-from . import auth, health, resumes, jobs, applications, ai, dashboard, payments, files, users, admin, mentors, career, resume
+from fastapi import APIRouter
+from . import auth
+from . import health
+from . import resumes
+from . import jobs
+from . import applications
+from . import ai
+from . import dashboard
+from . import payments
+from . import files
+from . import users
+from . import admin
+from . import mentors
+from . import career
+from . import resume
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
