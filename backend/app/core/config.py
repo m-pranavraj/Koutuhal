@@ -86,4 +86,9 @@ class Settings(BaseSettings):
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
 settings = Settings()
+
+# Post-assembly fallbacks
+if not settings.LLM_API_KEY and settings.GROQ_API_KEY:
+    settings.LLM_API_KEY = settings.GROQ_API_KEY
+
 settings.SQLALCHEMY_DATABASE_URI = settings.assemble_db_connection()

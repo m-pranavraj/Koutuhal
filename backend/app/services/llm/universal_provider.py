@@ -13,15 +13,20 @@ class UniversalLLMProvider(LLMProvider):
     Works with: OpenAI, Perplexity, Grok, DeepSeek, LocalLLM (vLLM/Ollama), etc.
     """
     def __init__(self):
-        api_key = settings.LLM_API_KEY
-        if not api_key:
-             logger.warning("LLM_API_KEY not set. AI features might fail.")
-        
-        self.client = openai.AsyncOpenAI(
-            api_key=api_key,
-            base_url=settings.LLM_BASE_URL
-        )
+        self._client = None
         self.model = settings.LLM_MODEL
+        self.api_key = settings.LLM_API_KEY
+
+    @property
+    def client(self):
+        if self._client is None:
+            if not self.api_key:
+                raise ValueError("LLM_API_KEY is not set. Please configure it in your environment.")
+            self._client = openai.AsyncOpenAI(
+                api_key=self.api_key,
+                base_url=settings.LLM_BASE_URL
+            )
+        return self._client
 
     async def analyze_resume(self, resume_text: str, job_description: str = "") -> Dict[str, Any]:
         """
