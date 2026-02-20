@@ -12,7 +12,7 @@ from . import users
 from . import admin
 from . import mentors
 from . import career
-from . import resume
+from . import resume_forge
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -28,4 +28,4 @@ api_router.include_router(payments.router, prefix="/payments", tags=["payments"]
 api_router.include_router(files.router, prefix="/files", tags=["files"])
 api_router.include_router(career.router, prefix="/career", tags=["career"])
 api_router.include_router(health.router, prefix="/health", tags=["health"])
-api_router.include_router(resume.router, prefix="/resume", tags=["resume"])
+api_router.include_router(resume_forge.router, prefix="/resume", tags=["resume"])
