@@ -28,6 +28,8 @@ import NotFound from "@/pages/NotFound";
 import PortfolioBuilder from "@/pages/PortfolioBuilder";
 import AboutPage from "@/pages/AboutPage";
 import ContactPage from "@/pages/ContactPage";
+import ResumeForge from "@/pages/ResumeForge";
+import AiTutorTeaser from "@/pages/AiTutorTeaser";
 const queryClient = new QueryClient();
 
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -52,10 +54,6 @@ const ProtectedRoute = ({ requireOnboarding = false, requireAdmin = false }: { r
 
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
 
-  // Logic: 
-  // If accessing /onboarding (requireOnboarding=true):
-  //    - If already completed -> Redirect to dashboard
-  //    - If not completed -> Allow
   if (requireOnboarding) {
     if (user?.onboarding_completed) {
       return <Navigate to="/dashboard" replace />;
@@ -63,7 +61,6 @@ const ProtectedRoute = ({ requireOnboarding = false, requireAdmin = false }: { r
     return <Outlet />;
   }
 
-  // If accessing Admin (requireAdmin=true):
   if (requireAdmin) {
     if (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') {
       return <Navigate to="/dashboard" replace />;
@@ -71,8 +68,6 @@ const ProtectedRoute = ({ requireOnboarding = false, requireAdmin = false }: { r
     return <Outlet />;
   }
 
-  // If accessing normal protected routes (requireOnboarding=false/undefined):
-  //    - If not completed -> Redirect to onboarding
   if (!user?.onboarding_completed) {
     return <Navigate to="/onboarding" replace />;
   }
@@ -100,6 +95,7 @@ const App = () => (
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/contact" element={<ContactPage />} />
                   <Route path="/career-check" element={<CareerReadiness />} />
+                  <Route path="/ai-tutor" element={<AiTutorTeaser />} />
 
                   <Route element={<ProtectedRoute requireOnboarding={true} />}>
                     <Route path="/onboarding" element={<OnboardingRolePage />} />
@@ -119,6 +115,7 @@ const App = () => (
                     <Route path="/resume-active" element={<Resume />} />
                     <Route path="/resume-builder" element={<ResumeBuilder />} />
                     <Route path="/resume-scanner" element={<ResumeScanner />} />
+                    <Route path="/resume-forge" element={<ResumeForge />} />
                     <Route path="/portfolio-builder" element={<PortfolioBuilder />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     {/* <Route path="/ai-tutor" element={<AiTutor />} /> */}

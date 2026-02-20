@@ -221,57 +221,96 @@ async def analyze_resume(req: AnalyzeRequest):
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 @router.get("/jobs")
-async def find_jobs(role: str, location: str = "Global", count: int = 5):
-    if not settings.SEARCHAPI_KEY:
-        raise HTTPException(status_code=500, detail="SearchAPI Key not configured")
-        
-    url = "https://www.searchapi.io/api/v1/search"
-    params = {
-        "engine": "google_jobs", # Using google_jobs engine usually better for this
-        "q": f"{role} jobs in {location}",
-        "api_key": settings.SEARCHAPI_KEY,
-        "num": count
+async def find_jobs(role: str, location: str = "Remote", num_pages: int = 1):
+    """
+    Fetch live job listings from JSearch (RapidAPI) — LinkedIn, Indeed, Glassdoor, etc.
+    Each page returns up to 10 results. num_pages=5 → up to 50 jobs.
+    """
+    if not settings.RAPIDAPI_KEY:
+        raise HTTPException(status_code=500, detail="RapidAPI Key not configured. Add RAPIDAPI_KEY to .env")
+
+    url = "https://jsearch.p.rapidapi.com/search"
+    # If location is 'Remote' or 'Global', don't append location to keep broad results
+    if location.lower() in ("remote", "global", ""):
+        query = f"{role} jobs remote"
+    else:
+        query = f"{role} jobs in {location}"
+
+    headers = {
+        "x-rapidapi-host": "jsearch.p.rapidapi.com",
+        "x-rapidapi-key": settings.RAPIDAPI_KEY,
     }
-    
-    async with httpx.AsyncClient() as client:
+    params = {
+        "query": query,
+        "page": "1",
+        "num_pages": str(num_pages),  # up to 50 results (5 pages × 10)
+        "date_posted": "all",
+    }
+
+    async with httpx.AsyncClient(timeout=20.0) as client:
         try:
-            resp = await client.get(url, params=params)
+            resp = await client.get(url, headers=headers, params=params)
+            resp.raise_for_status()
             data = resp.json()
-            
-            # Normalize SearchAPI 'google_jobs' response usually differs from 'google' engine
-            # But adhering to original logic which used 'google' engine with "jobs" query ??
-            # Original code: engine="google", q="... jobs ...". 
-            # Let's stick to original logic to ensure compatibility if they have specific key type.
-            
-            # Replicating original logic exactly:
-            params["engine"] = "google"
-            params["q"] = f"{role} jobs {location}"
-            resp = await client.get(url, params=params)
-            data = resp.json()
-            
-            # SearchAPI can return jobs in different keys depending on the engine
-            raw_jobs = data.get("jobs") or data.get("jobs_results") or data.get("organic_results") or []
+
+            if data.get("status") != "OK":
+                error_msg = data.get("error", {}).get("message", "JSearch API error")
+                raise HTTPException(status_code=502, detail=error_msg)
+
+            raw_jobs = data.get("data", [])
             normalized = []
-            
+
             for j in raw_jobs:
-                # Try to map fields correctly based on which engine returned the data
-                title = j.get("title") or j.get("job_title") or ""
-                company = j.get("company_name") or j.get("company") or "Company"
-                snippet = j.get("description") or j.get("snippet") or ""
-                apply_url = j.get("apply_link") or (j.get("apply_links", [{}])[0].get("link")) or j.get("link") or j.get("url")
-                
-                if title:
-                    normalized.append({
-                        "title": title,
-                        "company": company,
-                        "location": j.get("location", location),
-                        "apply_url": apply_url,
-                        "snippet": snippet[:200] if snippet else "",
-                        "work_type": "remote" if "remote" in (snippet or "").lower() else "on_site"
-                    })
-            
-            return normalized[:count]
-            
+                title = j.get("job_title") or ""
+                if not title:
+                    continue
+
+                # Build a rich apply URL
+                apply_url = j.get("job_apply_link") or ""
+                if not apply_url:
+                    apply_options = j.get("apply_options") or []
+                    if apply_options:
+                        apply_url = apply_options[0].get("apply_link", "")
+
+                # Determine work type
+                is_remote = j.get("job_is_remote", False)
+                employment_type = j.get("job_employment_type") or "FULLTIME"
+                work_type = "remote" if is_remote else "on_site"
+
+                # Location string
+                city = j.get("job_city") or ""
+                state = j.get("job_state") or ""
+                country = j.get("job_country") or ""
+                loc_parts = [p for p in [city, state, country] if p]
+                job_location = ", ".join(loc_parts) if loc_parts else location
+
+                normalized.append({
+                    "title": title,
+                    "company": j.get("employer_name") or "Company",
+                    "location": "Remote" if is_remote else job_location,
+                    "apply_url": apply_url,
+                    "snippet": (j.get("job_description") or "")[:300],
+                    "work_type": work_type,
+                    "employment_type": employment_type,
+                    "posted_time": j.get("job_posted_at_timestamp"),
+                    "logo": j.get("employer_logo"),
+                    "source": j.get("job_publisher") or "",
+                })
+
+            # ── Deduplicate by apply_url (JSearch sometimes returns same job on multiple pages) ──
+            seen = set()
+            deduped = []
+            for job in normalized:
+                key = job["apply_url"] or (job["title"] + job["company"])
+                if key not in seen:
+                    seen.add(key)
+                    deduped.append(job)
+
+            return deduped
+
+        except httpx.HTTPStatusError as e:
+            logging.error(f"JSearch HTTP error: {e.response.status_code} — {e.response.text}")
+            raise HTTPException(status_code=502, detail=f"JSearch API error: {e.response.status_code}")
         except Exception as e:
             logging.error(f"Job fetch failed: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))

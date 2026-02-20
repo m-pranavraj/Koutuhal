@@ -23,6 +23,7 @@ const navLinks = [
   { to: "/#mentors", label: "MENTORS" },
   { to: "/#reviews", label: "SUCCESS STORIES" },
   { to: "/career-check", label: "CAREER CHECK" },
+  { to: "/ai-tutor", label: "AI TUTOR", badge: "NEW" },
   { to: "/about", label: "ABOUT" },
   { to: "/contact", label: "CONTACT US" },
 ];
@@ -32,13 +33,18 @@ const NavItem = ({
   to,
   label,
   isActive,
+  badge,
 }: {
   to: string;
   label: string;
   isActive?: boolean;
+  badge?: string;
 }) => {
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (to.startsWith("/#")) {
+    if (to === "/") {
+      // If already on home, just scroll to top
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (to.startsWith("/#")) {
       const id = to.replace("/#", "");
       const element = document.getElementById(id);
       if (element) {
@@ -52,13 +58,18 @@ const NavItem = ({
     <Link to={to} onClick={handleClick} className="relative group cursor-pointer outline-none">
       <div
         className={cn(
-          "px-5 py-2 text-xs font-bold tracking-wider rounded-full transition-all duration-300",
+          "px-5 py-2 text-xs font-bold tracking-wider rounded-full transition-all duration-300 flex items-center gap-2",
           isActive
             ? "bg-[#ADFF44] text-black shadow-[0_0_20px_rgba(173,255,68,0.3)]"
             : "text-neutral-400 hover:text-white"
         )}
       >
         {label}
+        {badge && (
+          <span className="text-[9px] font-black bg-[#ADFF44] text-black px-1.5 py-0.5 rounded-full leading-none shadow-[0_0_8px_rgba(173,255,68,0.6)] animate-pulse">
+            {badge}
+          </span>
+        )}
       </div>
     </Link>
   );
@@ -71,21 +82,24 @@ const MobileNavItem = ({
   isActive,
   onClick,
   index,
+  badge,
 }: {
   to: string;
   label: string;
   isActive: boolean;
   onClick: () => void;
   index: number;
+  badge?: string;
 }) => {
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     onClick(); // Close menu
-    if (to.startsWith("/#")) {
+    if (to === "/") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (to.startsWith("/#")) {
       const id = to.replace("/#", "");
       const element = document.getElementById(id);
       if (element) {
         e.preventDefault();
-        // Give menu time to close before scrolling
         setTimeout(() => {
           element.scrollIntoView({ behavior: "smooth" });
         }, 300);
@@ -109,6 +123,11 @@ const MobileNavItem = ({
           )}
         >
           <span className="text-sm font-bold tracking-wider">{label}</span>
+          {badge && (
+            <span className="text-[9px] font-black bg-[#ADFF44] text-black px-1.5 py-0.5 rounded-full leading-none">
+              {badge}
+            </span>
+          )}
         </div>
       </Link>
     </motion.div>
@@ -223,6 +242,7 @@ export const Header = () => {
                 to={link.to}
                 label={link.label}
                 isActive={isActive(link.to)}
+                badge={link.badge}
               />
             ))}
 
@@ -240,7 +260,7 @@ export const Header = () => {
           <div className="flex items-center gap-4">
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
-                <span className="hidden sm:block text-sm text-neutral-400 font-medium">Hello, {user?.name?.split(' ')[0]}</span>
+                <span className="hidden sm:block text-sm text-neutral-400 font-medium">Hello, {user?.full_name?.split(' ')[0]}</span>
                 <Button variant="ghost" size="icon" onClick={logout} className="text-neutral-400 hover:text-red-400 hover:bg-red-950/30">
                   <LogOut className="w-4 h-4" />
                 </Button>
@@ -298,6 +318,7 @@ export const Header = () => {
                     isActive={isActive(link.to)}
                     onClick={() => setMobileMenuOpen(false)}
                     index={i}
+                    badge={link.badge}
                   />
                 ))}
 

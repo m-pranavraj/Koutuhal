@@ -15,12 +15,18 @@ import {
     TrendingUp,
     Brain,
     ShieldCheck,
-    Star
+    Star,
+    Wand2,
+    CheckCircle,
+    ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
+import ResumeTailorPanel from "@/components/jobs/ResumeTailorPanel";
+import { Job } from "@/types";
 
 // --- Types ---
 interface RoleItem {
@@ -82,8 +88,12 @@ const CareerReadiness = () => {
 
     // Result State
     const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+    const [resumeText, setResumeText] = useState("");
     const [jobs, setJobs] = useState<any[]>([]);
     const [jobsLoading, setJobsLoading] = useState(false);
+    const [jobsRequested, setJobsRequested] = useState(false);
+    const [isTailorOpen, setIsTailorOpen] = useState(false);
+    const [tailorJobIdx, setTailorJobIdx] = useState(0);
 
     // --- Handlers ---
     const addRoleItem = () => {
@@ -100,11 +110,14 @@ const CareerReadiness = () => {
     const fetchRecommendedJobs = async (roleQuery: string) => {
         if (!roleQuery) return;
         setJobsLoading(true);
+        setJobsRequested(true);
         try {
-            const res = await fetch(`/api/v1/career/jobs?role=${encodeURIComponent(roleQuery)}&location=Remote&count=4`);
+            const res = await fetch(`/api/v1/career/jobs?role=${encodeURIComponent(roleQuery)}&location=Remote&num_pages=5`);
             if (res.ok) {
                 const data = await res.json();
                 setJobs(data);
+            } else {
+                console.error("Job fetch failed:", res.status);
             }
         } catch (err) {
             console.error("Job fetch failed", err);
@@ -173,12 +186,17 @@ const CareerReadiness = () => {
             if (!analyzeRes.ok) throw new Error("AI analysis failed");
             const analysisData = await analyzeRes.json();
 
+            // 3. Fake resume guard
+            if (analysisData.is_resume === false) {
+                const reason = analysisData.not_resume_reason || "That doesn't look like a resume.";
+                toast.error(`Oops! ${reason} Please re-upload a proper resume file.`, { duration: 6000 });
+                return;
+            }
+
+            setResumeText(uploadData.resume_text || "");
             setAnalysis(analysisData);
             setStage("results");
-
-            // 3. Fetch Jobs (Parallel-ish)
-            const recommendedRole = analysisData.best_for?.role || finalRoles[0]?.role;
-            fetchRecommendedJobs(recommendedRole);
+            // Jobs are now fetched ON-DEMAND — not auto-loaded here
 
         } catch (err: any) {
             toast.error(err.message || "An unexpected error occurred.");
@@ -499,7 +517,7 @@ const CareerReadiness = () => {
                                                             <span className="text-sm font-bold text-[#ADFF44]">{match.match_percentage}%</span>
                                                         </div>
                                                     </div>
-                                                    <div className="md:col-span-3 grid md:grid-cols-2 gap-6">
+                                                    <div className="md:col-span-3 grid md:grid-cols-2 gap-6 relative">
                                                         <div className="space-y-1">
                                                             <span className="text-[10px] font-black text-[#ADFF44] uppercase tracking-wider">Strengths</span>
                                                             <p className="text-xs text-gray-400 leading-relaxed bg-[#ADFF44]/5 p-3 rounded-lg border border-[#ADFF44]/10">{match.why_good}</p>
@@ -508,6 +526,16 @@ const CareerReadiness = () => {
                                                             <span className="text-[10px] font-black text-red-500 uppercase tracking-wider">Identified Gaps</span>
                                                             <p className="text-xs text-gray-400 leading-relaxed bg-red-500/5 p-3 rounded-lg border border-red-500/10">{match.why_not_good}</p>
                                                         </div>
+
+                                                        <button
+                                                            onClick={() => {
+                                                                setTailorJobIdx(i);
+                                                                setIsTailorOpen(true);
+                                                            }}
+                                                            className="absolute -right-2 -bottom-2 px-3 py-1.5 rounded-lg bg-[#ADFF44] text-black text-[10px] font-black uppercase tracking-tighter hover:scale-105 transition-all shadow-lg flex items-center gap-1.5"
+                                                        >
+                                                            <Wand2 size={10} /> Tailor This Role
+                                                        </button>
                                                     </div>
                                                 </div>
                                             ))}
@@ -545,63 +573,157 @@ const CareerReadiness = () => {
                                         <p className="text-gray-400 text-lg italic leading-relaxed font-medium">"{analysis?.summary}"</p>
                                     </div>
 
-                                    {/* Jobs Section */}
-                                    <div className="space-y-6 pt-12">
-                                        <div className="flex items-center justify-between">
-                                            <div className="space-y-1">
-                                                <h3 className="text-2xl font-bold font-sora">Market Opportunities</h3>
-                                                <p className="text-gray-500 text-sm">Real-time job listings matching your profile</p>
+
+
+                                    {/* ─── Bottom Intelligence Section ──────────────────────────── */}
+                                    <div className="space-y-16 mt-16 border-t border-white/10 pt-16">
+
+                                        {/* Transparency Grid — full width */}
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-[#ADFF44]/10 flex items-center justify-center border border-[#ADFF44]/20 text-[#ADFF44]">
+                                                    <Search size={20} />
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-2xl font-bold font-sora">Transparency Grid</h3>
+                                                    <p className="text-gray-500 text-sm">Review exactly what our AI analyzed side-by-side.</p>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {/* JD Card */}
+                                                <Card className="bg-white/5 border-white/10 ring-1 ring-white/5">
+                                                    <CardHeader className="pb-3 border-b border-white/5 bg-[#ADFF44]/5">
+                                                        <CardTitle className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Target Job Description</CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent className="p-4">
+                                                        <div className="max-h-[250px] overflow-y-auto text-xs text-gray-500 leading-relaxed font-mono whitespace-pre-wrap">
+                                                            {roles[0]?.job_description || "No specific JD provided. Analysis based on general market standards for this role."}
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                                {/* Resume Text Card */}
+                                                <Card className="bg-white/5 border-white/10 ring-1 ring-white/5">
+                                                    <CardHeader className="pb-3 border-b border-white/5 bg-[#ADFF44]/5">
+                                                        <CardTitle className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Extracted Resume Text</CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent className="p-4">
+                                                        <div className="max-h-[250px] overflow-y-auto text-xs text-gray-500 leading-relaxed font-mono">
+                                                            {resumeText || "Resume text extraction in progress..."}
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
                                             </div>
                                         </div>
 
-                                        <div className="grid sm:grid-cols-2 gap-4">
-                                            {jobsLoading ? (
-                                                Array.from({ length: 4 }).map((_, i) => (
-                                                    <div key={i} className="h-40 rounded-2xl bg-white/5 animate-pulse" />
-                                                ))
-                                            ) : jobs.length > 0 ? (
-                                                jobs.map((job, idx) => (
-                                                    <motion.div
-                                                        key={idx}
-                                                        initial={{ opacity: 0, y: 10 }}
-                                                        animate={{ opacity: 1, y: 0 }}
-                                                        transition={{ delay: idx * 0.1 }}
-                                                        className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#ADFF44]/30 hover:bg-[#ADFF44]/5 transition-all group"
+                                        {/* Market Jobs — full width below */}
+                                        <div className="space-y-6">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-[#ADFF44]/10 flex items-center justify-center border border-[#ADFF44]/20 text-[#ADFF44]">
+                                                        <Briefcase size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-2xl font-bold font-sora">Market Jobs</h3>
+                                                        <p className="text-gray-500 text-sm">Live listings from LinkedIn, Indeed & more</p>
+                                                    </div>
+                                                </div>
+                                                {jobsRequested && !jobsLoading && jobs.length > 0 && (
+                                                    <span className="text-xs text-gray-500 font-medium">{jobs.length} listings found</span>
+                                                )}
+                                            </div>
+
+                                            {!jobsRequested ? (
+                                                <div className="p-10 flex flex-col items-center justify-center gap-5 rounded-2xl border border-dashed border-white/10 bg-white/3">
+                                                    <Briefcase className="text-[#ADFF44]/50" size={32} />
+                                                    <div className="text-center">
+                                                        <p className="text-white font-bold text-base">Find Jobs for Your Profile</p>
+                                                        <p className="text-gray-500 text-sm mt-1">Get live listings from LinkedIn, Indeed & Glassdoor matched to your best role</p>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => fetchRecommendedJobs(analysis?.best_for?.role || roles[0]?.role || '')}
+                                                        className="px-8 py-3 rounded-xl bg-[#ADFF44] text-black font-black text-sm hover:bg-[#9BE63D] transition-all hover:scale-105 shadow-lg shadow-[#ADFF44]/20 flex items-center gap-2"
                                                     >
-                                                        <div className="flex justify-between items-start mb-3">
-                                                            <div className="group-hover:text-[#ADFF44] transition-colors">
-                                                                <h4 className="font-bold">{job.title}</h4>
-                                                                <p className="text-xs text-gray-500 font-medium">{job.company}</p>
-                                                            </div>
-                                                            <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/10 group-hover:bg-[#ADFF44]/20 transition-colors">
-                                                                <Briefcase size={14} className="text-gray-500 group-hover:text-[#ADFF44]" />
-                                                            </div>
-                                                        </div>
-                                                        <p className="text-xs text-gray-500 line-clamp-2 mb-4 leading-relaxed">{job.snippet || "No description available."}</p>
-                                                        <a
-                                                            href={job.apply_url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="inline-flex items-center text-xs font-bold text-[#ADFF44] hover:gap-2 transition-all gap-1"
+                                                        <Search size={15} /> Explore Live Jobs
+                                                    </button>
+                                                </div>
+                                            ) : jobsLoading ? (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="h-28 rounded-2xl bg-white/5 animate-pulse" />)}
+                                                </div>
+                                            ) : jobs.length > 0 ? (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    {jobs.map((job, idx) => (
+                                                        <motion.div
+                                                            key={idx}
+                                                            initial={{ opacity: 0, y: 16 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            transition={{ delay: Math.min(idx * 0.04, 0.5) }}
+                                                            className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#ADFF44]/30 hover:bg-[#ADFF44]/5 transition-all group flex flex-col gap-3"
                                                         >
-                                                            Apply Now <ChevronRight size={14} />
-                                                        </a>
-                                                    </motion.div>
-                                                ))
+                                                            <div className="flex justify-between items-start">
+                                                                <div className="flex items-center gap-2.5 overflow-hidden flex-1">
+                                                                    {job.logo ? (
+                                                                        <img src={job.logo} alt={job.company} className="w-8 h-8 rounded-lg object-contain bg-white/10 flex-shrink-0 p-0.5" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                                                                    ) : (
+                                                                        <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+                                                                            <Briefcase size={13} className="text-[#ADFF44]/60" />
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="overflow-hidden">
+                                                                        <h4 className="font-bold text-sm leading-tight line-clamp-2 group-hover:text-[#ADFF44] transition-colors">{job.title}</h4>
+                                                                        <p className="text-[10px] text-gray-500 font-bold uppercase truncate mt-0.5">{job.company}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <a href={job.apply_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-white/5 border border-white/10 group-hover:bg-[#ADFF44]/20 text-gray-500 group-hover:text-[#ADFF44] transition-all flex-shrink-0 ml-2">
+                                                                    <ArrowRight size={13} />
+                                                                </a>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-500 uppercase font-bold tracking-wider">{job.location}</span>
+                                                                {job.employment_type && <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#ADFF44]/10 border border-[#ADFF44]/15 text-[#ADFF44] uppercase font-bold tracking-wider">{job.employment_type.replace(/_/g, ' ')}</span>}
+                                                                {job.source && <span className="text-[9px] text-gray-600 font-medium ml-auto">via {job.source}</span>}
+                                                            </div>
+                                                        </motion.div>
+                                                    ))}
+                                                </div>
                                             ) : (
-                                                <div className="col-span-full p-12 text-center rounded-2xl border border-dashed border-white/10 text-gray-500 font-medium italic">
-                                                    No immediate listings found. Keep scaling your skills!
+                                                <div className="p-10 text-center rounded-2xl border border-dashed border-white/10 text-gray-500 text-sm italic">
+                                                    No listings found. Try a different role.
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
+
+                                    </div> {/* closes space-y-16 */}
+
+                                </div> {/* This closes the div containing the entire content of the page */}
+                            </div> {/* This closes the div with className="container max-w-7xl mx-auto py-12 px-4" */}
                         </motion.div>
                     )}
                 </AnimatePresence>
             </main>
-        </div>
+
+            {/* Resume Tailor Panel */}
+            <ResumeTailorPanel
+                open={isTailorOpen}
+                onClose={() => setIsTailorOpen(false)}
+                sharedResume={formData.resumeFile}
+                onResumeShared={(f) => setFormData({ ...formData, resumeFile: f })}
+                job={{
+                    id: 'temp-' + Date.now(),
+                    title: analysis?.role_matches?.[tailorJobIdx]?.role || roles[tailorJobIdx]?.role || 'Target Role',
+                    company: 'Career Check Match',
+                    description: roles[tailorJobIdx]?.job_description || '',
+                    location: 'Remote',
+                    type: 'Full-time',
+                    mode: 'Remote',
+                    experience: 'Intermediate',
+                    salary: 'Competitive',
+                    skills: analysis?.role_matches?.[tailorJobIdx]?.why_good ? [analysis.role_matches[tailorJobIdx].why_good] : analysis?.strengths || [],
+                    category: 'Engineering',
+                    postedDays: 0
+                } as Job}
+            />
+        </div >
     );
 };
 

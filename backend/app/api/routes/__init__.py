@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.routes import auth, health, resumes, jobs, applications, ai, dashboard, payments, files, users, admin, mentors, career
+from app.api.routes import auth, health, resumes, jobs, applications, ai, dashboard, payments, files, users, admin, mentors, career, resume
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -15,3 +15,4 @@ api_router.include_router(payments.router, prefix="/payments", tags=["payments"]
 api_router.include_router(files.router, prefix="/files", tags=["files"])
 api_router.include_router(career.router, prefix="/career", tags=["career"])
 api_router.include_router(health.router, prefix="/health", tags=["health"])
+api_router.include_router(resume.router, prefix="/resume", tags=["resume"])

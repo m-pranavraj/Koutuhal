@@ -13,7 +13,7 @@ class UniversalLLMProvider(LLMProvider):
     Works with: OpenAI, Perplexity, Grok, DeepSeek, LocalLLM (vLLM/Ollama), etc.
     """
     def __init__(self):
-        api_key = settings.LLM_API_KEY or settings.OPENAI_API_KEY
+        api_key = settings.LLM_API_KEY
         if not api_key:
              logger.warning("LLM_API_KEY not set. AI features might fail.")
         

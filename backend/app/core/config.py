@@ -52,7 +52,8 @@ class Settings(BaseSettings):
     GROQ_API_KEY: Optional[str] = None
     SUPABASE_URL: Optional[str] = None
     SUPABASE_SERVICE_KEY: Optional[str] = None
-    SEARCHAPI_KEY: Optional[str] = None    
+    SEARCHAPI_KEY: Optional[str] = None
+    RAPIDAPI_KEY: Optional[str] = None  # JSearch RapidAPI key
     # Provider presets (optional helpers, but user can just set BASE_URL)
     # If LLM_BASE_URL is set to "https://api.perplexity.ai", etc.
     

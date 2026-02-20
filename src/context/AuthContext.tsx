@@ -1,15 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-
-interface User {
-    id: string;
-    name: string;
-    email: string;
-    avatar?: string;
-    role: 'STUDENT' | 'MENTOR' | 'ORGANISATION' | 'ADMIN' | 'SUPER_ADMIN';
-    onboarding_completed: boolean;
-}
+import { User } from '../types';
 
 interface AuthContextType {
     isAuthenticated: boolean;
@@ -49,12 +41,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 const newUser = {
                     id: authUser.id,
                     email: authUser.email!,
-                    name: authUser.user_metadata?.name || authUser.email!.split('@')[0],
+                    full_name: authUser.user_metadata?.name || authUser.email!.split('@')[0],
                     role: 'STUDENT' as const,
-                    avatar_url: authUser.user_metadata?.avatar_url,
+                    profile_image_url: authUser.user_metadata?.avatar_url,
                     onboarding_completed: false,
-                    bio: null,
-                    company: null
+                    is_active: true
                 };
 
                 const { data: insertedUser, error: insertError } = await supabase
@@ -70,21 +61,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
                 return {
                     id: insertedUser.id,
-                    name: insertedUser.name,
+                    full_name: insertedUser.full_name,
                     email: insertedUser.email,
-                    avatar: insertedUser.avatar_url || undefined,
+                    profile_image_url: insertedUser.profile_image_url || undefined,
                     role: insertedUser.role,
-                    onboarding_completed: insertedUser.onboarding_completed
+                    onboarding_completed: insertedUser.onboarding_completed,
+                    is_active: insertedUser.is_active,
+                    created_at: insertedUser.created_at
                 };
             }
 
             return {
                 id: data.id,
-                name: data.name,
+                full_name: data.full_name,
                 email: data.email,
-                avatar: data.avatar_url || undefined,
+                profile_image_url: data.profile_image_url || undefined,
                 role: data.role,
-                onboarding_completed: data.onboarding_completed
+                onboarding_completed: data.onboarding_completed,
+                is_active: data.is_active,
+                created_at: data.created_at
             };
         } catch (error) {
             console.error('Error in fetchUserProfile:', error);
@@ -191,9 +186,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     .insert([{
                         id: data.user.id,
                         email: userData.email,
-                        name: userData.name,
+                        full_name: userData.name,
                         role: userData.role as 'STUDENT' | 'MENTOR' | 'ORGANISATION' | 'ADMIN' | 'SUPER_ADMIN',
-                        onboarding_completed: false
+                        onboarding_completed: false,
+                        is_active: true
                     }]);
 
                 if (profileError && profileError.code !== '23505') {
@@ -238,11 +234,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (data) {
                 setUser({
                     id: data.id,
-                    name: data.name,
+                    full_name: data.full_name,
                     email: data.email,
-                    avatar: data.avatar_url || undefined,
+                    profile_image_url: data.profile_image_url || undefined,
                     role: data.role,
-                    onboarding_completed: data.onboarding_completed
+                    onboarding_completed: data.onboarding_completed,
+                    is_active: data.is_active,
+                    created_at: data.created_at
                 });
             }
         } catch (error: any) {
