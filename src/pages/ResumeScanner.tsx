@@ -1,22 +1,538 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import {
+    Upload, FileText, CheckCircle, AlertCircle, ArrowRight, Loader2,
+    TrendingUp, Linkedin, XCircle, Star, ShieldAlert, Lightbulb, Award, ChevronUp, ChevronDown,
+    Briefcase, Wand2
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Upload, FileText, CheckCircle, AlertCircle, ArrowRight, Loader2, TrendingUp, Linkedin } from 'lucide-react';
 import ScoreGauge from '@/components/resume/ScoreGauge';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import ResumeTailorPanel from '@/components/jobs/ResumeTailorPanel';
+import { Job } from '@/types';
 
-// Define the shape of the backend response
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface CriticalGap {
+    gap: string;
+    severity: 'High' | 'Medium' | 'Low';
+    fix: string;
+}
+
+export interface Strength {
+    strength: string;
+    evidence: string;
+}
+
 export interface AnalysisResult {
+    is_resume: boolean;
     score: number;
+    grade: 'S' | 'A' | 'B' | 'C' | 'D';
     missingKeywords: string[];
     foundKeywords: string[];
     structureScore: number;
     impactScore: number;
+    criticalGaps: CriticalGap[];
+    strengths: Strength[];
+    atsRecommendations: string[];
+    resume_text?: string;
 }
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const GRADE_CONFIG = {
+    S: { label: 'S — Elite Match', color: '#ADFF44', bg: 'bg-[#ADFF44]/10', border: 'border-[#ADFF44]/40', text: 'text-[#ADFF44]' },
+    A: { label: 'A — Strong Match', color: '#22c55e', bg: 'bg-green-500/10', border: 'border-green-500/40', text: 'text-green-400' },
+    B: { label: 'B — Good Match', color: '#3b82f6', bg: 'bg-blue-500/10', border: 'border-blue-500/40', text: 'text-blue-400' },
+    C: { label: 'C — Partial Match', color: '#f59e0b', bg: 'bg-amber-500/10', border: 'border-amber-500/40', text: 'text-amber-400' },
+    D: { label: 'D — Weak Match', color: '#ef4444', bg: 'bg-red-500/10', border: 'border-red-500/40', text: 'text-red-400' },
+} as const;
+
+const SEVERITY_CONFIG = {
+    High: 'bg-red-500/15 text-red-400 border-red-500/30',
+    Medium: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+    Low: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+} as const;
+
+const detectRole = (text: string): string => {
+    const roles = [
+        'Frontend Developer', 'Backend Developer', 'Full Stack Developer', 'Software Engineer',
+        'Data Scientist', 'Product Manager', 'UX Designer', 'DevOps Engineer', 'Mobile Developer',
+        'QA Engineer', 'Machine Learning Engineer', 'React Developer', 'Java Developer',
+        'Python Developer', 'Digital Marketing', 'Marketing Manager',
+    ];
+    for (const role of roles) {
+        if (text.toLowerCase().includes(role.toLowerCase())) return role;
+    }
+    if (/gen\s*ai|gpt|llm/i.test(text)) return 'Generative AI Engineer';
+    return 'the target role';
+};
+
+// ─── Sub-components (defined OUTSIDE parent to avoid React crash) ─────────────
+
+interface UploadFormProps {
+    file: File | null;
+    jdText: string;
+    isAnalyzing: boolean;
+    error: string | null;
+    onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onJdChange: (v: string) => void;
+    onAnalyze: () => void;
+}
+
+const UploadForm = ({ file, jdText, isAnalyzing, error, onFileChange, onJdChange, onAnalyze }: UploadFormProps) => (
+    <div className="max-w-4xl mx-auto">
+        <Card className="border-0 shadow-2xl bg-neutral-900/80 backdrop-blur-xl ring-1 ring-neutral-800 overflow-hidden rounded-3xl">
+            <div className="h-1.5 bg-gradient-to-r from-[#ADFF44] via-blue-500 to-violet-500 w-full" />
+            <CardHeader className="p-8 pb-4">
+                <CardTitle className="text-2xl font-bold flex items-center gap-3 text-white">
+                    <FileText className="w-6 h-6 text-[#ADFF44]" />
+                    AI Career Check & ATS Scanner
+                </CardTitle>
+                <CardDescription className="text-neutral-400 text-base">
+                    Paste the Job Description and upload your Resume PDF for deep ATS analysis.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="p-8 pt-4 space-y-8">
+                <div className="grid md:grid-cols-2 gap-8">
+                    {/* JD */}
+                    <div className="space-y-3">
+                        <Label className="text-base font-semibold text-neutral-300">1. Job Description</Label>
+                        <Textarea
+                            placeholder="Paste the full job description here..."
+                            className="min-h-[240px] font-mono text-sm bg-neutral-900 border-neutral-800 focus:ring-[#ADFF44]/50 resize-none rounded-xl p-4 text-neutral-200"
+                            value={jdText}
+                            onChange={(e) => onJdChange(e.target.value)}
+                        />
+                    </div>
+
+                    {/* File */}
+                    <div className="space-y-3">
+                        <Label className="text-base font-semibold text-neutral-300">2. Your Resume</Label>
+                        <div className="h-[240px] border-2 border-dashed border-neutral-700 rounded-xl flex flex-col items-center justify-center text-center hover:bg-neutral-800/50 hover:border-[#ADFF44]/40 transition-all cursor-pointer relative group bg-neutral-900/50">
+                            <Input
+                                type="file"
+                                accept=".pdf,.docx,.txt"
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                onChange={onFileChange}
+                            />
+                            <div className="bg-neutral-800 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform border border-neutral-700 group-hover:border-[#ADFF44]/40">
+                                <Upload className="w-8 h-8 text-[#ADFF44]" />
+                            </div>
+                            {file ? (
+                                <div className="px-6">
+                                    <p className="font-bold text-white text-lg truncate max-w-[200px]">{file.name}</p>
+                                    <p className="text-sm text-neutral-500 mt-1">{(file.size / 1024).toFixed(1)} KB · Ready</p>
+                                    <div className="mt-3 inline-flex items-center text-xs font-bold text-[#ADFF44] bg-[#ADFF44]/10 px-3 py-1 rounded-full border border-[#ADFF44]/20">
+                                        <CheckCircle className="w-3 h-3 mr-1" /> Uploaded
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="px-6">
+                                    <p className="font-semibold text-white">Click to Upload Resume</p>
+                                    <p className="text-sm text-neutral-500 mt-1">PDF, DOCX, or TXT (Max 5MB)</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <Button
+                    size="lg"
+                    className="w-full bg-[#ADFF44] text-black hover:bg-[#9BE63D] py-8 text-lg font-black rounded-xl shadow-[0_0_40px_rgba(173,255,68,0.2)] hover:shadow-[0_0_60px_rgba(173,255,68,0.4)] transition-all hover:scale-[1.01]"
+                    onClick={onAnalyze}
+                    disabled={!file || !jdText || isAnalyzing}
+                >
+                    {isAnalyzing ? (
+                        <><Loader2 className="mr-3 h-6 w-6 animate-spin" /> Analyzing with AI...</>
+                    ) : (
+                        <>Run FAANG-Level ATS Analysis <ArrowRight className="ml-2 h-6 w-6" /></>
+                    )}
+                </Button>
+
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-center flex items-center justify-center gap-2">
+                        <AlertCircle className="w-5 h-5 flex-shrink-0" /> {error}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    </div>
+);
+
+const NotResumeScreen = ({ onReset }: { onReset: () => void }) => (
+    <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="max-w-xl mx-auto text-center py-12"
+    >
+        <div className="w-24 h-24 bg-red-500/10 border-2 border-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <XCircle className="w-12 h-12 text-red-400" />
+        </div>
+        <h2 className="text-2xl font-black text-white mb-3">That's Not a Resume</h2>
+        <p className="text-neutral-400 text-lg mb-2">
+            The uploaded file doesn't appear to be a professional resume or CV.
+        </p>
+        <p className="text-neutral-500 text-sm mb-8">
+            Please upload a resume containing your work experience, skills, and education.
+        </p>
+        <Button
+            onClick={onReset}
+            className="bg-[#ADFF44] text-black font-bold px-8 py-4 rounded-xl hover:bg-[#9BE63D] transition-all"
+        >
+            <Upload className="w-4 h-4 mr-2" /> Upload a Proper Resume
+        </Button>
+    </motion.div>
+);
+
+interface ResultsScreenProps {
+    r: AnalysisResult;
+    jdText: string;
+    onReset: () => void;
+    onTailor: () => void;
+}
+
+const ResultsScreen = ({ r, jdText, onReset, onTailor }: ResultsScreenProps) => {
+    const [expandedGap, setExpandedGap] = useState<number | null>(null);
+    const [marketJobs, setMarketJobs] = useState<any[]>([]);
+    const [jobsLoading, setJobsLoading] = useState(false);
+    const grade = GRADE_CONFIG[r.grade] ?? GRADE_CONFIG['C'];
+
+    useEffect(() => {
+        const role = detectRole(jdText);
+        const fetchMarket = async () => {
+            setJobsLoading(true);
+            try {
+                const res = await fetch(`/api/v1/career/jobs?role=${encodeURIComponent(role)}&location=Remote&count=4`);
+                if (res.ok) setMarketJobs(await res.json());
+            } catch (err) {
+                console.error("Market fetch failed", err);
+            } finally {
+                setJobsLoading(false);
+            }
+        };
+        fetchMarket();
+    }, [jdText]);
+
+    return (
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+
+            {/* Header bar — grade + score */}
+            <div className="flex flex-wrap justify-between items-center bg-neutral-900 p-4 rounded-2xl border border-neutral-800 gap-4">
+                <div className="flex items-center gap-4">
+                    <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl border-2 ${grade.bg} ${grade.border}`}>
+                        <span className={`text-4xl font-black leading-none ${grade.text}`}>{r.grade}</span>
+                        <div className="flex flex-col">
+                            <span className="text-2xl font-black text-white leading-none">
+                                {r.score}<span className="text-sm font-normal text-neutral-500">/100</span>
+                            </span>
+                            <span className={`text-xs font-bold mt-0.5 ${grade.text}`}>ATS Score</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-bold text-white">{grade.label}</h2>
+                        <p className="text-sm text-neutral-500">Target: <span className="font-semibold text-[#ADFF44]">{detectRole(jdText)}</span></p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3">
+                    <Button
+                        onClick={onTailor}
+                        className="rounded-xl bg-[#ADFF44] hover:bg-[#9BE63D] text-black h-10 px-5 font-bold shadow-lg shadow-[#ADFF44]/20"
+                    >
+                        <Wand2 className="mr-2 w-4 h-4" /> Draft Tailored Resume
+                    </Button>
+                    <Button variant="ghost" onClick={onReset} className="text-neutral-500 hover:text-white text-sm">
+                        ↩ Scan Another
+                    </Button>
+                </div>
+            </div>
+
+            {/* Score gauges */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[
+                    { score: r.score, label: 'ATS Match', color: grade.color },
+                    { score: r.structureScore, label: 'Format Score', color: '#3b82f6' },
+                    { score: r.impactScore, label: 'Impact Score', color: '#f59e0b' },
+                ].map(({ score, label, color }) => (
+                    <Card key={label} className="border-0 bg-neutral-900 ring-1 ring-neutral-800">
+                        <CardContent className="p-6 flex flex-col items-center justify-center">
+                            <ScoreGauge score={score} label={label} color={color} />
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+
+            {/* ✨ UNMISSABLE CTA: AI Resume Forge */}
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="relative overflow-hidden group"
+            >
+                <div className="absolute inset-0 bg-gradient-to-r from-[#ADFF44]/20 via-transparent to-[#ADFF44]/10 pointer-events-none" />
+                <Card className="border-2 border-[#ADFF44]/30 bg-neutral-900/80 backdrop-blur-md overflow-hidden ring-1 ring-[#ADFF44]/20">
+                    <CardContent className="p-8 flex flex-col md:flex-row items-center gap-8">
+                        <div className="flex-1 space-y-4 text-center md:text-left">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#ADFF44]/10 border border-[#ADFF44]/20 text-[#ADFF44] text-xs font-bold uppercase tracking-widest">
+                                <Wand2 className="w-3 h-3" /> New: AI Resume Forge
+                            </div>
+                            <h3 className="text-3xl font-black text-white leading-tight">Ready to fix these gaps?</h3>
+                            <p className="text-neutral-400 text-lg leading-relaxed max-w-xl">
+                                Our AI can instantly draft a professional, ATS-optimized version of your resume tailored precisely to this Job Description.
+                                <span className="block mt-2 text-[#ADFF44]/80 text-sm font-medium italic">"It's like having a FAANG career coach in your pocket."</span>
+                            </p>
+                        </div>
+                        <div className="flex flex-col items-center gap-4 min-w-[240px]">
+                            <Button
+                                onClick={onTailor}
+                                className="w-full h-16 rounded-2xl bg-[#ADFF44] hover:bg-[#9BE63D] text-black text-lg font-black shadow-2xl shadow-[#ADFF44]/20 group-hover:scale-105 transition-all duration-300"
+                            >
+                                <Wand2 className="mr-3 w-6 h-6" /> Draft Resume Now
+                            </Button>
+                            <p className="text-xs text-neutral-500 flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" /> Confirm your JD in the next step
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </motion.div>
+
+            {/* Elite candidate banner */}
+            {r.score >= 85 && (
+                <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                    className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-neutral-900 to-black border border-[#ADFF44]/20 p-8 text-center"
+                >
+                    <div className="absolute -top-20 -left-20 w-48 h-48 bg-[#ADFF44] rounded-full blur-3xl opacity-10 pointer-events-none" />
+                    <div className="absolute -bottom-20 -right-20 w-48 h-48 bg-blue-500 rounded-full blur-3xl opacity-10 pointer-events-none" />
+                    <Award className="w-10 h-10 text-[#ADFF44] mx-auto mb-3" />
+                    <h3 className="text-2xl font-black text-white mb-2">{r.score >= 92 ? 'Top 1% Candidate' : 'Strong Contender'}</h3>
+                    <p className="text-neutral-400 max-w-lg mx-auto mb-6">
+                        Your resume scores in the top {r.score >= 92 ? '1%' : '5%'} for <strong className="text-white">{detectRole(jdText)}</strong> roles.
+                    </p>
+                    <Button
+                        onClick={() => {
+                            const text = `Just ran my resume through Koutuhal's FAANG-level ATS scanner and scored ${r.score}/100 — Grade ${r.grade} for ${detectRole(jdText)} roles! Try it: https://koutuhal.com`;
+                            window.open(`https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`, '_blank');
+                        }}
+                        className="bg-[#0077B5] text-white hover:bg-[#005f91] font-bold px-6 rounded-full"
+                    >
+                        <Linkedin className="w-4 h-4 mr-2" /> Share on LinkedIn
+                    </Button>
+                </motion.div>
+            )}
+
+            {/* Strengths + Critical Gaps */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                {/* Strengths */}
+                <Card className="border-0 bg-neutral-900 ring-1 ring-neutral-800 overflow-hidden">
+                    <CardHeader className="border-b border-neutral-800 pb-4 bg-[#ADFF44]/5">
+                        <CardTitle className="flex items-center gap-2 text-[#ADFF44] text-lg">
+                            <Star className="w-5 h-5" /> Strengths
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-5 space-y-3">
+                        {r.strengths.length > 0 ? r.strengths.map((s, i) => (
+                            <div key={i} className="p-4 bg-[#ADFF44]/5 border border-[#ADFF44]/15 rounded-xl">
+                                <p className="font-semibold text-white text-sm mb-1">{s.strength}</p>
+                                <p className="text-xs text-neutral-400 italic">"{s.evidence}"</p>
+                            </div>
+                        )) : (
+                            <p className="text-neutral-500 text-sm">Enrich your resume with specific achievements to highlight strengths.</p>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Critical Gaps */}
+                <Card className="border-0 bg-neutral-900 ring-1 ring-neutral-800 overflow-hidden">
+                    <CardHeader className="border-b border-neutral-800 pb-4 bg-red-500/5">
+                        <CardTitle className="flex items-center gap-2 text-red-400 text-lg">
+                            <ShieldAlert className="w-5 h-5" /> Critical Gaps
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-5 space-y-3">
+                        {r.criticalGaps.length > 0 ? r.criticalGaps.map((g, i) => (
+                            <div key={i} className="border border-neutral-800 rounded-xl overflow-hidden">
+                                <button
+                                    className="w-full flex items-center justify-between p-4 hover:bg-neutral-800/50 transition"
+                                    onClick={() => setExpandedGap(expandedGap === i ? null : i)}
+                                >
+                                    <div className="flex items-center gap-3 text-left">
+                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${SEVERITY_CONFIG[g.severity]}`}>
+                                            {g.severity.toUpperCase()}
+                                        </span>
+                                        <span className="text-sm font-medium text-white">{g.gap}</span>
+                                    </div>
+                                    {expandedGap === i ? <ChevronUp className="w-4 h-4 text-neutral-500 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-neutral-500 flex-shrink-0" />}
+                                </button>
+                                <AnimatePresence>
+                                    {expandedGap === i && (
+                                        <motion.div
+                                            initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }}
+                                            className="overflow-hidden"
+                                        >
+                                            <div className="px-4 pb-4 flex items-start gap-2">
+                                                <Lightbulb className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+                                                <p className="text-sm text-neutral-300">{g.fix}</p>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        )) : (
+                            <div className="flex flex-col items-center py-6 text-center">
+                                <CheckCircle className="w-8 h-8 text-[#ADFF44] mb-2" />
+                                <p className="text-white font-medium">No Critical Gaps!</p>
+                                <p className="text-neutral-500 text-sm">Your resume covers the essentials.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Keywords */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="border-0 bg-neutral-900 ring-1 ring-neutral-800">
+                    <CardHeader className="border-b border-neutral-800 pb-3">
+                        <CardTitle className="text-red-400 text-base flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4" /> Missing Keywords
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-5">
+                        {r.missingKeywords.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                                {r.missingKeywords.map(kw => (
+                                    <span key={kw} className="px-3 py-1.5 bg-red-500/10 text-red-300 text-sm font-medium rounded-lg border border-red-500/20">{kw}</span>
+                                ))}
+                            </div>
+                        ) : <p className="text-neutral-500 text-sm">All important keywords found!</p>}
+                    </CardContent>
+                </Card>
+
+                <Card className="border-0 bg-neutral-900 ring-1 ring-neutral-800">
+                    <CardHeader className="border-b border-neutral-800 pb-3">
+                        <CardTitle className="text-[#ADFF44] text-base flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4" /> Matched Keywords
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-5">
+                        {r.foundKeywords.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                                {r.foundKeywords.map(kw => (
+                                    <span key={kw} className="px-3 py-1.5 bg-[#ADFF44]/10 text-[#ADFF44] text-sm font-medium rounded-lg border border-[#ADFF44]/20">{kw}</span>
+                                ))}
+                            </div>
+                        ) : <p className="text-neutral-500 text-sm">No keyword matches found yet.</p>}
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* ATS Recommendations */}
+            {r.atsRecommendations.length > 0 && (
+                <Card className="border-0 bg-neutral-900 ring-1 ring-neutral-800">
+                    <CardHeader className="border-b border-neutral-800 pb-4 bg-violet-500/5">
+                        <CardTitle className="flex items-center gap-2 text-violet-400 text-lg">
+                            <TrendingUp className="w-5 h-5" /> ATS Recommendations
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-5">
+                        <ul className="space-y-3">
+                            {r.atsRecommendations.map((rec, i) => (
+                                <li key={i} className="flex items-start gap-3 text-sm text-neutral-300">
+                                    <span className="w-6 h-6 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-400 flex-shrink-0 flex items-center justify-center text-xs font-bold">{i + 1}</span>
+                                    {rec}
+                                </li>
+                            ))}
+                        </ul>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Analysis Context (Side-by-Side) */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                    <div className="h-px flex-1 bg-neutral-800" />
+                    <span className="text-xs font-bold uppercase tracking-widest text-neutral-500 whitespace-nowrap px-4">Analysis Context: JD vs My Resume</span>
+                    <div className="h-px flex-1 bg-neutral-800" />
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* JD Card */}
+                    <Card className="bg-neutral-900/40 border-neutral-800">
+                        <CardHeader className="pb-3"><CardTitle className="text-sm text-neutral-400 flex items-center gap-2 underline decoration-[#ADFF44]/30">Job Description Analyzed</CardTitle></CardHeader>
+                        <CardContent>
+                            <div className="max-h-[300px] overflow-y-auto text-xs text-neutral-400 leading-relaxed font-mono">
+                                {jdText}
+                            </div>
+                        </CardContent>
+                    </Card>
+                    {/* Resume Text Card */}
+                    <Card className="bg-neutral-900/40 border-neutral-800">
+                        <CardHeader className="pb-3"><CardTitle className="text-sm text-neutral-400 flex items-center gap-2 underline decoration-[#ADFF44]/30">My Extracted Resume Data</CardTitle></CardHeader>
+                        <CardContent>
+                            <div className="max-h-[300px] overflow-y-auto text-xs text-neutral-400 leading-relaxed font-mono">
+                                {r.resume_text || "Resume text unavailable for preview."}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+
+            {/* Market Opportunities */}
+            <div className="space-y-6 pt-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h3 className="text-2xl font-black text-white">Market Opportunities</h3>
+                        <p className="text-sm text-neutral-500">Live listings matching this profile and detects role: <span className="text-[#ADFF44] font-bold">{detectRole(jdText)}</span></p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {jobsLoading ? (
+                        [1, 2, 3, 4].map(i => <div key={i} className="h-40 bg-neutral-900 rounded-2xl animate-pulse ring-1 ring-neutral-800" />)
+                    ) : marketJobs.length > 0 ? (
+                        marketJobs.map((job, idx) => (
+                            <motion.div
+                                key={idx}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: idx * 0.1 }}
+                                className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800 hover:border-[#ADFF44]/30 transition-all group relative"
+                            >
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="group-hover:text-[#ADFF44] transition-colors overflow-hidden">
+                                        <h4 className="font-bold text-white text-sm truncate">{job.title}</h4>
+                                        <p className="text-[10px] text-neutral-500 font-medium truncate">{job.company}</p>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-neutral-800 border border-neutral-700">
+                                        <Briefcase className="w-3.5 h-3.5 text-neutral-500 group-hover:text-[#ADFF44]" />
+                                    </div>
+                                </div>
+                                <p className="text-[11px] text-neutral-400 mb-4 line-clamp-3 leading-tight">{job.snippet || "View description on job board."}</p>
+                                <a
+                                    href={job.apply_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center text-xs font-bold text-[#ADFF44] hover:underline"
+                                >
+                                    Apply Now <ArrowRight className="w-3 h-3 ml-1" />
+                                </a>
+                            </motion.div>
+                        ))
+                    ) : (
+                        <div className="col-span-full py-12 text-center text-neutral-500 italic border-2 border-dashed border-neutral-800 rounded-2xl">
+                            Looking for listings in your area...
+                        </div>
+                    )}
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 const ResumeScanner = () => {
     const [file, setFile] = useState<File | null>(null);
@@ -24,9 +540,10 @@ const ResumeScanner = () => {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [result, setResult] = useState<AnalysisResult | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [isTailorOpen, setIsTailorOpen] = useState(false);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
+        if (e.target.files?.[0]) {
             setFile(e.target.files[0]);
             setError(null);
         }
@@ -34,7 +551,6 @@ const ResumeScanner = () => {
 
     const handleAnalyze = async () => {
         if (!file || !jdText) return;
-
         setIsAnalyzing(true);
         setError(null);
 
@@ -43,347 +559,95 @@ const ResumeScanner = () => {
         formData.append('jd_text', jdText);
 
         try {
-            const response = await fetch('/ai/analyze-resume', {
+            const response = await fetch('/api/v1/ai/analyze-resume-quick', {
                 method: 'POST',
                 body: formData,
             });
 
             if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.message || 'Analysis failed. Please try again.');
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.detail || errData.message || 'Analysis failed. Please try again.');
             }
 
             const data: AnalysisResult = await response.json();
             setResult(data);
         } catch (err: any) {
-            console.error("Analysis Error:", err);
-            setError(err.message || "An unexpected error occurred.");
+            setError(err.message || 'An unexpected error occurred.');
         } finally {
             setIsAnalyzing(false);
         }
     };
 
-    // Simple heuristic to detect role from JD
-    const detectRole = (text: string): string => {
-        const commonRoles = [
-            'Frontend Developer', 'Backend Developer', 'Full Stack Developer', 'Software Engineer',
-            'Data Scientist', 'Product Manager', 'UX Designer', 'DevOps Engineer', 'Mobile Developer',
-            'QA Engineer', 'Machine Learning Engineer', 'React Developer', 'Java Developer', 'Python Developer',
-            'Digital Marketing', 'Marketing Manager'
-        ];
-
-        for (const role of commonRoles) {
-            if (text.toLowerCase().includes(role.toLowerCase())) {
-                return role;
-            }
-        }
-        if (/gen\s*ai|gpt|llm/i.test(text)) return 'Generative AI Engineer';
-        return 'Candidate'; // Default
+    const handleReset = () => {
+        setResult(null);
+        setFile(null);
+        setError(null);
     };
 
     return (
-        <div className="min-h-screen bg-black dark:bg-black pt-28 pb-20 px-4 transition-colors duration-300">
+        <div className="min-h-screen bg-black pt-28 pb-20 px-4">
             <div className="max-w-6xl mx-auto space-y-12">
 
+                {/* Page header */}
                 <div className="text-center space-y-4">
-                    <div className="inline-block px-4 py-1.5 rounded-full bg-[#ADFF44]/10 dark:bg-[#ADFF44]/10/30 text-[#ADFF44] dark:text-[#ADFF44] text-sm font-semibold mb-2">
-                        🚀 AI-Powered Application Optimization
+                    <div className="inline-block px-4 py-1.5 rounded-full bg-[#ADFF44]/10 text-[#ADFF44] text-sm font-bold mb-2 uppercase tracking-widest">
+                        🚀 Career Readiness Engine
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-extrabold text-white dark:text-white tracking-tight">
-                        Perfect Your Resume for <span className="bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-fuchsia-600">Any Role</span>
+                    <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">
+                        Perfect Your Resume for <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#ADFF44] to-blue-400">Any Role</span>
                     </h1>
-                    <p className="text-lg text-neutral-400 dark:text-neutral-500 max-w-2xl mx-auto leading-relaxed">
-                        Paste a job description and let our AI analyze your resume's compatibility. Get instant feedback on missing keywords and skill gaps.
+                    <p className="text-lg text-neutral-400 max-w-2xl mx-auto leading-relaxed">
+                        Upload your resume + paste a JD. Get a letter grade, deep gap analysis, strengths, and actionable ATS optimizations.
                     </p>
                 </div>
 
-                {!result ? (
-                    <div className="max-w-4xl mx-auto">
-                        <Card className="border-0 shadow-2xl bg-neutral-900/80 dark:bg-black/80 backdrop-blur-xl ring-1 ring-slate-200 dark:ring-slate-800 overflow-hidden rounded-3xl">
-                            <div className="h-2 bg-gradient-to-r from-[#ADFF44] to-[#8BCC36] w-full" />
-                            <CardHeader className="p-8 pb-4">
-                                <CardTitle className="text-2xl font-bold flex items-center gap-3">
-                                    <FileText className="w-6 h-6 text-[#ADFF44]" />
-                                    <span>Upload & Scan</span>
-                                </CardTitle>
-                                <CardDescription className="text-base">Paste the Job Description and upload your Resume PDF.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-8 pt-4 space-y-8">
-                                <div className="grid md:grid-cols-2 gap-8">
-                                    <div className="space-y-3">
-                                        <Label className="text-base font-semibold text-neutral-300 dark:text-neutral-400">1. Job Description</Label>
-                                        <Textarea
-                                            placeholder="Paste the full job description here (e.g., 'Looking for a Product Manager with...')"
-                                            className="min-h-[240px] font-mono text-sm bg-neutral-900 dark:bg-black border-neutral-800 dark:border-neutral-800 focus:ring-violet-500 resize-none rounded-xl p-4"
-                                            value={jdText}
-                                            onChange={(e) => setJdText(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="space-y-3">
-                                        <Label className="text-base font-semibold text-neutral-300 dark:text-neutral-400">2. Your Resume</Label>
-                                        <div className="h-[240px] border-2 border-dashed border-neutral-700 dark:border-slate-700 rounded-xl flex flex-col items-center justify-center text-center hover:bg-neutral-900 dark:hover:bg-black/50 hover:border-violet-400 transition-all cursor-pointer relative group bg-neutral-900/50 dark:bg-black/50">
-                                            <Input
-                                                type="file"
-                                                accept=".pdf,.docx,.txt"
-                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                onChange={handleFileChange}
-                                            />
-                                            <div className="bg-neutral-900 dark:bg-slate-800 p-4 rounded-full shadow-sm mb-4 group-hover:scale-110 transition-transform">
-                                                <Upload className="w-8 h-8 text-[#ADFF44]" />
-                                            </div>
-                                            {file ? (
-                                                <div className="px-6">
-                                                    <p className="font-bold text-white dark:text-white text-lg truncate max-w-[200px]">{file.name}</p>
-                                                    <p className="text-sm text-neutral-500 mt-1">{(file.size / 1024).toFixed(1)} KB • Ready to Scan</p>
-                                                    <div className="mt-3 inline-flex items-center text-xs font-bold text-green-600 bg-green-100 px-3 py-1 rounded-full">
-                                                        <CheckCircle className="w-3 h-3 mr-1" /> PDF Uploaded
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="px-6">
-                                                    <p className="font-semibold text-white dark:text-white">Click to Upload Resume</p>
-                                                    <p className="text-sm text-neutral-500 mt-1">PDF or DOCX (Max 5MB)</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <Button
-                                    size="lg"
-                                    className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-xl shadow-violet-500/20 py-8 text-lg font-bold rounded-xl transition-all hover:scale-[1.01]"
-                                    onClick={handleAnalyze}
-                                    disabled={!file || !jdText || isAnalyzing}
-                                >
-                                    {isAnalyzing ? (
-                                        <>
-                                            <Loader2 className="mr-3 h-6 w-6 animate-spin" /> Analyzing Resume compatibility...
-                                        </>
-                                    ) : (
-                                        <>
-                                            Run ATS Gap Analysis <ArrowRight className="ml-2 h-6 w-6" />
-                                        </>
-                                    )}
-                                </Button>
-                                {error && (
-                                    <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl text-center mt-4 flex items-center justify-center gap-2">
-                                        <AlertCircle className="w-5 h-5" /> {error}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
-                ) : (
-                    <motion.div
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="space-y-8"
-                    >
-                        <div className="flex justify-between items-center bg-neutral-900 dark:bg-black p-4 rounded-2xl shadow-sm border border-neutral-800 dark:border-neutral-800">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-600">
-                                    <CheckCircle className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-bold text-white dark:text-white">Analysis Complete</h2>
-                                    <p className="text-sm text-neutral-500">Target Role: <span className="font-semibold text-[#ADFF44]">{detectRole(jdText)}</span></p>
-                                </div>
-                            </div>
-                            <Button variant="ghost" onClick={() => setResult(null)} className="text-neutral-500 hover:text-white">Scan Another</Button>
-                        </div>
-
-                        {/* Top: Scores */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <Card className="border-0 shadow-lg bg-neutral-900 dark:bg-black relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-[#ADFF44]" />
-                                <CardContent className="p-6 flex flex-col items-center justify-center">
-                                    <ScoreGauge score={result.score} label="Overall Match" />
-                                </CardContent>
-                            </Card>
-                            <Card className="border-0 shadow-lg bg-neutral-900 dark:bg-black relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-[#ADFF44]" />
-                                <CardContent className="p-6 flex flex-col items-center justify-center">
-                                    <ScoreGauge score={result.structureScore} label="Format Score" color="#3b82f6" />
-                                </CardContent>
-                            </Card>
-                            <Card className="border-0 shadow-lg bg-neutral-900 dark:bg-black relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-[#ADFF44]" />
-                                <CardContent className="p-6 flex flex-col items-center justify-center">
-                                    <ScoreGauge score={result.impactScore} label="Impact Score" color="#f59e0b" />
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        {/* Improved Celebration Card */}
-                        {result.score >= 80 && (
-                            <motion.div
-                                initial={{ scale: 0.95, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                className="bg-gradient-to-r from-neutral-900 to-black rounded-3xl p-8 md:p-10 text-white text-center shadow-2xl relative overflow-hidden"
-                            >
-                                <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-                                {/* Glow Effects */}
-                                <div className="absolute -top-24 -left-24 w-64 h-64 bg-[#ADFF44] rounded-full blur-3xl opacity-20"></div>
-                                <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-[#ADFF44] rounded-full blur-3xl opacity-20"></div>
-
-                                <div className="relative z-10 flex flex-col items-center">
-                                    <div className="inline-flex items-center gap-2 bg-neutral-900/10 backdrop-blur-md border border-white/20 px-4 py-1.5 rounded-full mb-6">
-                                        <span className="text-[#ADFF44]">★</span>
-                                        <span className="font-bold text-sm tracking-wide uppercase">{result.score >= 90 ? 'Top 1% Talent' : 'Top 5% Talent'}</span>
-                                    </div>
-
-                                    <h3 className="text-3xl md:text-4xl font-extrabold mb-4 tracking-tight">
-                                        {result.score >= 90 ? 'You are an Elite Candidate!' : 'You represent a Strong Contender!'}
-                                    </h3>
-
-                                    <p className="text-violet-100 text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
-                                        Your resume demonstrates exceptional alignment with the <strong>{detectRole(jdText)}</strong> profile. This score puts you ahead of 95% of applicants.
-                                    </p>
-
-                                    <Button
-                                        onClick={() => {
-                                            const role = detectRole(jdText);
-                                            const text = `I just analyzed my resume on Koutuhal and scored an ${result.score}/100 match for ${role} roles! Check your ATS score here: https://koutuhal.com`;
-                                            window.open(`https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`, '_blank');
-                                        }}
-                                        className="bg-neutral-900 text-violet-900 hover:bg-violet-50 font-bold h-12 px-8 rounded-full shadow-lg transition-all hover:scale-105 flex items-center gap-2"
-                                    >
-                                        <Linkedin className="w-5 h-5 text-[#0077b5]" /> Share Achievement
-                                    </Button>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {/* Bottom: Details */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {/* Missing Skills */}
-                            <Card className="border-0 shadow-lg overflow-hidden flex flex-col h-full bg-neutral-900 dark:bg-black">
-                                <CardHeader className="bg-red-50/50 dark:bg-red-900/10 border-b border-red-50 dark:border-red-900/20 pb-4">
-                                    <CardTitle className="flex items-center text-red-600 dark:text-red-400 text-lg">
-                                        <AlertCircle className="w-5 h-5 mr-2" /> Critical Keywords Missing
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-6 flex-grow">
-                                    {result.missingKeywords.length > 0 ? (
-                                        <div className="space-y-4">
-                                            <p className="text-sm text-neutral-500">Recruiters and ATS bots look for these exact terms. Add them to your skills or experience section contextually.</p>
-                                            <div className="flex flex-wrap gap-2">
-                                                {result.missingKeywords.map(kw => (
-                                                    <span key={kw} className="px-3 py-1.5 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 text-sm font-semibold rounded-md border border-red-100 dark:border-red-800/50">
-                                                        {kw}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="h-full flex flex-col items-center justify-center text-center py-8">
-                                            <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3">
-                                                <CheckCircle className="w-6 h-6" />
-                                            </div>
-                                            <p className="text-white font-medium">No Missing Keywords!</p>
-                                            <p className="text-sm text-neutral-500">Your resume covers all the essentials.</p>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-
-                            {/* Recommendations / Gap Analysis Section */}
-                            <Card className="border-0 shadow-lg overflow-hidden flex flex-col h-full bg-neutral-900 dark:bg-black ring-1 ring-slate-100 dark:ring-slate-800">
-                                {(!['product manager', 'digital marketing manager', 'marketing'].some(r => detectRole(jdText).toLowerCase().includes(r))) && (
-                                    <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-500 to-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-sm z-10">RECOMMENDED</div>
-                                )}
-                                <CardHeader className="bg-amber-50/50 dark:bg-amber-900/10 border-b border-amber-50 dark:border-amber-900/20 pb-4">
-                                    <CardTitle className="flex items-center text-amber-700 dark:text-[#ADFF44] text-lg">
-                                        <TrendingUp className="w-5 h-5 mr-2" />
-                                        {['product manager', 'digital marketing manager', 'marketing'].some(r => detectRole(jdText).toLowerCase().includes(r))
-                                            ? "Role-Specific Gap Analysis"
-                                            : "Recommended Next Steps"
-                                        }
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-6 space-y-6">
-
-                                    {/* 1. Gap Analysis Content (Always Show for PM/Marketing) */}
-                                    {['product manager', 'digital marketing manager', 'marketing'].some(r => detectRole(jdText).toLowerCase().includes(r)) && (
-                                        <div className="p-4 bg-neutral-900 dark:bg-black/50 rounded-xl border border-neutral-800 dark:border-neutral-800">
-                                            <p className="text-sm text-white dark:text-slate-200 font-medium mb-3">
-                                                Analysis for <strong>{detectRole(jdText)}</strong>:
-                                            </p>
-                                            <ul className="space-y-2">
-                                                <li className="flex items-start text-sm text-neutral-400 dark:text-neutral-500">
-                                                    <span className="mr-2 text-[#ADFF44]">•</span>
-                                                    <span>Missing specific technical keywords: <strong>{result.missingKeywords.join(', ') || 'None detected'}</strong>.</span>
-                                                </li>
-                                                <li className="flex items-start text-sm text-neutral-400 dark:text-neutral-500">
-                                                    <span className="mr-2 text-[#ADFF44]">•</span>
-                                                    <span>Impact score is <strong>{result.impactScore}/100</strong>. Quantify your achievements (e.g., "Increased conversion by 15%").</span>
-                                                </li>
-                                                <li className="flex items-start text-sm text-neutral-400 dark:text-neutral-500">
-                                                    <span className="mr-2 text-[#ADFF44]">•</span>
-                                                    <span>Highlight cross-functional leadership and data-driven decision making.</span>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    )}
-
-                                    {/* 2. Premium Gen AI Upsell (Correctly Gated) */}
-                                    {(!['product manager', 'digital marketing manager', 'marketing'].some(r => detectRole(jdText).toLowerCase().includes(r))) &&
-                                        (result.missingKeywords.includes('Generative AI') || /gen\s*ai|llm/i.test(jdText)) && (
-                                            <div className="relative group overflow-hidden rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/10 p-5 transition-all hover:shadow-md">
-                                                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-amber-400/20 to-transparent rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110" />
-
-                                                <div className="flex gap-4 relative z-10">
-                                                    <div className="flex-shrink-0 w-12 h-12 bg-neutral-900 dark:bg-slate-800 rounded-xl flex items-center justify-center text-2xl shadow-sm ring-1 ring-amber-100">
-                                                        ⚡
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <h4 className="font-bold text-white dark:text-white">Master Generative AI & LLMs</h4>
-                                                        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1 mb-3">Bridge your critical skill gap. Learn Prompt Engineering, RAG, and Fine-tuning.</p>
-
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-baseline gap-2">
-                                                                <span className="text-sm font-bold text-neutral-500 line-through">$199</span>
-                                                                <span className="text-sm font-bold text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded text-[10px] uppercase">75% OFF</span>
-                                                            </div>
-                                                            <Link to="/courses/gen-ai-masterclass">
-                                                                <Button size="sm" className="h-9 bg-black text-white hover:bg-slate-800 shadow-lg shadow-amber-500/10 border border-slate-700">
-                                                                    Unlock for $49 <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                                                                </Button>
-                                                            </Link>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                    {/* 3. Resume Workshop Upsell (Conditional) */}
-                                    {result.impactScore < 60 && !['product manager', 'digital marketing'].some(r => detectRole(jdText).toLowerCase().includes(r)) && (
-                                        <div className="flex items-center p-4 bg-neutral-900 dark:bg-black/50 rounded-xl border border-neutral-800 dark:border-neutral-800 hover:border-neutral-700 transition-colors">
-                                            <div className="w-10 h-10 bg-[#ADFF44]/10 text-[#ADFF44] rounded-lg flex items-center justify-center mr-4">
-                                                <FileText className="w-5 h-5" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h4 className="font-semibold text-sm">Resume Writing 101</h4>
-                                                <p className="text-xs text-neutral-500">Learn to quantify impact.</p>
-                                            </div>
-                                            <Button variant="ghost" size="sm" className="text-[#ADFF44] hover:text-[#ADFF44] hover:bg-[#ADFF44]/5 font-semibold h-8 text-xs">
-                                                Join ($29)
-                                            </Button>
-                                        </div>
-                                    )}
-
-                                    {/* Success Message */}
-                                    {result.missingKeywords.length === 0 && result.impactScore >= 80 && (
-                                        <div className="text-center py-4 text-neutral-400">
-                                            <p className="flex items-center justify-center gap-2 font-medium"><CheckCircle className="w-4 h-4 text-green-500" /> Your resume is fully optimized!</p>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                    </motion.div>
+                {/* Screens */}
+                {!result && (
+                    <UploadForm
+                        file={file}
+                        jdText={jdText}
+                        isAnalyzing={isAnalyzing}
+                        error={error}
+                        onFileChange={handleFileChange}
+                        onJdChange={setJdText}
+                        onAnalyze={handleAnalyze}
+                    />
                 )}
+
+                {result && !result.is_resume && (
+                    <NotResumeScreen onReset={handleReset} />
+                )}
+
+                {result && result.is_resume && (
+                    <ResultsScreen
+                        r={result}
+                        jdText={jdText}
+                        onReset={handleReset}
+                        onTailor={() => setIsTailorOpen(true)}
+                    />
+                )}
+
+                <ResumeTailorPanel
+                    open={isTailorOpen}
+                    onClose={() => setIsTailorOpen(false)}
+                    sharedResume={file}
+                    onResumeShared={setFile}
+                    job={{
+                        id: 'temp-' + Date.now(),
+                        title: detectRole(jdText),
+                        company: 'Your Target Role',
+                        description: jdText,
+                        location: 'Remote',
+                        type: 'Full-time',
+                        mode: 'Remote',
+                        experience: 'Intermediate',
+                        salary: 'Competitive',
+                        skills: result?.foundKeywords || [],
+                        category: 'Engineering',
+                        postedDays: 0
+                    } as Job}
+                />
+
             </div>
         </div>
     );

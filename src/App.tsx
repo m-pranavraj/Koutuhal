@@ -30,6 +30,9 @@ import AboutPage from "@/pages/AboutPage";
 import ContactPage from "@/pages/ContactPage";
 import ResumeForge from "@/pages/ResumeForge";
 import AiTutorTeaser from "@/pages/AiTutorTeaser";
+import SchoolsProgram from "@/pages/SchoolsProgram";
+import CollegesProgram from "@/pages/CollegesProgram";
+import BusinessProgram from "@/pages/BusinessProgram";
 const queryClient = new QueryClient();
 
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -96,6 +99,9 @@ const App = () => (
                   <Route path="/contact" element={<ContactPage />} />
                   <Route path="/career-check" element={<CareerReadiness />} />
                   <Route path="/ai-tutor" element={<AiTutorTeaser />} />
+                  <Route path="/programs/schools" element={<SchoolsProgram />} />
+                  <Route path="/programs/colleges" element={<CollegesProgram />} />
+                  <Route path="/programs/business" element={<BusinessProgram />} />
 
                   <Route element={<ProtectedRoute requireOnboarding={true} />}>
                     <Route path="/onboarding" element={<OnboardingRolePage />} />

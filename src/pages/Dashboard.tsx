@@ -123,7 +123,7 @@ const Dashboard = () => {
     }
   };
 
-  const userName = user?.name || "there";
+  const userName = user?.full_name || "there";
   const totalApps = stats?.total_applications ?? 0;
   const totalResumes = stats?.total_resumes ?? 0;
   const totalJobs = stats?.total_jobs ?? 0;

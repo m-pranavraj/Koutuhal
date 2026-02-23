@@ -1,29 +1,181 @@
 import { JobCard } from "@/components/cards/JobCard";
 import type { Job } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Search, Bell, SlidersHorizontal, Upload, CheckCircle2, Loader2, TrendingUp, Briefcase, Sparkles } from "lucide-react";
+import { Search, Bell, SlidersHorizontal, Upload, CheckCircle2, Loader2, TrendingUp, Briefcase, Sparkles, Wand2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ApplicationStatusDashboard } from "@/components/jobs/ApplicationStatusDashboard";
 import { JobDetailsSheet } from "@/components/jobs/JobDetailsSheet";
+import ResumeTailorPanel from "@/components/jobs/ResumeTailorPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { ApplicationProvider, useApplications } from "@/context/ApplicationContext";
 import { Badge } from "@/components/ui/badge";
 
+const ALL_DEMO_JOBS: Job[] = [
+  {
+    id: 1,
+    title: 'Senior Frontend Developer',
+    company: 'Stripe',
+    type: 'Full-time',
+    mode: 'Remote',
+    location: 'Remote',
+    experience: '4-6 years',
+    salary: '$130k – $170k',
+    description: 'Join Stripe\'s Dashboard team to build world-class payment UIs. You\'ll own features used by millions of businesses worldwide. Strong React + TypeScript required.',
+    skills: ['React', 'TypeScript', 'GraphQL', 'Tailwind CSS', 'Performance Optimization'],
+    category: 'Engineering',
+    postedDays: 1,
+  },
+  {
+    id: 2,
+    title: 'Backend Engineer — Platform',
+    company: 'Coinbase',
+    type: 'Full-time',
+    mode: 'Hybrid',
+    location: 'San Francisco, CA',
+    experience: '3-5 years',
+    salary: '$150k – $200k',
+    description: 'Build the infrastructure that powers crypto transactions at scale. Work on distributed systems, reliability engineering, and high-throughput APIs with Go and Python.',
+    skills: ['Go', 'Python', 'PostgreSQL', 'Kafka', 'Distributed Systems', 'AWS'],
+    category: 'Engineering',
+    postedDays: 2,
+  },
+  {
+    id: 3,
+    title: 'ML Engineer — Recommendations',
+    company: 'Spotify',
+    type: 'Full-time',
+    mode: 'Hybrid',
+    location: 'New York, NY',
+    experience: '3-5 years',
+    salary: '$140k – $180k',
+    description: 'Power the algorithm that serves personalized playlists to 600M+ users. You\'ll build ranking models, feature pipelines, and run A/B experiments at massive scale.',
+    skills: ['Python', 'TensorFlow', 'Spark', 'MLflow', 'SQL', 'A/B Testing'],
+    category: 'Data & ML',
+    postedDays: 3,
+  },
+  {
+    id: 4,
+    title: 'Product Designer',
+    company: 'Linear',
+    type: 'Full-time',
+    mode: 'Remote',
+    location: 'Remote',
+    experience: '3-5 years',
+    salary: '$110k – $150k',
+    description: 'Design the future of project management. Linear is known for its craft — you\'ll set the bar for interaction design, prototype in Figma, and ship high-polish features.',
+    skills: ['Figma', 'Interaction Design', 'Prototyping', 'Design Systems', 'User Research'],
+    category: 'Design',
+    postedDays: 4,
+  },
+  {
+    id: 5,
+    title: 'DevOps / Platform Engineer',
+    company: 'Vercel',
+    type: 'Full-time',
+    mode: 'Remote',
+    location: 'Remote',
+    experience: '3-5 years',
+    salary: '$130k – $175k',
+    description: 'Keep the edge network that serves 100B+ requests/month running flawlessly. Work on Kubernetes, Terraform, observability, and continuous delivery pipelines.',
+    skills: ['Kubernetes', 'Terraform', 'AWS', 'CI/CD', 'Prometheus', 'Docker'],
+    category: 'Engineering',
+    postedDays: 2,
+  },
+  {
+    id: 6,
+    title: 'Full Stack Engineer',
+    company: 'Notion',
+    type: 'Full-time',
+    mode: 'Hybrid',
+    location: 'San Francisco, CA',
+    experience: '2-5 years',
+    salary: '$140k – $185k',
+    description: 'Build the collaborative workspace used by 30M+ people. You\'ll work across the React frontend and Node.js backend, shipping features that delight power users and new sign-ups alike.',
+    skills: ['React', 'Node.js', 'TypeScript', 'PostgreSQL', 'Redis', 'WebSockets'],
+    category: 'Engineering',
+    postedDays: 1,
+  },
+  {
+    id: 7,
+    title: 'Data Analyst — Growth',
+    company: 'Figma',
+    type: 'Full-time',
+    mode: 'Hybrid',
+    location: 'San Francisco, CA',
+    experience: '2-4 years',
+    salary: '$110k – $140k',
+    description: 'Own growth analytics at a design-first company. Run cohort analyses, build dashboards in Looker, run experiments, and translate data into product strategy.',
+    skills: ['SQL', 'Python', 'Looker', 'dbt', 'Amplitude', 'Statistics'],
+    category: 'Data & ML',
+    postedDays: 5,
+  },
+  {
+    id: 8,
+    title: 'iOS Engineer',
+    company: 'Airbnb',
+    type: 'Full-time',
+    mode: 'Hybrid',
+    location: 'San Francisco, CA',
+    experience: '3-6 years',
+    salary: '$150k – $200k',
+    description: 'Build the iOS app used by millions of travelers and hosts every day. Own entire product areas, collaborate with design, and raise the bar for mobile engineering at Airbnb.',
+    skills: ['Swift', 'SwiftUI', 'Combine', 'Objective-C', 'Core Data', 'CI/CD'],
+    category: 'Mobile',
+    postedDays: 3,
+  },
+  {
+    id: 9,
+    title: 'Product Manager — API Platform',
+    company: 'Twilio',
+    type: 'Full-time',
+    mode: 'Remote',
+    location: 'Remote',
+    experience: '3-6 years',
+    salary: '$140k – $180k',
+    description: 'Drive the vision for Twilio\'s developer platform. You\'ll set the roadmap, work closely with engineering, and iterate based on voice-of-customer research.',
+    skills: ['Product Strategy', 'APIs', 'Agile', 'SQL', 'Roadmapping', 'Customer Discovery'],
+    category: 'Product',
+    postedDays: 6,
+  },
+  {
+    id: 10,
+    title: 'Security Engineer',
+    company: 'GitHub',
+    type: 'Full-time',
+    mode: 'Remote',
+    location: 'Remote',
+    experience: '3-6 years',
+    salary: '$160k – $210k',
+    description: 'Protect the platform that hosts 100M+ developers\' code. You\'ll do threat modelling, penetration testing, vulnerability management, and harden GitHub\'s cloud infrastructure.',
+    skills: ['AppSec', 'Penetration Testing', 'Cloud Security', 'Python', 'SAST/DAST', 'AWS'],
+    category: 'Security',
+    postedDays: 2,
+  },
+];
+
+const JOB_TYPES = ['Internship', 'Full-time', 'Contract'];
+const JOB_CATEGORIES = ['Engineering', 'Design', 'Data & ML', 'Mobile', 'Product', 'Security'];
+
 const JobsContent = () => {
   const [isMatching, setIsMatching] = useState(false);
   const [matchComplete, setMatchComplete] = useState(false);
-  const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [dbJobs, setDbJobs] = useState<Job[]>([]);
   const [selectedResume, setSelectedResume] = useState<File | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
 
   // Navigation State
   const [viewMode, setViewMode] = useState<'find' | 'applied'>('find');
   const [dashboardOpen, setDashboardOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [tailorJob, setTailorJob] = useState<Job | null>(null);
+  const [tailorOpen, setTailorOpen] = useState(false);
   const [currentRank, setCurrentRank] = useState(0);
+  // Shared resume across all tailor sessions
+  const [sharedResume, setSharedResume] = useState<File | null>(null);
 
   const { appliedJobs } = useApplications();
 
@@ -38,116 +190,69 @@ const JobsContent = () => {
         m.supabase.from('jobs').select('*').eq('is_active', true).order('created_at', { ascending: false })
       );
 
-      if (supabaseError) {
-        console.error('Supabase error:', supabaseError);
-        setJobs(getDemoJobs());
-        return;
+      if (supabaseError || !data || data.length === 0) {
+        setDbJobs([]);
+      } else {
+        const mapped = data.map((j: any) => ({
+          id: j.id,
+          title: j.title,
+          company: j.company,
+          type: j.job_type || 'Full-time',
+          mode: j.location?.toLowerCase().includes('remote') ? 'Remote' : 'WFO',
+          location: j.location,
+          experience: j.experience_level || 'Open',
+          salary: j.salary_range || 'Competitive',
+          description: j.description,
+          skills: j.skills || [],
+          category: j.job_type || 'Engineering',
+          postedDays: j.created_at ? Math.floor((Date.now() - new Date(j.created_at).getTime()) / 86400000) : 0,
+        }));
+        setDbJobs(mapped);
       }
-
-      if (!data || data.length === 0) {
-        setJobs(getDemoJobs());
-        return;
-      }
-
-      const mapped = data.map((j: any) => ({
-        id: j.id,
-        title: j.title,
-        company: j.company,
-        type: j.job_type || 'Full-time',
-        mode: j.location?.toLowerCase().includes('remote') ? 'Remote' : 'WFO',
-        location: j.location,
-        experience: j.experience_level || 'Open',
-        salary: j.salary_range || 'Competitive',
-        description: j.description,
-        skills: j.skills || [],
-        category: j.job_type || 'Engineering',
-        postedDays: j.created_at ? Math.floor((Date.now() - new Date(j.created_at).getTime()) / 86400000) : 0,
-      }));
-      setJobs(mapped);
-    } catch (err) {
-      console.error(err);
-      setJobs(getDemoJobs());
+    } catch {
+      setDbJobs([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getDemoJobs = (): Job[] => [
-    {
-      id: 1,
-      title: 'Senior Frontend Developer',
-      company: 'Tech Solutions Inc.',
-      type: 'Full-time',
-      mode: 'Remote',
-      location: 'Remote',
-      experience: '3-5 years',
-      salary: '$80k - $120k',
-      description: 'We are looking for an experienced Frontend Developer to join our team.',
-      skills: ['React', 'TypeScript', 'Tailwind CSS'],
-      category: 'Engineering',
-      postedDays: 2
-    },
-    {
-      id: 2,
-      title: 'Full Stack Engineer',
-      company: 'Startup Labs',
-      type: 'Full-time',
-      mode: 'Hybrid',
-      location: 'San Francisco, CA',
-      experience: '2-4 years',
-      salary: '$90k - $140k',
-      description: 'Join our fast-growing startup as a Full Stack Engineer.',
-      skills: ['Node.js', 'React', 'PostgreSQL', 'AWS'],
-      category: 'Engineering',
-      postedDays: 5
-    },
-    {
-      id: 3,
-      title: 'Backend Developer',
-      company: 'Enterprise Corp',
-      type: 'Full-time',
-      mode: 'WFO',
-      location: 'New York, NY',
-      experience: '4-6 years',
-      salary: '$100k - $150k',
-      description: 'Looking for a skilled Backend Developer to build scalable systems.',
-      skills: ['Python', 'FastAPI', 'Docker', 'Kubernetes'],
-      category: 'Engineering',
-      postedDays: 1
-    },
-    {
-      id: 4,
-      title: 'UI/UX Designer',
-      company: 'Creative Agency',
-      type: 'Full-time',
-      mode: 'Remote',
-      location: 'Remote',
-      experience: '2-4 years',
-      salary: '$70k - $100k',
-      description: 'Create beautiful and intuitive user experiences for our clients.',
-      skills: ['Figma', 'Adobe XD', 'User Research', 'Prototyping'],
-      category: 'Design',
-      postedDays: 3
-    },
-    {
-      id: 5,
-      title: 'DevOps Engineer',
-      company: 'Cloud Systems',
-      type: 'Full-time',
-      mode: 'Hybrid',
-      location: 'Seattle, WA',
-      experience: '3-5 years',
-      salary: '$110k - $160k',
-      description: 'Manage and optimize our cloud infrastructure.',
-      skills: ['AWS', 'Terraform', 'Kubernetes', 'CI/CD'],
-      category: 'Engineering',
-      postedDays: 4
+  // Merge db jobs + demo jobs, deduplicate by title
+  const baseJobs = useMemo(() => {
+    if (dbJobs.length > 0) return dbJobs;
+    return ALL_DEMO_JOBS;
+  }, [dbJobs]);
+
+  // Live filter
+  const jobs = useMemo(() => {
+    let list = baseJobs;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(j =>
+        j.title.toLowerCase().includes(q) ||
+        j.company.toLowerCase().includes(q) ||
+        j.skills?.some(s => s.toLowerCase().includes(q)) ||
+        j.category?.toLowerCase().includes(q)
+      );
     }
-  ];
+
+    if (selectedTypes.length > 0) {
+      list = list.filter(j => selectedTypes.includes(j.type));
+    }
+
+    return list;
+  }, [baseJobs, searchQuery, selectedTypes]);
+
+  const toggleType = (type: string) => {
+    setSelectedTypes(prev =>
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    );
+  };
 
   const handleResumeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+    if (e.target.files?.[0]) {
       setSelectedResume(e.target.files[0]);
+      setSharedResume(e.target.files[0]);
     }
   };
 
@@ -155,25 +260,20 @@ const JobsContent = () => {
     if (!selectedResume) return;
     setIsMatching(true);
     setMatchComplete(false);
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      const currentJobs = jobs.length > 0 ? jobs : getDemoJobs();
-      const shuffled = [...currentJobs].sort(() => Math.random() - 0.5);
-      setJobs(shuffled);
-      setMatchComplete(true);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to run matching. Please try again.");
-    } finally {
-      setIsMatching(false);
-    }
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setMatchComplete(true);
+    setIsMatching(false);
   };
 
   const openJobDetails = (job: Job) => {
     setSelectedJob(job);
     setSheetOpen(true);
+  };
+
+  const openTailor = (job: Job, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTailorJob(job);
+    setTailorOpen(true);
   };
 
   const openDashboard = (jobTitle: string, rank: number) => {
@@ -198,10 +298,17 @@ const JobsContent = () => {
         initialRank={currentRank || 4}
       />
 
-      {/* Container */}
+      <ResumeTailorPanel
+        job={tailorJob}
+        open={tailorOpen}
+        onClose={() => setTailorOpen(false)}
+        sharedResume={sharedResume}
+        onResumeShared={(f) => setSharedResume(f)}
+      />
+
       <div className="container mx-auto max-w-7xl px-4 pt-32 pb-12">
 
-        {/* Header / Search */}
+        {/* Header */}
         <div className="flex flex-col md:flex-row items-center justify-between mb-10">
           <div className="text-center md:text-left mb-6 md:mb-0">
             <h1 className="text-4xl font-bold text-gray-900 dark:text-slate-100 mb-2 tracking-tight">
@@ -209,7 +316,7 @@ const JobsContent = () => {
             </h1>
             <p className="text-gray-500 dark:text-neutral-500 text-lg">
               {viewMode === 'find'
-                ? "Explore exciting opportunities from our trusted partner companies."
+                ? "Explore top opportunities. Click ✨ Tailor to auto-tailor your resume to any role."
                 : "Track the status of your ongoing job applications."}
             </p>
           </div>
@@ -238,48 +345,37 @@ const JobsContent = () => {
         {viewMode === 'find' ? (
           <>
             {/* HERO: Intelligent Job Matcher */}
-            <div className="relative mb-20 rounded-3xl overflow-hidden border border-white/10 bg-neutral-900/50 backdrop-blur-md shadow-2xl">
-              {/* Background Grid & Glow */}
+            <div className="relative mb-16 rounded-3xl overflow-hidden border border-white/10 bg-neutral-900/50 backdrop-blur-md shadow-2xl">
               <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
               <div className="absolute -top-20 -right-20 w-[600px] h-[600px] bg-[#ADFF44]/10 blur-[120px] rounded-full pointer-events-none animate-pulse" />
               <div className="absolute -bottom-20 -left-20 w-[400px] h-[400px] bg-blue-500/10 blur-[100px] rounded-full pointer-events-none" />
 
-              <div className="relative z-10 p-12 md:p-16 text-center flex flex-col items-center">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <Badge className="bg-[#ADFF44] text-black hover:bg-[#ADFF44] mb-6 px-4 py-1.5 text-xs tracking-widest font-bold uppercase shadow-[0_0_20px_rgba(173,255,68,0.3)]">
+              <div className="relative z-10 p-10 md:p-14 text-center flex flex-col items-center">
+                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}>
+                  <Badge className="bg-[#ADFF44] text-black hover:bg-[#ADFF44] mb-5 px-4 py-1.5 text-xs tracking-widest font-bold uppercase shadow-[0_0_20px_rgba(173,255,68,0.3)]">
                     <Sparkles className="w-3 h-3 mr-2 fill-black" />
-                    AI Resume Scanner
+                    AI Resume Matcher
                   </Badge>
                 </motion.div>
 
                 <motion.h2
-                  className="text-4xl md:text-6xl font-display font-black text-white mb-6 tracking-tight leading-tight max-w-4xl"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.1 }}
+                  className="text-3xl md:text-5xl font-display font-black text-white mb-4 tracking-tight leading-tight max-w-3xl"
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }}
                 >
-                  Find Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-400">Perfect Role</span> with <span className="text-[#ADFF44] underline decoration-[#ADFF44]/30 underline-offset-8">Intelligent AI</span>
+                  Upload Resume → <span className="text-[#ADFF44]">Get Matched</span> Instantly
                 </motion.h2>
 
                 <motion.p
-                  className="text-neutral-400 max-w-2xl mx-auto mb-12 text-lg md:text-xl font-light leading-relaxed"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.2 }}
+                  className="text-neutral-400 max-w-xl mx-auto mb-10 text-base md:text-lg font-light leading-relaxed"
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}
                 >
-                  Drag & drop your resume to let our neural engine analyze 100+ active listings and identify the top <span className="text-white font-medium">1% matches</span> tailored to your skills.
+                  Upload your resume to find your best-matched roles. Then click <strong className="text-white">✨ Tailor</strong> beside any job to auto-tailor your resume to that role.
                 </motion.p>
 
                 {!matchComplete ? (
                   <motion.div
-                    className="flex flex-col items-center gap-6 w-full max-w-md"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.3 }}
+                    className="flex flex-col items-center gap-5 w-full max-w-md"
+                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.3 }}
                   >
                     <div className="relative group w-full">
                       <div className="absolute -inset-1 bg-gradient-to-r from-[#ADFF44] to-blue-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200" />
@@ -290,45 +386,34 @@ const JobsContent = () => {
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                           onChange={handleResumeUpload}
                         />
-                        <Button size="lg" className="w-full bg-neutral-800/50 hover:bg-neutral-800 text-white border-dashed border-2 border-neutral-700 hover:border-[#ADFF44]/50 h-32 flex flex-col items-center justify-center gap-3 transition-all group-hover:bg-neutral-800/80">
+                        <Button size="lg" className="w-full bg-neutral-800/50 hover:bg-neutral-800 text-white border-dashed border-2 border-neutral-700 hover:border-[#ADFF44]/50 h-28 flex flex-col items-center justify-center gap-3 transition-all group-hover:bg-neutral-800/80">
                           <div className="p-3 bg-neutral-900 rounded-full border border-neutral-700 group-hover:border-[#ADFF44] group-hover:scale-110 transition-transform">
                             <Upload className="w-6 h-6 text-neutral-400 group-hover:text-[#ADFF44]" />
                           </div>
-                          <span className="text-lg font-medium group-hover:text-[#ADFF44] transition-colors">
+                          <span className="text-base font-medium group-hover:text-[#ADFF44] transition-colors">
                             {selectedResume ? selectedResume.name : "Upload Resume (PDF)"}
-                          </span>
-                          <span className="text-xs text-neutral-500 font-normal">
-                            {selectedResume ? "Click to change file" : "Drag & drop or browse"}
                           </span>
                         </Button>
                       </div>
                     </div>
 
                     {selectedResume && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="w-full"
-                      >
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="w-full">
                         <Button
                           onClick={runMatchingEngine}
                           disabled={isMatching}
                           className="w-full bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-bold h-14 text-lg rounded-xl shadow-[0_0_30px_rgba(173,255,68,0.2)] hover:shadow-[0_0_50px_rgba(173,255,68,0.4)] transition-all transform hover:-translate-y-1"
                         >
                           {isMatching ? (
-                            <span className="flex items-center gap-2">
-                              <Loader2 className="animate-spin w-5 h-5" />
-                              Analyzing Skills Matrix...
-                            </span>
-                          ) : "Run Match Analysis"}
+                            <span className="flex items-center gap-2"><Loader2 className="animate-spin w-5 h-5" /> Matching Roles...</span>
+                          ) : "Run AI Match Analysis"}
                         </Button>
                       </motion.div>
                     )}
                   </motion.div>
                 ) : (
                   <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
+                    initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                     className="bg-[#ADFF44]/10 backdrop-blur-xl border border-[#ADFF44]/30 px-8 py-6 rounded-2xl inline-block shadow-[0_0_60px_-15px_rgba(173,255,68,0.3)]"
                   >
                     <div className="flex items-center gap-4 text-white">
@@ -336,10 +421,10 @@ const JobsContent = () => {
                         <CheckCircle2 className="w-7 h-7 text-black" />
                       </div>
                       <div className="text-left">
-                        <h3 className="font-bold text-2xl text-white">Analysis Complete</h3>
+                        <h3 className="font-bold text-2xl text-white">Matches Found!</h3>
                         <p className="text-[#ADFF44] font-medium flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-[#ADFF44] animate-pulse" />
-                          Found 3 High-Match Roles
+                          {jobs.length} Roles · Click ✨ Tailor on any job
                         </p>
                       </div>
                     </div>
@@ -348,7 +433,19 @@ const JobsContent = () => {
               </div>
             </div>
 
-            {/* Main Content Grid */}
+            {/* Search bar */}
+            <div className="relative mb-8">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
+              <input
+                type="text"
+                placeholder="Search by title, company, skills (e.g. 'Python', 'Stripe', 'Remote')..."
+                className="w-full pl-12 pr-6 py-4 rounded-2xl bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-[#ADFF44]/30 text-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            {/* Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
 
               {/* Sidebar Filters */}
@@ -358,37 +455,44 @@ const JobsContent = () => {
                     <h3 className="font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2 text-lg">
                       <SlidersHorizontal className="w-5 h-5" /> Filters
                     </h3>
+                    {selectedTypes.length > 0 && (
+                      <button onClick={() => setSelectedTypes([])} className="text-xs text-neutral-500 hover:text-red-400 transition">Clear</button>
+                    )}
                   </div>
 
-                  {/* Filter Group: Job Type */}
-                  <div className="mb-0">
-                    <h4 className="text-sm font-semibold text-gray-900 dark:text-slate-100 mb-4">Job Type</h4>
-                    <div className="space-y-3">
-                      {['Internship', 'Full-time', 'Contract'].map(type => (
-                        <label key={type} className="flex items-center justify-between group cursor-pointer select-none">
-                          <div className="flex items-center gap-3">
-                            <Checkbox id={type} className="rounded-md border-gray-300 dark:border-slate-700 data-[state=checked]:bg-[#ADFF44] data-[state=checked]:border-[#ADFF44]" />
-                            <span className="text-sm text-gray-600 dark:text-neutral-500 group-hover:text-gray-900 dark:group-hover:text-slate-100">{type}</span>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-slate-100 mb-4">Job Type</h4>
+                  <div className="space-y-3">
+                    {JOB_TYPES.map(type => (
+                      <label key={type} className="flex items-center justify-between group cursor-pointer select-none">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id={type}
+                            checked={selectedTypes.includes(type)}
+                            onCheckedChange={() => toggleType(type)}
+                            className="rounded-md border-gray-300 dark:border-slate-700 data-[state=checked]:bg-[#ADFF44] data-[state=checked]:border-[#ADFF44]"
+                          />
+                          <span className="text-sm text-gray-600 dark:text-neutral-500 group-hover:text-gray-900 dark:group-hover:text-slate-100">{type}</span>
+                        </div>
+                      </label>
+                    ))}
                   </div>
                 </div>
               </div>
 
               {/* Results List */}
               <div className="lg:col-span-3">
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
-                      {matchComplete ? "Recommended For You" : "All Job Openings"}
+                      {matchComplete ? "Best Matches for You" : "All Openings"}
                     </h2>
-                    <p className="text-sm text-gray-500 dark:text-neutral-500 mt-1">{jobs.length} Jobs Found</p>
+                    <p className="text-sm text-gray-500 dark:text-neutral-500 mt-1">
+                      {jobs.length} job{jobs.length !== 1 ? 's' : ''} found
+                    </p>
                   </div>
                 </div>
 
-                <div className="grid gap-6">
+                <div className="grid gap-4">
                   {isLoading && (
                     <div className="flex flex-col items-center justify-center py-20">
                       <Loader2 className="w-10 h-10 text-[#ADFF44] animate-spin mb-4" />
@@ -396,14 +500,15 @@ const JobsContent = () => {
                     </div>
                   )}
 
-                  {error && (
-                    <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl text-center">
-                      {error}
-                      <Button variant="link" onClick={fetchJobs} className="text-red-400 underline ml-2">Try Again</Button>
+                  {!isLoading && jobs.length === 0 && (
+                    <div className="text-center py-16 text-neutral-500">
+                      <Search className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                      <p className="font-medium">No jobs match "{searchQuery}"</p>
+                      <button onClick={() => setSearchQuery('')} className="text-sm text-[#ADFF44] mt-2 hover:underline">Clear search</button>
                     </div>
                   )}
 
-                  {!isLoading && !error && (
+                  {!isLoading && (
                     <AnimatePresence>
                       {jobs.map((job, index) => {
                         const isTopMatch = matchComplete && index < 3;
@@ -413,16 +518,24 @@ const JobsContent = () => {
                             key={job.id}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="relative group block"
-                            onClick={() => openJobDetails(job)}
+                            transition={{ delay: index * 0.05 }}
+                            className="relative group"
                           >
                             {isTopMatch && (
                               <div className="absolute -top-3 -right-3 z-10 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg flex items-center gap-1">
                                 <TrendingUp className="w-3 h-3" /> {matchScore}% Match
                               </div>
                             )}
-                            <div className="cursor-pointer">
+
+                            {/* Tailor Resume button */}
+                            <button
+                              onClick={(e) => openTailor(job, e)}
+                              className="absolute bottom-4 right-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-800 border border-[#ADFF44]/20 text-[#ADFF44] text-xs font-bold hover:bg-[#ADFF44] hover:text-black transition-all opacity-0 group-hover:opacity-100 shadow-lg"
+                            >
+                              <Wand2 className="w-3.5 h-3.5" /> Tailor Resume
+                            </button>
+
+                            <div className="cursor-pointer" onClick={() => openJobDetails(job)}>
                               <JobCard job={job} />
                             </div>
                           </motion.div>

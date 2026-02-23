@@ -25,18 +25,26 @@ import {
   Brain,
   Rocket,
   MessageSquare,
+  Linkedin,
 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import ScrollSequence from "@/components/motion/ScrollSequence";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import udayanImg from '@/assets/mentors/udyan.png.jpeg';
 import shireenImg from '@/assets/mentors/shireen.png.jpeg';
 import adityaImg from '@/assets/mentors/aditya.png.jpeg';
 // Importing Coach Images (Assuming Screenshots correspond to User upload)
 import pritamImg from '@/assets/mentors/Screenshot 2026-02-14 134010.png';
-import sumitraImg from '@/assets/mentors/sumitra.png';
-// Shuchi's image not found in assets, using placeholder or public path fallback
-const shuchiImg = "/mentors/shuchi.jpg";
+const sumitraImg = "/mentors/sumitra.jpeg";
+const suchiImg = "/mentors/suchi.png";
 
 
 
@@ -97,7 +105,12 @@ const mentors = [
     experience: "8+ years",
     rating: 4.9,
     status: "Available",
-    image: "/mentors/shehzaad.png"
+    image: "/mentors/shehzaad.png",
+    linkedin: "https://www.linkedin.com/in/shehzaadzd/",
+    about: "Research Scientist at Meta specializing in AI and machine learning technologies.",
+    expertise: ["AI Research", "Machine Learning", "Deep Learning", "NLP"],
+    achievements: ["Leading AI research at Meta", "Published research in top AI conferences", "Expert in machine learning systems"],
+    mentorship: ["AI Research", "Technical Skills", "Career Guidance"]
   },
   {
     name: "Koushik G",
@@ -106,7 +119,12 @@ const mentors = [
     experience: "7+ years",
     rating: 4.9,
     status: "Limited",
-    image: "/mentors/koushik.png"
+    image: "/mentors/koushik.png",
+    linkedin: "https://www.linkedin.com/in/koushikgj/",
+    about: "Product Manager at McKinsey with expertise in strategic product development.",
+    expertise: ["Product Management", "Strategy", "Business Development", "Analytics"],
+    achievements: ["Leading product strategy at McKinsey", "Expert in business transformation", "Strategic consulting experience"],
+    mentorship: ["Product Strategy", "Business Skills", "Leadership"]
   },
   {
     name: "Arvind Iyer",
@@ -115,7 +133,12 @@ const mentors = [
     experience: "10+ years",
     rating: 4.9,
     status: "Available",
-    image: "/mentors/arvind.jpg"
+    image: "/mentors/arvind.jpg",
+    linkedin: "https://www.linkedin.com/in/iyer-arvind/",
+    about: "Cybersecurity Advisor at Optiv with extensive experience in security consulting.",
+    expertise: ["Cybersecurity", "Risk Management", "Security Consulting", "Compliance"],
+    achievements: ["Leading cybersecurity initiatives at Optiv", "Expert in enterprise security", "Security risk assessment specialist"],
+    mentorship: ["Cybersecurity", "Risk Management", "Technical Consulting"]
   },
   {
     name: "Rakind Gupta",
@@ -124,7 +147,12 @@ const mentors = [
     experience: "12+ years",
     rating: 4.9,
     status: "Waitlist",
-    image: "/mentors/rakind.jpg"
+    image: "/mentors/rakind.jpg",
+    linkedin: "https://www.linkedin.com/in/rakindgupta/",
+    about: "Strategy Consultant at Bain Consulting specializing in business strategy and operations.",
+    expertise: ["Strategy Consulting", "Business Operations", "Market Analysis", "Growth Strategy"],
+    achievements: ["Strategy consultant at Bain & Company", "Expert in business transformation", "Market strategy specialist"],
+    mentorship: ["Business Strategy", "Consulting Skills", "Market Analysis"]
   },
   {
     name: "Ronit Khopkar",
@@ -133,7 +161,12 @@ const mentors = [
     experience: "10+ years",
     rating: 4.9,
     status: "Limited",
-    image: "/mentors/ronit.jpg"
+    image: "/mentors/ronit.jpg",
+    linkedin: "https://www.linkedin.com/in/ronitkhopkar/",
+    about: "Founder and CEO of Barter with expertise in entrepreneurship and startup building.",
+    expertise: ["Entrepreneurship", "Startup Strategy", "Business Development", "Leadership"],
+    achievements: ["Founded and leads Barter as CEO", "Successful entrepreneur and business leader", "Expert in startup ecosystem"],
+    mentorship: ["Entrepreneurship", "Startup Building", "Leadership"]
   },
   {
     name: "Udayan Anand",
@@ -142,7 +175,12 @@ const mentors = [
     experience: "8+ years",
     rating: 4.9,
     status: "Available",
-    image: udayanImg
+    image: udayanImg,
+    linkedin: "https://www.linkedin.com/in/udayan-anand/",
+    about: "Founder and CEO of Finish Line Athlete combining sports and business expertise.",
+    expertise: ["Sports Business", "Entrepreneurship", "Athletic Performance", "Leadership"],
+    achievements: ["Founded Finish Line Athlete", "Expert in sports business development", "Athletic performance specialist"],
+    mentorship: ["Sports Business", "Entrepreneurship", "Performance Coaching"]
   },
   {
     name: "Shireen Nagdive",
@@ -151,7 +189,12 @@ const mentors = [
     experience: "8+ years",
     rating: 4.9,
     status: "Available",
-    image: shireenImg
+    image: shireenImg,
+    linkedin: "https://www.linkedin.com/in/shireennagdive/",
+    about: "Lead Software Engineer at Salesforce with expertise in software development and engineering.",
+    expertise: ["Software Engineering", "Cloud Computing", "System Design", "Team Leadership"],
+    achievements: ["Lead Software Engineer at Salesforce", "Expert in cloud-based solutions", "Technical team leadership experience"],
+    mentorship: ["Software Engineering", "Technical Leadership", "Cloud Computing"]
   },
   {
     name: "Aditya Kamath",
@@ -160,7 +203,12 @@ const mentors = [
     experience: "8+ years",
     rating: 4.9,
     status: "Limited",
-    image: adityaImg
+    image: adityaImg,
+    linkedin: "https://www.linkedin.com/in/aditya-kamath-1163a25b/",
+    about: "Senior Engineer at Qualcomm specializing in advanced engineering solutions.",
+    expertise: ["Hardware Engineering", "Wireless Technology", "System Design", "Innovation"],
+    achievements: ["Senior Engineer at Qualcomm", "Expert in wireless technologies", "Hardware and system design specialist"],
+    mentorship: ["Engineering", "Hardware Design", "Wireless Technology"]
   },
 ];
 
@@ -196,17 +244,17 @@ const testimonials = [
   {
     quote: "Koutuhal transformed my understanding of AI. The practical approach and expert guidance helped me land an internship at a top tech company.",
     name: "Arjun Patel",
-    role: "Computer Science Student, IIT Bombay"
+    role: "Computer Science Student"
   },
   {
     quote: "The course content is incredibly well-structured. I went from AI novice to building my own machine learning models in just 12 weeks.",
     name: "Sneha Reddy",
-    role: "Engineering Graduate, BITS Pilani"
+    role: "Engineering Graduate"
   },
   {
     quote: "Perfect blend of technical depth and business applications. Now I can speak confidently about AI strategy in my consulting interviews.",
     name: "Vikram Singh",
-    role: "MBA Student, ISB Hyderabad"
+    role: "MBA Student"
   }
 ];
 
@@ -407,9 +455,9 @@ const Home = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { title: "AI for Schools", icon: GraduationCap, color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20", desc: "Curriculum aligned with NEP 2020 for young minds." },
-              { title: "AI for Colleges", icon: BookOpen, color: "text-purple-400", bg: "bg-purple-400/10", border: "border-purple-400/20", desc: "Advanced operational AI skills for undergraduates." },
-              { title: "AI for Businesses", icon: Briefcase, color: "text-orange-400", bg: "bg-orange-400/10", border: "border-orange-400/20", desc: "Corporate training to boost workforce productivity." }
+              { title: "AI for Schools", icon: GraduationCap, color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20", desc: "Curriculum aligned with NEP 2020 for young minds.", link: "/programs/schools" },
+              { title: "AI for Colleges", icon: BookOpen, color: "text-purple-400", bg: "bg-purple-400/10", border: "border-purple-400/20", desc: "Advanced operational AI skills for undergraduates.", link: "/programs/colleges" },
+              { title: "AI for Businesses", icon: Briefcase, color: "text-orange-400", bg: "bg-orange-400/10", border: "border-orange-400/20", desc: "Corporate training to boost workforce productivity.", link: "/programs/business" }
             ].map((item, i) => (
               <motion.div
                 key={i}
@@ -438,7 +486,7 @@ const Home = () => {
                   </p>
 
                   <div className="mt-auto">
-                    <Link to="/courses" className="inline-flex items-center justify-center w-full py-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-sm font-bold text-white group-hover:tracking-wider">
+                    <Link to={item.link} className="inline-flex items-center justify-center w-full py-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-sm font-bold text-white group-hover:tracking-wider">
                       View Programs <ChevronRight className="h-4 w-4 ml-2" />
                     </Link>
                   </div>
@@ -490,11 +538,115 @@ const Home = () => {
                 </div>
 
                 <div className="px-1">
-                  <h3 className="text-lg font-bold text-white mb-1 group-hover:text-[#ADFF44] transition-colors">{mentor.name}</h3>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <h3 className="text-lg font-bold text-white group-hover:text-[#ADFF44] transition-colors">{mentor.name}</h3>
+                    {mentor.linkedin && (
+                      <a
+                        href={mentor.linkedin}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 rounded-full bg-white/5 hover:bg-[#0077B5]/20 text-neutral-400 hover:text-[#0077B5] transition-all border border-white/5 hover:border-[#0077B5]/30 group/link"
+                      >
+                        <Linkedin className="h-3.5 w-3.5 group-hover/link:scale-110 transition-transform" />
+                      </a>
+                    )}
+                  </div>
                   <p className="text-sm text-neutral-400 mb-0.5 font-medium">{mentor.role}</p>
                   <p className="text-xs font-bold text-[#ADFF44] mb-3">{mentor.company}</p>
 
-                  <div className="flex items-center gap-2 text-xs text-neutral-500 border-t border-neutral-800 pt-3 mt-3">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="w-full mb-3 bg-white/5 border-white/10 text-xs font-bold hover:bg-[#ADFF44] hover:text-black hover:border-0 h-9 rounded-xl transition-all">
+                        View Profile
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl bg-neutral-950 border-neutral-800 text-white p-0 overflow-hidden rounded-[2rem]">
+                      <div className="relative">
+                        {/* Header Image Gradient Background */}
+                        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-[#ADFF44]/10 to-transparent pointer-events-none" />
+
+                        <div className="p-8 relative z-10">
+                          <div className="flex flex-col md:flex-row gap-6 mb-8">
+                            <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-[#ADFF44]/20 bg-neutral-900 shrink-0">
+                              <img src={mentor.image} alt={mentor.name} className="w-full h-full object-cover" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between gap-4">
+                                <DialogTitle className="text-3xl font-black font-display tracking-tight">{mentor.name}</DialogTitle>
+                                <a href={mentor.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0077B5]/10 text-[#0077B5] border border-[#0077B5]/20 hover:bg-[#0077B5] hover:text-white transition-all text-xs font-bold">
+                                  <Linkedin className="h-4 w-4" /> LinkedIn
+                                </a>
+                              </div>
+                              <p className="text-[#ADFF44] font-bold uppercase tracking-widest text-sm mb-1">{mentor.role} @ {mentor.company}</p>
+                              <div className="flex items-center gap-4 mt-2">
+                                <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+                                  <Briefcase className="h-3.5 w-3.5 text-neutral-500" /> {mentor.experience} Exp
+                                </div>
+                                <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+                                  <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" /> {mentor.rating} Rating
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar">
+                            <div className="space-y-6">
+                              <div>
+                                <h4 className="text-xs font-black text-neutral-500 uppercase tracking-widest mb-3">About</h4>
+                                <DialogDescription className="text-neutral-400 text-sm leading-relaxed">
+                                  {mentor.about}
+                                </DialogDescription>
+                              </div>
+
+                              <div>
+                                <h4 className="text-xs font-black text-neutral-500 uppercase tracking-widest mb-3">Expertise</h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {mentor.expertise.map((item, idx) => (
+                                    <Badge key={idx} variant="outline" className="bg-neutral-900 border-neutral-800 text-neutral-300 text-[10px] px-2 py-0.5 rounded-md">
+                                      {item}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-6">
+                              <div>
+                                <h4 className="text-xs font-black text-neutral-500 uppercase tracking-widest mb-3">Key Achievements</h4>
+                                <ul className="space-y-2">
+                                  {mentor.achievements.map((item, idx) => (
+                                    <li key={idx} className="flex gap-2 text-sm text-neutral-400">
+                                      <CheckCircle className="h-4 w-4 text-[#ADFF44] shrink-0 mt-0.5" />
+                                      {item}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+
+                              <div>
+                                <h4 className="text-xs font-black text-neutral-500 uppercase tracking-widest mb-3">Mentorship Areas</h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {mentor.mentorship.map((item, idx) => (
+                                    <span key={idx} className="text-xs font-bold text-white py-1 px-3 rounded-full bg-white/5 border border-white/5">
+                                      {item}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-8 pt-6 border-t border-neutral-900 flex justify-between items-center bg-neutral-950/50 backdrop-blur-xl">
+                            <Button className="w-full bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-black uppercase tracking-widest py-6 rounded-2xl shadow-[0_0_20px_rgba(173,255,68,0.2)]">
+                              Book 1:1 Session
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  <div className="flex items-center gap-2 text-xs text-neutral-500 border-t border-neutral-800 pt-3">
                     <Briefcase className="h-3 w-3" />
                     {mentor.experience} experience
                   </div>
@@ -598,7 +750,7 @@ const Home = () => {
           <div className="grid md:grid-cols-3 gap-8">
             {[
               { name: "Pritam", role: "AI Automation Expert", desc: "18+ years in AI Automation. Expert in developing intelligent systems.", tags: ["Enterprise AI", "Automation"], image: pritamImg },
-              { name: "Shuchi", role: "AI Coach", desc: "10+ years expertise in training students and professionals in AI/ML.", tags: ["Machine Learning", "Training"], image: shuchiImg },
+              { name: "Suchi", role: "AI Coach", desc: "10+ years expertise in training students and professionals in AI/ML.", tags: ["Machine Learning", "Training"], image: suchiImg },
               { name: "Sumitra P", role: "Automation Expert", desc: "Worked with 10+ Companies , and has experience in automation.", tags: ["Automation", "AI Agents"], image: sumitraImg },
             ].map((coach, i) => (
               <div key={i} className="bg-neutral-900 border border-neutral-800 p-8 rounded-3xl text-center hover:border-[#ADFF44]/50 transition-colors group relative overflow-hidden">
@@ -650,26 +802,9 @@ const Home = () => {
           </div>
 
           <div className="relative flex flex-col gap-6 mask-linear-fade">
-            {/* Row 1: Left to Right */}
+            {/* Single Row Scroller */}
             <Marquee className="py-4" duration={40}>
               {testimonials.map((t, i) => (
-                <div key={i} className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-2xl relative hover:bg-neutral-900 transition-colors w-[350px] shrink-0">
-                  <QuoteIcon className="absolute top-6 right-6 w-6 h-6 text-neutral-800/50" />
-                  <p className="text-neutral-300 italic mb-6 leading-relaxed font-light text-sm">"{t.quote}"</p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center font-bold text-neutral-500 text-sm border border-neutral-700">{t.name[0]}</div>
-                    <div>
-                      <h4 className="font-bold text-white text-sm">{t.name}</h4>
-                      <p className="text-[#ADFF44] text-[10px] font-bold uppercase tracking-wide">{t.role}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </Marquee>
-
-            {/* Row 2: Right to Left (Reverse) */}
-            <Marquee className="py-4" reverse duration={45}>
-              {[...testimonials].reverse().map((t, i) => (
                 <div key={i} className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-2xl relative hover:bg-neutral-900 transition-colors w-[350px] shrink-0">
                   <QuoteIcon className="absolute top-6 right-6 w-6 h-6 text-neutral-800/50" />
                   <p className="text-neutral-300 italic mb-6 leading-relaxed font-light text-sm">"{t.quote}"</p>

@@ -67,3 +67,14 @@ export const courseCategories = [
 ];
 
 export const courseLevels = ["All", "Beginner", "Intermediate", "Advanced"];
+
+export interface User {
+    id: string;
+    email: string;
+    full_name?: string;
+    role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+    is_active: boolean;
+    onboarding_completed: boolean;
+    profile_image_url?: string;
+    created_at: string;
+}
