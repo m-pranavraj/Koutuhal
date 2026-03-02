@@ -78,7 +78,7 @@ const BusinessProgram = () => {
                             { label: "Duration", value: "8 Weeks", icon: Clock },
                             { label: "AI Tools", value: "30+", icon: Layers },
                             { label: "Projects", value: "6", icon: Rocket },
-                            { label: "Focus", value: "B2B Growth", icon: TrendingUp },
+                            { label: "Price", value: "₹49,999", icon: DollarSign },
                         ].map((stat, i) => (
                             <div key={i} className="bg-neutral-900/40 border border-neutral-800 p-8 rounded-[2rem] backdrop-blur-xl">
                                 <stat.icon className="h-6 w-6 text-[#ADFF44] mb-3 mx-auto md:mx-0" />
