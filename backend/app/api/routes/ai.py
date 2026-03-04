@@ -187,6 +187,7 @@ async def tailor_resume_quick(
     Public resume tailoring endpoint. No auth/DB/GCS.
     Anti-hallucination: only uses information explicitly present in the resume.
     Returns tailored sections or gap questions if resume is too sparse.
+    Fixed to handle responses robustly and prevent invalid JSON errors.
     """
     file_bytes = await resume.read()
     resume_text = _extract_text_from_upload(file_bytes, resume.content_type or "", resume.filename or "")
@@ -207,52 +208,97 @@ TASK: Rewrite the resume sections to be optimally tailored for this specific rol
 
 Rules:
 1. Use ONLY facts from the candidate's resume above
-2. Rephrase existing content to match JD keywords
+2. Rephrase existing content to match JD keywords and tone
 3. Reorder bullet points to prioritize most relevant experience
-4. If a section has insufficient info to write confidently, add it to "gaps"
-5. Do NOT add skills, achievements, or experiences not found in the resume
+4. Use "You" perspective: "You successfully...", "Your experience includes...", NOT "The candidate has..." or "The applicant"
+5. Make content SPECIFIC and UNIQUE - avoid generic phrases like "strong communication skills" without examples
+6. If a section has insufficient info to write confidently, add it to "gaps"
+7. Do NOT add skills, achievements, or experiences not found in the resume
+8. For each bullet point, make it as specific and quantifiable as possible from resume content
 
-Respond ONLY with valid JSON, no markdown:
+Response ONLY with valid JSON (no markdown, no code blocks):
 {{
-  "sufficient": <true if resume has enough info to meaningfully tailor, false if critically sparse>,
+  "sufficient": <boolean - true if resume has 60%+ of JD requirements, false if critically sparse>,
   "tailored_sections": {{
-    "summary": "<2-3 sentence professional summary tailored to the role, from resume info only>",
+    "summary": "<2-3 sentence professional summary IN FIRST PERSON, tailored to role, using only resume facts>",
     "skills": "<comma-separated relevant skills from resume, ordered by JD relevance>",
-    "experience": "<rewritten experience bullets, tailored language, same facts>",
-    "education": "<education section from resume>"
+    "experience": "<rewritten bullet points using resume facts only, same structure as original, using first person>",
+    "education": "<rewrite of education section from resume if present, using first person>"
   }},
   "gaps": [
-    {{"field": "<section name>", "question": "<specific question to fill the gap>"}},
-    ...only include if that section is missing or too sparse
-  ]
+    {{"field": "<section name>", "question": "<specific actionable question to gather missing details>"}},
+    ...only include if that section is missing or too sparse for good tailoring
+  ],
+  "insufficient_reason": "<optional reason if sufficient=false>"
 }}"""
 
     try:
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.15,
+            messages=[{
+                "role": "user", 
+                "content": prompt
+            }],
+            temperature=0.2,
             max_tokens=1500,
         )
-        result = _parse_groq_json(response.choices[0].message.content)
+        
+        raw_response = response.choices[0].message.content
+        
+        # Improved JSON extraction with detailed logging
+        try:
+            result = _parse_groq_json(raw_response)
+        except _json.JSONDecodeError as parse_err:
+            logger.error(f"JSON parse failed. Raw response (first 800 chars): {raw_response[:800]}")
+            # Try alternative parsing if markdown extraction fails
+            if "{" in raw_response and "}" in raw_response:
+                try:
+                    start = raw_response.find("{")
+                    end = raw_response.rfind("}") + 1
+                    result = _json.loads(raw_response[start:end])
+                except:
+                    logger.error("Alternative JSON parsing also failed")
+                    raise HTTPException(status_code=500, detail="AI returned an invalid response. Please try again with a more detailed resume or JD.")
+            else:
+                raise HTTPException(status_code=500, detail="AI returned an invalid response. Please ensure your resume and JD are clear and detailed.")
+        
+        # Validate response structure
+        if not isinstance(result, dict):
+            raise HTTPException(status_code=500, detail="Invalid response format from AI service.")
+        
+        if "tailored_sections" not in result:
+            result["tailored_sections"] = {
+                "summary": "",
+                "skills": "",
+                "experience": "",
+                "education": ""
+            }
         
         # Sanitize tailored_sections to ensure they are strings
         sections = result.get("tailored_sections", {})
-        sanitized_sections = {
-            k: _coerce_to_string(sections.get(k, ""))
-            for k in ["summary", "skills", "experience", "education"]
-        }
+        sanitized_sections = {}
+        for key in ["summary", "skills", "experience", "education"]:
+            value = sections.get(key, "")
+            # Convert to string and ensure no React object errors
+            if isinstance(value, (dict, list)):
+                sanitized_sections[key] = _json.dumps(value) if value else ""
+            else:
+                sanitized_sections[key] = _coerce_to_string(value)
 
         return {
             "sufficient": result.get("sufficient", True),
             "tailored_sections": sanitized_sections,
             "gaps": result.get("gaps", []),
+            "insufficient_reason": result.get("insufficient_reason")
         }
+        
+    except HTTPException:
+        raise
     except _json.JSONDecodeError as e:
-        logger.error("Groq tailor invalid JSON: %s", e)
-        raise HTTPException(status_code=500, detail="AI returned an invalid response.")
+        logger.error(f"Groq tailor invalid JSON: {e}")
+        raise HTTPException(status_code=500, detail="AI returned an invalid response. Please try again.")
     except Exception as e:
-        logger.error("Groq tailor error: %s", e)
+        logger.error(f"Groq tailor error: {e}")
         raise HTTPException(status_code=500, detail=f"Resume tailoring failed: {str(e)}")
 
 

@@ -148,57 +148,155 @@ async def analyze_resume(req: AnalyzeRequest):
     groq = get_groq()
     supabase = get_supabase()
     
-    # Construct Prompt (Simplified version of original Mega-Prompt)
-    roles_text = "\n".join([f"{i+1}. {r.role} (JD: {r.job_description[:500] if r.job_description else 'N/A'})" for i, r in enumerate(req.roles)])
+    # Construct Prompt with improved dynamic scoring
+    roles_text = "\n".join([f"{i+1}. {r.role}" for i, r in enumerate(req.roles)])
+    jds_info = "\n".join([
+        f"{i+1}. {r.role}:\n{r.job_description[:800]}" 
+        if r.job_description and r.job_description.strip() 
+        else f"{i+1}. {r.role}: [User selected this role - evaluate based on user's intent]"
+        for i, r in enumerate(req.roles)
+    ])
     
     prompt = f"""
-    You are a top resume analyst. Analyze this resume text for the following target roles:
-    {roles_text}
-    
-    RESUME TEXT:
-    {req.resume_text[:15000]}
-    
-    Task:
-    1. Validate if it's a resume.
-    2. Calculate ATS Score (0-100) on formatting, keywords, structure.
-    3. Analyze match for EACH target role (0-100%, verdict, why good/bad).
-    4. Identify Step 3: Best Fit Role.
-    5. List 5 Strengths and 5 Gaps.
-    6. Recommend 3 other suitable roles.
-    7. Executive Summary.
-    
-    Output JSON ONLY. Format:
+You are a world-class resume analyst. Analyze this resume STRICTLY based on actual content present.
+
+TARGET ROLES:
+{roles_text}
+
+JOB DESCRIPTIONS:
+{jds_info}
+
+RESUME TEXT:
+{req.resume_text[:15000]}
+
+CRITICAL RULES FOR EVALUATION:
+1. BASELINE RULE: ONLY give alignment scores for skills, experience, or achievements explicitly mentioned in the resume. If something isn't there, DO NOT invent it.
+2. NO HALLUCINATION: Never suggest a role has 70%+ match if the resume lacks 70% of core skills. Validate each claim against actual resume text.
+3. IRRELEVANT ROLE DETECTION: If a role is unsuitable (e.g., "AI Engineer" for non-tech background, "Software Developer" without coding experience, "Entrepreneur in Residence" without startup background), score it LOW (20-35%) with clear explanation of why it's not a fit.
+4. RECOMMENDATION THRESHOLD: Only include suggested roles if:
+   - Resume shows AT LEAST 40% of core skills/experience the role requires, OR
+   - There's a clear adjacent career path (e.g., QA Tester → Software Tester → Developer)
+5. TRANSPARENCY: When recommending a role, explain SPECIFICALLY what in their resume makes it viable, not abstract potential.
+6. TONE: Use FIRST/SECOND PERSON perspective: "You have...", "Your experience...", not "The candidate has..."
+7. UNIQUE INSIGHTS: Generate specific, resume-tied insights - not generic statements. Reference actual companies, projects, or achievements mentioned.
+8. EVALUATE AGAINST USER SELECTIONS: When a user selects a specific role, evaluate strictly against that role's requirements using the provided JD, not against AI-suggested alternatives.
+
+SCORING METHODOLOGY:
+- ATS Score: Format (structure, consistency), Keywords (skills density), Completeness (sections present), Readability (organization)
+- Role Match: % = (confirmed-matching-skills + relevant-experience-years) / (total-skills-required + years-needed) × 100. Verify each point exists in resume.
+- Recommendations: ONLY suggest 3 roles that have 40%+ explicit match. Prioritize adjacent roles to user-selected position over completely different fields.
+
+Output ONLY valid JSON (no markdown):
+{{
+  "is_resume": true,
+  "not_resume_reason": null,
+  "ats_score": {{
+    "overall": <0-100 based on formatting, structure, keyword presence>,
+    "formatting": <0-100 score for resume structure and consistency>,
+    "keyword_optimization": <0-100 score for industry keywords and skills>,
+    "completeness": <0-100 score for content fill>,
+    "tips": [
+      "<specific actionable tip #1>",
+      "<specific actionable tip #2>",
+      "<specific actionable tip #3>"
+    ]
+  }},
+  "role_matches": [
     {{
-      "is_resume": true,
-      "not_resume_reason": null,
-      "ats_score": {{ "overall": 75, "formatting": 80, "tips": ["tip1"] }},
-      "role_matches": [ {{ "role": "Role Name", "match_percentage": 80, "verdict": "Good", "why_good": "...", "why_not_good": "..." }} ],
-      "best_for": {{ "role": "...", "match_percentage": 90, "reasoning": "..." }},
-      "strengths": ["..."],
-      "gaps": ["..."],
-      "recommendations": [ {{ "role": "...", "score": 85, "reason": "..." }} ],
-      "summary": "..."
+      "role": "<role name>",
+      "match_percentage": <0-100 based ONLY on explicit skills/experience in resume>,
+      "verdict": "<Strong Match|Good Match|Moderate Match|Weak Match|Poor Match>",
+      "why_good": "<2-3 sentences. Specific skills/experiences you have that match this role>",
+      "why_not_good": "<2-3 sentences. Specific gaps. If no gaps mention what additional skills would strengthen fit>",
+      "hidden_keywords_found": ["<keyword1>", "<keyword2>"],
+      "missing_keywords": ["<keyword1>", "<keyword2>"]
+    }},
+    ...
+  ],
+  "best_for": {{
+    "role": "<top matching role>",
+    "match_percentage": <highest score>,
+    "reasoning": "<2-3 sentences explaining why this is the best fit based on your resume>"
+  }},
+  "strengths": [
+    "<specific strength #1 with role context>",
+    "<specific strength #2 with role context>",
+    "<specific strength #3>",
+    "<specific strength #4>",
+    "<specific strength #5>"
+  ],
+  "gaps": [
+    "<specific gap #1 blocking higher scores>",
+    "<specific gap #2>",
+    "<specific gap #3>",
+    "<specific gap #4>",
+    "<specific gap #5>"
+  ],
+  "recommendations": [
+    {{
+      "role": "<role name>",
+      "score": <0-100>,
+      "reason": "<2-3 sentences. Why this role is suitable. What in your resume supports it.>"
+    }},
+    {{
+      "role": "<role name>",
+      "score": <0-100>,
+      "reason": "<2-3 sentences>"
+    }},
+    {{
+      "role": "<role name>",
+      "score": <0-100>,
+      "reason": "<2-3 sentences>"
     }}
+  ],
+  "summary": "<2-3 sentence executive summary. Use 'You' perspective. Mention overall career readiness, top match role, and one key action.>"
+}}
     """
     
     try:
         completion = groq.chat.completions.create(
             model=settings.LLM_MODEL if "llama" in settings.LLM_MODEL else "llama-3.1-8b-instant", # Default to fast model
             messages=[
-                {"role": "system", "content": "You output ONLY valid raw JSON."},
+                {"role": "system", "content": "You output ONLY valid raw JSON. No markdown, no explanations. Valid JSON only."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.1,
+            temperature=0.15,
             max_tokens=4000
         )
         
         ai_text = completion.choices[0].message.content
-        analysis = parse_json_from_response(ai_text)
+        
+        # Improved JSON parsing with better error handling
+        try:
+            analysis = parse_json_from_response(ai_text)
+        except (json.JSONDecodeError, ValueError) as e:
+            logging.error(f"Failed to parse AI response: {str(e)}\nResponse: {ai_text[:500]}")
+            # Retry with simpler prompt if JSON parsing fails
+            raise HTTPException(status_code=500, detail="AI analysis produced invalid response. Please try again.")
+        
+        # Validate response structure
+        if not isinstance(analysis, dict):
+            raise ValueError("Response must be a JSON object")
+        if not analysis.get("ats_score"):
+            raise ValueError("Missing ats_score in response")
+        if not analysis.get("role_matches"):
+            raise ValueError("Missing role_matches in response")
+            
+        # Ensure scores are numeric
+        analysis["ats_score"]["overall"] = int(analysis["ats_score"].get("overall", 0))
+        analysis["ats_score"]["formatting"] = int(analysis["ats_score"].get("formatting", 0))
+        
+        for role_match in analysis.get("role_matches", []):
+            role_match["match_percentage"] = int(role_match.get("match_percentage", 0))
+            # Validate that match percentage is realistic
+            if role_match["match_percentage"] > 95 and role_match.get("why_not_good"):
+                # If there are gaps mentioned, score should not be too high
+                role_match["match_percentage"] = min(90, role_match["match_percentage"])
         
         # Save to Supabase
         # Flatten roles for storage
         role_str = ", ".join([r.role for r in req.roles])
-        jd_str = req.roles[0].job_description if req.roles else None
+        jd_str = req.roles[0].job_description if req.roles and req.roles[0].job_description else "User-selected role"
         
         save_data = {
             "user_id": req.user_id,

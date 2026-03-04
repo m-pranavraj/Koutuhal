@@ -35,6 +35,7 @@ import CollegesProgram from "@/pages/CollegesProgram";
 import BusinessProgram from "@/pages/BusinessProgram";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsAndConditions from "@/pages/TermsAndConditions";
+import BookACallPage from "@/pages/BookACallPage";
 const queryClient = new QueryClient();
 
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -99,6 +100,7 @@ const App = () => (
                   <Route path="/register" element={<SignUpPage />} />
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/contact" element={<ContactPage />} />
+                  <Route path="/book-a-call" element={<BookACallPage />} />
                   <Route path="/career-check" element={<CareerReadiness />} />
                   <Route path="/ai-tutor" element={<AiTutorTeaser />} />
                   <Route path="/programs/schools" element={<SchoolsProgram />} />

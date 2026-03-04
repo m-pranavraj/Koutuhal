@@ -117,11 +117,11 @@ export const Footer = () => {
               </Button>
             </div>
             <div className="mt-6 flex gap-2">
-              <a href="https://calendly.com/koutuhal" target="_blank" rel="noopener noreferrer" className="w-full">
+              <Link to="/book-a-call" className="w-full">
                 <Button variant="outline" size="sm" className="border-[#ADFF44] text-[#ADFF44] hover:bg-[#ADFF44] hover:text-black font-bold w-full">
                   Book a Call
                 </Button>
-              </a>
+              </Link>
               <Link to="/contact" className="w-full">
                 <Button variant="outline" size="sm" className="border-[#ADFF44] text-[#ADFF44] hover:bg-[#ADFF44] hover:text-black font-bold w-full">
                   Contact Us
