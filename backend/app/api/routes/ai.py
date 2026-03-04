@@ -86,6 +86,209 @@ def _parse_groq_json(raw: str) -> dict:
     return _json.loads(raw)
 
 
+# ─── DETERMINISTIC SCORING ENGINE ───────────────────────────────────────
+# These functions compute real scores from text, independent of the LLM.
+
+def _extract_keywords_from_jd(jd_text: str) -> set:
+    """Extract meaningful keywords/phrases from a job description."""
+    if not jd_text or len(jd_text.strip()) < 20:
+        return set()
+    text = jd_text.lower()
+    # Remove common stopwords and noise
+    stopwords = {
+        'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+        'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+        'should', 'may', 'might', 'shall', 'can', 'need', 'must', 'ought',
+        'and', 'but', 'or', 'nor', 'not', 'so', 'yet', 'both', 'either',
+        'neither', 'each', 'every', 'all', 'any', 'few', 'more', 'most',
+        'other', 'some', 'such', 'no', 'only', 'own', 'same', 'than',
+        'too', 'very', 'just', 'about', 'above', 'after', 'again', 'also',
+        'as', 'at', 'before', 'below', 'between', 'by', 'down', 'during',
+        'for', 'from', 'further', 'here', 'how', 'in', 'into', 'it', 'its',
+        'of', 'off', 'on', 'once', 'out', 'over', 'per', 'then', 'there',
+        'these', 'this', 'those', 'through', 'to', 'under', 'until', 'up',
+        'we', 'what', 'when', 'where', 'which', 'while', 'who', 'whom',
+        'why', 'with', 'you', 'your', 'our', 'their', 'he', 'she', 'they',
+        'i', 'me', 'my', 'myself', 'we', 'us', 'him', 'her', 'them',
+        'that', 'if', 'because', 'able', 'work', 'working', 'job', 'role',
+        'position', 'company', 'team', 'looking', 'join', 'opportunity',
+        'responsibilities', 'requirements', 'qualifications', 'experience',
+        'required', 'preferred', 'ideal', 'candidate', 'applicant', 'years',
+        'strong', 'excellent', 'good', 'great', 'well', 'etc', 'including',
+    }
+    # Extract words (2+ chars)
+    words = _re.findall(r'\b[a-z][a-z+#./-]{1,30}\b', text)
+    keywords = set()
+    for w in words:
+        if w not in stopwords and len(w) > 2:
+            keywords.add(w)
+    # Also extract common multi-word tech terms
+    multi_patterns = [
+        r'machine learning', r'deep learning', r'data science', r'data analysis',
+        r'project management', r'product management', r'business development',
+        r'digital marketing', r'content marketing', r'social media',
+        r'full stack', r'front end', r'back end', r'cloud computing',
+        r'artificial intelligence', r'natural language processing',
+        r'computer vision', r'supply chain', r'sales development',
+        r'customer success', r'account management', r'software development',
+        r'web development', r'mobile development', r'devops', r'ci/cd',
+        r'agile', r'scrum', r'user experience', r'user interface',
+    ]
+    for pat in multi_patterns:
+        if _re.search(pat, text):
+            keywords.add(pat)
+    return keywords
+
+
+def _compute_keyword_match(resume_text: str, jd_keywords: set) -> dict:
+    """Programmatically count how many JD keywords appear in the resume."""
+    if not jd_keywords:
+        return {"found": [], "missing": [], "ratio": 0.5}  # neutral if no JD
+    resume_lower = resume_text.lower()
+    found = []
+    missing = []
+    for kw in jd_keywords:
+        if kw in resume_lower:
+            found.append(kw)
+        else:
+            missing.append(kw)
+    ratio = len(found) / len(jd_keywords) if jd_keywords else 0.5
+    return {"found": found, "missing": missing, "ratio": ratio}
+
+
+def _compute_structure_score(resume_text: str) -> int:
+    """Deterministic structure/formatting score based on resume text analysis."""
+    score = 100
+    text = resume_text.strip()
+    lines = text.split('\n')
+    non_empty = [l for l in lines if l.strip()]
+
+    # Check for section headers (education, experience, skills, etc.)
+    header_patterns = ['education', 'experience', 'skills', 'summary', 'objective',
+                       'projects', 'certifications', 'achievements', 'awards', 'profile']
+    headers_found = sum(1 for h in header_patterns if _re.search(r'\b' + h + r'\b', text, _re.IGNORECASE))
+    if headers_found < 2:
+        score -= 25  # Missing basic sections
+    elif headers_found < 4:
+        score -= 10
+
+    # Check for bullet points
+    bullet_count = sum(1 for l in non_empty if l.strip().startswith(('•', '-', '*', '→', '▪')))
+    if bullet_count == 0:
+        score -= 20  # No bullets = wall of text
+    elif bullet_count < 3:
+        score -= 10
+
+    # Check for email
+    if not _re.search(r'[\w.-]+@[\w.-]+\.[a-z]{2,}', text, _re.IGNORECASE):
+        score -= 10
+
+    # Check for phone number
+    if not _re.search(r'\+?\d[\d\s()-]{7,}', text):
+        score -= 5
+
+    # Check resume length (too short or too long)
+    word_count = len(text.split())
+    if word_count < 100:
+        score -= 25  # Very sparse
+    elif word_count < 200:
+        score -= 15
+    elif word_count > 3000:
+        score -= 10  # Too long
+
+    # Check for dates (work history)
+    date_count = len(_re.findall(r'\b(20[0-2]\d|19\d{2})\b', text))
+    if date_count == 0:
+        score -= 15  # No dates = no timeline
+
+    return max(0, min(100, score))
+
+
+def _compute_impact_score(resume_text: str) -> int:
+    """Count quantified achievements (numbers, percentages, metrics)."""
+    # Find quantified achievements
+    metrics = _re.findall(
+        r'\b\d+[%+]|\$\d+|\d+\s*(?:million|billion|thousand|k\b|M\b|cr\b)|'
+        r'\b(?:increased|decreased|reduced|improved|grew|boosted|saved|generated|achieved|delivered)\s+.*?\d+',
+        resume_text, _re.IGNORECASE
+    )
+    # Also count standalone numbers in context of achievements
+    number_in_context = _re.findall(
+        r'(?:led|managed|handled|processed|served|trained|mentored|built|developed|created|launched|\d+\+?)\s+\d+',
+        resume_text, _re.IGNORECASE
+    )
+    total_metrics = len(metrics) + len(number_in_context)
+
+    if total_metrics == 0:
+        return 20
+    elif total_metrics <= 2:
+        return 40
+    elif total_metrics <= 4:
+        return 60
+    elif total_metrics <= 6:
+        return 75
+    else:
+        return min(95, 75 + total_metrics * 2)
+
+
+def _compute_role_alignment(resume_text: str, role_name: str, jd_text: str) -> int:
+    """
+    Deterministic role alignment score.
+    Checks how much of the role's required domain shows up in the resume.
+    """
+    resume_lower = resume_text.lower()
+    role_lower = role_name.lower()
+
+    # Extract keywords from the JD if provided
+    if jd_text and len(jd_text.strip()) > 20:
+        jd_kws = _extract_keywords_from_jd(jd_text)
+        match = _compute_keyword_match(resume_text, jd_kws)
+        return max(0, min(100, int(match['ratio'] * 100)))
+
+    # If no JD, use role-name-based heuristic
+    # Map common role families to required skill domains
+    role_skill_map = {
+        'software': ['python', 'java', 'javascript', 'c++', 'react', 'node', 'api', 'database', 'sql', 'git', 'code', 'programming', 'developer', 'engineer'],
+        'data scientist': ['python', 'machine learning', 'statistics', 'sql', 'pandas', 'numpy', 'tensorflow', 'pytorch', 'data analysis', 'modeling', 'r ', 'jupyter'],
+        'data analyst': ['sql', 'excel', 'tableau', 'power bi', 'python', 'statistics', 'data analysis', 'visualization', 'reporting', 'dashboard'],
+        'digital marketing': ['seo', 'sem', 'google ads', 'social media', 'content', 'analytics', 'campaign', 'email marketing', 'facebook', 'instagram', 'marketing'],
+        'product manager': ['roadmap', 'stakeholder', 'agile', 'scrum', 'user stories', 'metrics', 'kpi', 'strategy', 'product', 'prioritization', 'market research'],
+        'business development': ['sales', 'client', 'revenue', 'pipeline', 'negotiation', 'partnership', 'crm', 'b2b', 'lead generation', 'business'],
+        'sdr': ['sales', 'outbound', 'cold calling', 'prospecting', 'crm', 'salesforce', 'pipeline', 'lead', 'outreach', 'quota'],
+        'ai engineer': ['machine learning', 'deep learning', 'python', 'tensorflow', 'pytorch', 'nlp', 'computer vision', 'neural network', 'model', 'gpu', 'training'],
+        'entrepreneur': ['startup', 'founded', 'co-founded', 'venture', 'fundraising', 'investor', 'equity', 'bootstrap', 'incubator', 'accelerator', 'ceo', 'cto'],
+        'ux designer': ['figma', 'sketch', 'wireframe', 'prototype', 'user research', 'usability', 'design thinking', 'ui', 'ux', 'interaction design'],
+        'devops': ['docker', 'kubernetes', 'aws', 'azure', 'gcp', 'ci/cd', 'jenkins', 'terraform', 'ansible', 'linux', 'monitoring', 'deployment'],
+        'frontend': ['react', 'angular', 'vue', 'javascript', 'typescript', 'css', 'html', 'responsive', 'webpack', 'next.js', 'tailwind'],
+        'backend': ['python', 'java', 'node', 'api', 'rest', 'graphql', 'database', 'sql', 'nosql', 'microservices', 'redis', 'aws'],
+        'qa': ['testing', 'automation', 'selenium', 'test cases', 'bug', 'quality', 'regression', 'cypress', 'jira', 'manual testing'],
+        'project manager': ['project', 'timeline', 'stakeholder', 'budget', 'risk', 'agile', 'scrum', 'pmp', 'gantt', 'resource', 'delivery'],
+        'marketing manager': ['campaign', 'brand', 'strategy', 'analytics', 'roi', 'market research', 'budget', 'team', 'growth', 'conversion'],
+        'hr': ['recruitment', 'hiring', 'onboarding', 'employee', 'performance', 'payroll', 'compliance', 'talent', 'culture', 'retention'],
+    }
+
+    # Find best matching role family
+    best_skills = None
+    best_match_score = 0
+    for family, skills in role_skill_map.items():
+        if family in role_lower or role_lower in family:
+            best_skills = skills
+            break
+        # partial match
+        overlap = sum(1 for word in family.split() if word in role_lower)
+        if overlap > best_match_score:
+            best_match_score = overlap
+            best_skills = skills
+
+    if not best_skills:
+        # Unknown role — use generic professional keywords
+        best_skills = ['leadership', 'management', 'analysis', 'strategy', 'communication', 'project', 'team', 'results', 'planning', 'execution']
+
+    found = sum(1 for skill in best_skills if skill in resume_lower)
+    ratio = found / len(best_skills)
+    return max(0, min(100, int(ratio * 100)))
+
+
 @router.post("/analyze-resume-quick")
 async def analyze_resume_quick(
     resume: Annotated[UploadFile, File()],
@@ -192,20 +395,39 @@ If it IS a resume:
         if not result.get("is_resume", True):
             return {"is_resume": False}
 
-        # Validate and sanitize scores
-        score = max(0, min(100, int(result.get("score", 50))))
-        structure_score = max(0, min(100, int(result.get("structureScore", 50))))
-        impact_score = max(0, min(100, int(result.get("impactScore", 50))))
-        
-        # Sanity check: if many keywords missing, score can't be too high
-        missing = result.get("missingKeywords", [])
-        found = result.get("foundKeywords", [])
-        if len(missing) > 0 and len(found) > 0:
-            keyword_ratio = len(found) / (len(found) + len(missing))
-            max_reasonable_score = int(keyword_ratio * 100) + 15  # small grace margin
-            if score > max_reasonable_score:
-                score = max_reasonable_score
-        
+        # ── DETERMINISTIC SCORE COMPUTATION ──────────────────────────
+        # Compute real scores from text, then blend with LLM scores.
+        # This makes hallucinated scores impossible.
+
+        jd_keywords = _extract_keywords_from_jd(jd_text)
+        kw_match = _compute_keyword_match(resume_text, jd_keywords)
+        real_keyword_ratio = kw_match["ratio"]
+        real_structure = _compute_structure_score(resume_text)
+        real_impact = _compute_impact_score(resume_text)
+
+        llm_score = max(0, min(100, int(result.get("score", 50))))
+        llm_structure = max(0, min(100, int(result.get("structureScore", 50))))
+        llm_impact = max(0, min(100, int(result.get("impactScore", 50))))
+
+        # Blend: 40% deterministic + 60% LLM (LLM captures nuance, code caps hallucination)
+        structure_score = int(real_structure * 0.4 + llm_structure * 0.6)
+        impact_score = int(real_impact * 0.4 + llm_impact * 0.6)
+
+        # ATS score: hard-cap based on real keyword match ratio
+        real_keyword_score = int(real_keyword_ratio * 100)
+        # LLM score cannot exceed real keyword score by more than 20 points
+        max_allowed_score = real_keyword_score + 20
+        score = min(llm_score, max_allowed_score) if jd_keywords else llm_score
+        score = max(0, min(100, score))
+
+        # Override LLM's found/missing keywords with real ones if JD was provided
+        if jd_keywords:
+            found = kw_match["found"][:12]
+            missing = kw_match["missing"][:10]
+        else:
+            found = result.get("foundKeywords", [])
+            missing = result.get("missingKeywords", [])
+
         # Determine grade based on validated score
         if score >= 90:
             grade = "S"
@@ -217,6 +439,8 @@ If it IS a resume:
             grade = "C"
         else:
             grade = "D"
+
+        logger.info(f"Score audit: LLM={llm_score}, RealKW={real_keyword_score}, Final={score} | Structure: LLM={llm_structure}, Real={real_structure}, Final={structure_score} | Impact: LLM={llm_impact}, Real={real_impact}, Final={impact_score}")
 
         # Sanitize strengths to ensure proper structure
         strengths = result.get("strengths", [])

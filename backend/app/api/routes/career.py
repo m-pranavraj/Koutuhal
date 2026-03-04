@@ -70,6 +70,113 @@ def parse_json_from_response(text: str) -> Dict[str, Any]:
     raw = raw[start : end + 1]
     return json.loads(raw)
 
+
+# ─── DETERMINISTIC SCORING ENGINE ───────────────────────────────────────
+# Server-side keyword matching & scoring — makes hallucination impossible.
+
+import re as _re
+
+def _extract_keywords_from_jd(jd_text: str) -> set:
+    """Extract meaningful keywords/phrases from a job description."""
+    if not jd_text or len(jd_text.strip()) < 20:
+        return set()
+    text = jd_text.lower()
+    stopwords = {
+        'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+        'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+        'should', 'may', 'might', 'shall', 'can', 'need', 'must', 'ought',
+        'and', 'but', 'or', 'nor', 'not', 'so', 'yet', 'both', 'either',
+        'neither', 'each', 'every', 'all', 'any', 'few', 'more', 'most',
+        'other', 'some', 'such', 'no', 'only', 'own', 'same', 'than',
+        'too', 'very', 'just', 'about', 'above', 'after', 'again', 'also',
+        'as', 'at', 'before', 'below', 'between', 'by', 'down', 'during',
+        'for', 'from', 'further', 'here', 'how', 'in', 'into', 'it', 'its',
+        'of', 'off', 'on', 'once', 'out', 'over', 'per', 'then', 'there',
+        'these', 'this', 'those', 'through', 'to', 'under', 'until', 'up',
+        'we', 'what', 'when', 'where', 'which', 'while', 'who', 'whom',
+        'why', 'with', 'you', 'your', 'our', 'their', 'he', 'she', 'they',
+        'i', 'me', 'my', 'myself', 'us', 'him', 'her', 'them',
+        'that', 'if', 'because', 'able', 'work', 'working', 'job', 'role',
+        'position', 'company', 'team', 'looking', 'join', 'opportunity',
+        'responsibilities', 'requirements', 'qualifications', 'experience',
+        'required', 'preferred', 'ideal', 'candidate', 'applicant', 'years',
+        'strong', 'excellent', 'good', 'great', 'well', 'etc', 'including',
+    }
+    words = _re.findall(r'\b[a-z][a-z+#./-]{1,30}\b', text)
+    keywords = set()
+    for w in words:
+        if w not in stopwords and len(w) > 2:
+            keywords.add(w)
+    multi_patterns = [
+        r'machine learning', r'deep learning', r'data science', r'data analysis',
+        r'project management', r'product management', r'business development',
+        r'digital marketing', r'content marketing', r'social media',
+        r'full stack', r'front end', r'back end', r'cloud computing',
+        r'artificial intelligence', r'natural language processing',
+        r'supply chain', r'sales development', r'customer success',
+        r'account management', r'software development', r'web development',
+    ]
+    for pat in multi_patterns:
+        if _re.search(pat, text):
+            keywords.add(pat)
+    return keywords
+
+
+def _compute_keyword_match(resume_text: str, jd_keywords: set) -> dict:
+    """Count how many JD keywords appear in the resume."""
+    if not jd_keywords:
+        return {"found": [], "missing": [], "ratio": 0.5}
+    resume_lower = resume_text.lower()
+    found = [kw for kw in jd_keywords if kw in resume_lower]
+    missing = [kw for kw in jd_keywords if kw not in resume_lower]
+    ratio = len(found) / len(jd_keywords) if jd_keywords else 0.5
+    return {"found": found, "missing": missing, "ratio": ratio}
+
+
+def _compute_role_alignment(resume_text: str, role_name: str, jd_text: str) -> int:
+    """
+    Deterministic role alignment: checks how much of the role's domain
+    appears in the actual resume text. Returns 0-100.
+    """
+    resume_lower = resume_text.lower()
+
+    # If JD provided, match against JD keywords
+    if jd_text and len(jd_text.strip()) > 20:
+        jd_kws = _extract_keywords_from_jd(jd_text)
+        match = _compute_keyword_match(resume_text, jd_kws)
+        return max(0, min(100, int(match['ratio'] * 100)))
+
+    # If no JD, use role-name → skill domain heuristic
+    role_lower = role_name.lower()
+    role_skill_map = {
+        'software': ['python', 'java', 'javascript', 'c++', 'react', 'node', 'api', 'database', 'sql', 'git', 'code', 'programming', 'developer', 'engineer'],
+        'data scientist': ['python', 'machine learning', 'statistics', 'sql', 'pandas', 'numpy', 'tensorflow', 'pytorch', 'data analysis', 'modeling'],
+        'data analyst': ['sql', 'excel', 'tableau', 'power bi', 'python', 'statistics', 'data analysis', 'visualization', 'reporting'],
+        'digital marketing': ['seo', 'sem', 'google ads', 'social media', 'content', 'analytics', 'campaign', 'email marketing', 'marketing'],
+        'product manager': ['roadmap', 'stakeholder', 'agile', 'scrum', 'user stories', 'metrics', 'kpi', 'strategy', 'product'],
+        'business development': ['sales', 'client', 'revenue', 'pipeline', 'negotiation', 'partnership', 'crm', 'b2b', 'lead generation', 'business'],
+        'sdr': ['sales', 'outbound', 'cold calling', 'prospecting', 'crm', 'salesforce', 'pipeline', 'lead', 'outreach', 'quota'],
+        'ai engineer': ['machine learning', 'deep learning', 'python', 'tensorflow', 'pytorch', 'nlp', 'computer vision', 'neural network', 'model'],
+        'entrepreneur': ['startup', 'founded', 'co-founded', 'venture', 'fundraising', 'investor', 'equity', 'bootstrap', 'incubator', 'ceo'],
+        'ux designer': ['figma', 'sketch', 'wireframe', 'prototype', 'user research', 'usability', 'design thinking', 'ui', 'ux'],
+        'devops': ['docker', 'kubernetes', 'aws', 'azure', 'gcp', 'ci/cd', 'jenkins', 'terraform', 'ansible', 'linux'],
+        'frontend': ['react', 'angular', 'vue', 'javascript', 'typescript', 'css', 'html', 'responsive', 'webpack', 'tailwind'],
+        'backend': ['python', 'java', 'node', 'api', 'rest', 'graphql', 'database', 'sql', 'nosql', 'microservices'],
+        'qa': ['testing', 'automation', 'selenium', 'test cases', 'bug', 'quality', 'regression', 'cypress', 'jira'],
+        'hr': ['recruitment', 'hiring', 'onboarding', 'employee', 'performance', 'payroll', 'compliance', 'talent'],
+        'project manager': ['project', 'timeline', 'stakeholder', 'budget', 'risk', 'agile', 'scrum', 'delivery'],
+        'marketing manager': ['campaign', 'brand', 'strategy', 'analytics', 'roi', 'market research', 'growth'],
+    }
+    best_skills = None
+    for family, skills in role_skill_map.items():
+        if family in role_lower or role_lower in family:
+            best_skills = skills
+            break
+    if not best_skills:
+        best_skills = ['leadership', 'management', 'analysis', 'strategy', 'communication', 'project', 'team', 'results']
+    found = sum(1 for skill in best_skills if skill in resume_lower)
+    return max(0, min(100, int((found / len(best_skills)) * 100)))
+
 # ─── ENDPOINTS ──────────────────────────────────────────────────────────
 
 @router.post("/upload")
@@ -282,19 +389,98 @@ Output ONLY valid JSON (no markdown):
         if not analysis.get("role_matches"):
             raise ValueError("Missing role_matches in response")
             
-        # Ensure scores are numeric
-        analysis["ats_score"]["overall"] = int(analysis["ats_score"].get("overall", 0))
-        analysis["ats_score"]["formatting"] = int(analysis["ats_score"].get("formatting", 0))
-        
-        for role_match in analysis.get("role_matches", []):
-            role_match["match_percentage"] = int(role_match.get("match_percentage", 0))
-            # Validate that match percentage is realistic
-            if role_match["match_percentage"] > 95 and role_match.get("why_not_good"):
-                # If there are gaps mentioned, score should not be too high
-                role_match["match_percentage"] = min(90, role_match["match_percentage"])
-        
+        # ── DETERMINISTIC SCORE ENFORCEMENT ──────────────────────────
+        # Compute real alignment scores server-side, then override LLM hallucinations.
+
+        # 1. Override ATS sub-scores with blended real + LLM
+        llm_overall = int(analysis["ats_score"].get("overall", 0))
+        llm_formatting = int(analysis["ats_score"].get("formatting", 0))
+
+        # If any role has a JD, use it for keyword matching
+        primary_jd = ""
+        for r in req.roles:
+            if r.job_description and r.job_description.strip():
+                primary_jd = r.job_description
+                break
+
+        jd_keywords = _extract_keywords_from_jd(primary_jd)
+        kw_match = _compute_keyword_match(req.resume_text, jd_keywords)
+        real_keyword_ratio = kw_match["ratio"]
+        real_keyword_score = int(real_keyword_ratio * 100)
+
+        # ATS overall: LLM can't exceed real keyword score by more than 20 points
+        if jd_keywords:
+            max_allowed = real_keyword_score + 20
+            analysis["ats_score"]["overall"] = max(0, min(100, min(llm_overall, max_allowed)))
+        else:
+            analysis["ats_score"]["overall"] = max(0, min(100, llm_overall))
+        analysis["ats_score"]["formatting"] = max(0, min(100, llm_formatting))
+
+        logging.info(f"Career ATS audit: LLM_overall={llm_overall}, RealKW={real_keyword_score}, Final={analysis['ats_score']['overall']}")
+
+        # 2. Override each role_match alignment with deterministic calculation
+        for i, role_match in enumerate(analysis.get("role_matches", [])):
+            llm_pct = int(role_match.get("match_percentage", 0))
+            role_name = role_match.get("role", "")
+            # Find the matching JD from the request
+            role_jd = ""
+            for r in req.roles:
+                if r.role.lower().strip() == role_name.lower().strip():
+                    role_jd = r.job_description or ""
+                    break
+            if not role_jd:
+                role_jd = primary_jd  # fallback to first JD
+
+            real_alignment = _compute_role_alignment(req.resume_text, role_name, role_jd)
+
+            # Blend: 50% deterministic + 50% LLM. LLM cannot exceed real by more than 15
+            blended = int(real_alignment * 0.5 + llm_pct * 0.5)
+            max_alignment = real_alignment + 15
+            final_pct = min(blended, max_alignment)
+            final_pct = max(0, min(100, final_pct))
+
+            # If there are gaps mentioned, score shouldn't be > 90
+            if final_pct > 90 and role_match.get("why_not_good"):
+                final_pct = min(90, final_pct)
+
+            role_match["match_percentage"] = final_pct
+
+            # Update verdict based on new score
+            if final_pct >= 80:
+                role_match["verdict"] = "Strong Match"
+            elif final_pct >= 60:
+                role_match["verdict"] = "Good Match"
+            elif final_pct >= 40:
+                role_match["verdict"] = "Moderate Match"
+            elif final_pct >= 25:
+                role_match["verdict"] = "Weak Match"
+            else:
+                role_match["verdict"] = "Poor Match"
+
+            logging.info(f"Role '{role_name}' alignment: LLM={llm_pct}, Real={real_alignment}, Final={final_pct}")
+
+        # 3. Validate recommendations — drop any with <30% real alignment
+        validated_recs = []
+        for rec in analysis.get("recommendations", []):
+            rec_role = rec.get("role", "")
+            rec_alignment = _compute_role_alignment(req.resume_text, rec_role, "")
+            llm_rec_score = int(rec.get("score", 0))
+            # Blend recommendation score
+            blended_rec = int(rec_alignment * 0.4 + llm_rec_score * 0.6)
+            blended_rec = min(blended_rec, rec_alignment + 20)
+            if blended_rec < 25:
+                continue  # Drop hallucinated recommendation
+            rec["score"] = max(0, min(100, blended_rec))
+            validated_recs.append(rec)
+        analysis["recommendations"] = validated_recs[:3]  # max 3
+
+        # 4. Override best_for if the selected score is now different
+        if analysis.get("best_for") and analysis.get("role_matches"):
+            best_match = max(analysis["role_matches"], key=lambda x: x.get("match_percentage", 0))
+            analysis["best_for"]["role"] = best_match["role"]
+            analysis["best_for"]["match_percentage"] = best_match["match_percentage"]
+
         # Save to Supabase
-        # Flatten roles for storage
         role_str = ", ".join([r.role for r in req.roles])
         jd_str = req.roles[0].job_description if req.roles and req.roles[0].job_description else "User-selected role"
         
