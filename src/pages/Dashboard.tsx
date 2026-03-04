@@ -9,6 +9,208 @@ import { toast } from "sonner";
 import { MentorStats } from "@/components/mentor/MentorStats";
 import { AvailabilitySheet } from "@/components/mentor/AvailabilitySheet";
 
+// ─────── STUDENT DASHBOARD ──────────────────────────────────────────
+const StudentDashboard = ({ user, stats, token }: { user: any; stats: any; token: string | null }) => {
+  return (
+    <div className="min-h-screen bg-black">
+      <div className="container max-w-7xl mx-auto px-4 pt-32 pb-20">
+        <motion.div className="space-y-12">
+          {/* Header */}
+          <div className="space-y-2">
+            <h1 className="text-5xl font-bold text-white">Welcome back, <span className="text-[#ADFF44]">{user?.full_name?.split(' ')[0]}</span>! 📚</h1>
+            <p className="text-neutral-400">Manage your career journey, applications, and learning path</p>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {[
+              { label: "Resumes", value: stats?.total_resumes || "0", icon: FileText, color: "text-blue-400" },
+              { label: "Applications", value: stats?.total_applications || "0", icon: Briefcase, color: "text-green-400" },
+              { label: "Avg Match Score", value: `${Math.round(stats?.avg_match_score || 0)}%`, icon: Target, color: "text-[#ADFF44]" },
+              { label: "This Week", value: stats?.applications_this_week || "0", icon: TrendingUp, color: "text-purple-400" },
+            ].map((stat, i) => (
+              <div key={i} className="bg-neutral-900 border border-white/10 rounded-2xl p-6 hover:border-[#ADFF44]/50 transition-all">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-neutral-500 text-sm font-medium">{stat.label}</p>
+                    <p className="text-3xl font-bold text-white mt-2">{stat.value}</p>
+                  </div>
+                  <div className={`w-12 h-12 rounded-lg bg-neutral-800 flex items-center justify-center ${stat.color}`}>
+                    <stat.icon className="w-6 h-6" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Quick Links */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Link to="/resume-scanner" className="group">
+              <div className="bg-gradient-to-br from-[#ADFF44]/20 to-transparent border border-[#ADFF44]/30 rounded-2xl p-8 hover:border-[#ADFF44] transition-all">
+                <FileText className="w-8 h-8 text-[#ADFF44] mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">Resume Scanner</h3>
+                <p className="text-neutral-400 text-sm">Analyze your resume ATS score</p>
+                <ArrowRight className="w-4 h-4 text-[#ADFF44] mt-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+            <Link to="/career-check" className="group">
+              <div className="bg-gradient-to-br from-blue-500/20 to-transparent border border-blue-500/30 rounded-2xl p-8 hover:border-blue-500 transition-all">
+                <Target className="w-8 h-8 text-blue-400 mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">Career Check</h3>
+                <p className="text-neutral-400 text-sm">Analyze role fit & get recommendations</p>
+                <ArrowRight className="w-4 h-4 text-blue-400 mt-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+            <Link to="/search-experts" className="group">
+              <div className="bg-gradient-to-br from-purple-500/20 to-transparent border border-purple-500/30 rounded-2xl p-8 hover:border-purple-500 transition-all">
+                <Users className="w-8 h-8 text-purple-400 mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">Find Mentors</h3>
+                <p className="text-neutral-400 text-sm">Get guidance 1:1 from experts</p>
+                <ArrowRight className="w-4 h-4 text-purple-400 mt-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+          </div>
+
+          {/* Browse Opportunities */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Link to="/jobs" className="group">
+              <div className="bg-neutral-900/50 border border-white/5 rounded-2xl p-8 hover:border-[#ADFF44]/50 transition-all">
+                <Briefcase className="w-8 h-8 text-green-400 mb-4" />
+                <h3 className="text-2xl font-bold text-white mb-2">{stats?.total_jobs || "100"}+ Jobs</h3>
+                <p className="text-neutral-400">Explore internships & full-time roles</p>
+              </div>
+            </Link>
+            <Link to="/courses" className="group">
+              <div className="bg-neutral-900/50 border border-white/5 rounded-2xl p-8 hover:border-[#ADFF44]/50 transition-all">
+                <BookOpen className="w-8 h-8 text-orange-400 mb-4" />
+                <h3 className="text-2xl font-bold text-white mb-2">Learn & Grow</h3>
+                <p className="text-neutral-400">Upskill with AI-powered courses</p>
+              </div>
+            </Link>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+};
+
+// ─────── MENTOR DASHBOARD ────────────────────────────────────────────
+const MentorDashboard = ({ user, sessions, requests, respondToRequest, isAvailabilityOpen, setIsAvailabilityOpen }: any) => {
+  return (
+    <div className="min-h-screen bg-black">
+      <div className="container max-w-7xl mx-auto px-4 pt-32 pb-20">
+        <motion.div className="space-y-12">
+          <div>
+            <h1 className="text-5xl font-bold text-white mb-2">Mentor Dashboard</h1>
+            <p className="text-neutral-400">Manage your mentoring sessions and connect with students</p>
+          </div>
+
+          {/* Session Stats */}
+          <MentorStats sessions={sessions} requests={requests} />
+
+          {/* Pending Requests */}
+          {requests.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold text-white">Student Requests ({requests.length})</h2>
+              <div className="grid gap-4">
+                {requests.map((req: any) => (
+                  <div key={req.id} className="bg-neutral-900 border border-white/10 rounded-2xl p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <p className="font-bold text-white">{req.student_name}</p>
+                        <p className="text-neutral-400 text-sm">{req.session_type === 'call' ? 'Wants to schedule a call' : 'Sent a message'}</p>
+                      </div>
+                      <Badge className="bg-yellow-500/10 text-yellow-400">Pending</Badge>
+                    </div>
+                    {req.message && <p className="text-neutral-300 mb-4">{req.message}</p>}
+                    <div className="flex gap-2">
+                      <Button onClick={() => respondToRequest(req.id, 'ACCEPTED')} className="bg-green-600 hover:bg-green-700">Accept</Button>
+                      <Button onClick={() => respondToRequest(req.id, 'DECLINED')} variant="outline">Decline</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Upcoming Sessions */}
+          {sessions.filter((s: any) => s.status === 'ACCEPTED').length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold text-white">Upcoming Sessions</h2>
+              <div className="grid gap-4">
+                {sessions.filter((s: any) => s.status === 'ACCEPTED').map((session: any) => (
+                  <div key={session.id} className="bg-gradient-to-r from-[#ADFF44]/10 to-transparent border border-[#ADFF44]/20 rounded-2xl p-6">
+                    <p className="font-bold text-white mb-2">{session.student_name}</p>
+                    {session.message && <p className="text-neutral-300">{session.message}</p>}
+                    <Badge className="mt-2 bg-green-500/10 text-green-400"><CheckCircle2 className="w-3 h-3 mr-1" /> Confirmed</Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Availability Settings */}
+          <Button onClick={() => setIsAvailabilityOpen(true)} className="w-full bg-[#ADFF44] text-black hover:bg-[#9BE63D]">
+            Set Availability
+          </Button>
+        </motion.div>
+      </div>
+      <AvailabilitySheet open={isAvailabilityOpen} onOpenChange={setIsAvailabilityOpen} />
+    </div>
+  );
+};
+
+// ─────── ORGANISATION DASHBOARD ──────────────────────────────────────
+const OrganisationDashboard = ({ user, token }: { user: any; token: string | null }) => {
+  return (
+    <div className="min-h-screen bg-black">
+      <div className="container max-w-7xl mx-auto px-4 pt-32 pb-20">
+        <motion.div className="space-y-12">
+          <div>
+            <h1 className="text-5xl font-bold text-white mb-2">Organization Dashboard</h1>
+            <p className="text-neutral-400">Post jobs, manage applications, and find talent</p>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Link to="/dashboard" className="group">
+              <div className="bg-gradient-to-br from-[#ADFF44]/20 to-transparent border border-[#ADFF44]/30 rounded-2xl p-8 hover:border-[#ADFF44] transition-all">
+                <Briefcase className="w-8 h-8 text-[#ADFF44] mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">Post a Job</h3>
+                <p className="text-neutral-400 text-sm">Create new job listings</p>
+              </div>
+            </Link>
+            <Link to="/search-experts" className="group">
+              <div className="bg-gradient-to-br from-blue-500/20 to-transparent border border-blue-500/30 rounded-2xl p-8 hover:border-blue-500 transition-all">
+                <Users className="w-8 h-8 text-blue-400 mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">Find Talent</h3>
+                <p className="text-neutral-400 text-sm">Browse student profiles</p>
+              </div>
+            </Link>
+            <Link to="/dashboard" className="group">
+              <div className="bg-gradient-to-br from-purple-500/20 to-transparent border border-purple-500/30 rounded-2xl p-8 hover:border-purple-500 transition-all">
+                <MessageSquare className="w-8 h-8 text-purple-400 mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">Applications</h3>
+                <p className="text-neutral-400 text-sm">Manage job applications</p>
+              </div>
+            </Link>
+          </div>
+
+          {/* Placeholder for job listings */}
+          <div className="text-center py-12">
+            <p className="text-neutral-400 mb-4">No jobs posted yet</p>
+            <Button className="bg-[#ADFF44] text-black hover:bg-[#9BE63D]">Post Your First Job</Button>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+};
+
+// Add missing imports for motion
+import { motion } from "framer-motion";
+import { Users } from "lucide-react";
+
 interface DashboardStats {
   total_resumes: number;
   total_applications: number;
@@ -69,6 +271,9 @@ const Dashboard = () => {
       });
       if (res.ok) {
         setStats(await res.json());
+      } else if (res.status === 403 || res.status === 401) {
+        console.error('Auth error - redirecting to login');
+        window.location.href = '/login';
       }
     } catch (err) {
       console.error('Failed to fetch dashboard stats:', err);
@@ -137,6 +342,26 @@ const Dashboard = () => {
 
   const upcomingSessions = sessions.filter(s => s.status === 'ACCEPTED');
   const pendingSessions = sessions.filter(s => s.status === 'PENDING');
+
+  // ─── ROLE-BASED RENDERING ─────────────────────────────────────────
+  if (user?.role === 'STUDENT') {
+    return <StudentDashboard user={user} stats={stats} token={token} />;
+  }
+
+  if (user?.role === 'MENTOR') {
+    return <MentorDashboard user={user} sessions={sessions} requests={requests} respondToRequest={respondToRequest} isAvailabilityOpen={isAvailabilityOpen} setIsAvailabilityOpen={setIsAvailabilityOpen} />;
+  }
+
+  if (user?.role === 'ORGANISATION') {
+    return <OrganisationDashboard user={user} token={token} />;
+  }
+
+  if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
+    return <AdminDashboard />;
+  }
+
+  // Default student view
+  return <StudentDashboard user={user} stats={stats} token={token} />;
 
   return (
     <div className="min-h-screen bg-[#F0F4F8] dark:bg-black transition-colors duration-300 font-sans selection:bg-[#ADFF44] selection:text-black">

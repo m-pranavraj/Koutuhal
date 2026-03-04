@@ -17,6 +17,26 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Exchange Supabase auth for backend JWT token
+const getBackendToken = async (email: string): Promise<string | null> => {
+    try {
+        const res = await fetch('/api/v1/auth/get-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        if (!res.ok) {
+            console.error('Failed to get backend token:', res.statusText);
+            return null;
+        }
+        const data = await res.json();
+        return data.access_token || null;
+    } catch (error) {
+        console.error('Error getting backend token:', error);
+        return null;
+    }
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState<User | null>(null);
@@ -97,7 +117,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     if (userProfile) {
                         setUser(userProfile);
                         setIsAuthenticated(true);
-                        setToken(session.access_token);
+                        // Get JWT token from backend for API calls
+                        const backendToken = await getBackendToken(userProfile.email);
+                        if (backendToken) {
+                            setToken(backendToken);
+                            localStorage.setItem('koutuhal_token', backendToken);
+                            localStorage.setItem('user', JSON.stringify(userProfile));
+                        }
                     }
                 }
             } catch (error) {
@@ -109,18 +135,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         initializeAuth();
 
+        // Listen for auth state changes (OAuth redirects, logouts, etc)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'SIGNED_IN' && session?.user) {
                 const userProfile = await fetchUserProfile(session.user);
                 if (userProfile) {
                     setUser(userProfile);
                     setIsAuthenticated(true);
-                    setToken(session.access_token);
+                    // Get JWT for backend API calls
+                    const backendToken = await getBackendToken(userProfile.email);
+                    if (backendToken) {
+                        setToken(backendToken);
+                        localStorage.setItem('koutuhal_token', backendToken);
+                        localStorage.setItem('user', JSON.stringify(userProfile));
+                    }
                 }
             } else if (event === 'SIGNED_OUT') {
                 setUser(null);
                 setIsAuthenticated(false);
                 setToken(null);
+                localStorage.removeItem('koutuhal_token');
+                localStorage.removeItem('user');
             }
         });
 
@@ -146,15 +181,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     if (userProfile) {
                         setUser(userProfile);
                         setIsAuthenticated(true);
-                        setToken(data.session?.access_token || null);
+                        // Get JWT from backend for API calls
+                        const backendToken = await getBackendToken(userProfile.email);
+                        if (backendToken) {
+                            setToken(backendToken);
+                            localStorage.setItem('koutuhal_token', backendToken);
+                            localStorage.setItem('user', JSON.stringify(userProfile));
+                        }
                     }
                 }
             } else if (credentials.method === 'google') {
+                // Trigger OAuth with redirect to current page + callback
                 const { error } = await supabase.auth.signInWithOAuth({
                     provider: 'google',
+                    options: {
+                        redirectTo: `${window.location.origin}/`,
+                        queryParams: {
+                            access_type: 'offline',
+                            prompt: 'consent',
+                        },
+                    },
                 });
 
                 if (error) throw new Error(error.message);
+                // Note: User will be set via onAuthStateChange after OAuth redirect
             }
         } catch (error: any) {
             setAuthError(error.message);
@@ -200,7 +250,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 if (userProfile) {
                     setUser(userProfile);
                     setIsAuthenticated(true);
-                    setToken(data.session?.access_token || null);
+                    // Get JWT from backend for API calls
+                    const backendToken = await getBackendToken(userProfile.email);
+                    if (backendToken) {
+                        setToken(backendToken);
+                        localStorage.setItem('koutuhal_token', backendToken);
+                        localStorage.setItem('user', JSON.stringify(userProfile));
+                    }
                 }
             }
         } catch (error: any) {
@@ -232,7 +288,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (error) throw new Error(error.message);
 
             if (data) {
-                setUser({
+                const updatedUser = {
                     id: data.id,
                     full_name: data.full_name,
                     email: data.email,
@@ -241,7 +297,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     onboarding_completed: data.onboarding_completed,
                     is_active: data.is_active,
                     created_at: data.created_at
-                });
+                };
+                setUser(updatedUser);
+                localStorage.setItem('user', JSON.stringify(updatedUser));
             }
         } catch (error: any) {
             setAuthError(error.message);
@@ -255,12 +313,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsLoading(true);
         try {
             await supabase.auth.signOut();
-        } catch (error) {
-            console.error("Logout request failed:", error);
-        } finally {
             setIsAuthenticated(false);
             setUser(null);
             setToken(null);
+            localStorage.removeItem('koutuhal_token');
+            localStorage.removeItem('user');
+        } catch (error) {
+            console.error("Logout error:", error);
+        } finally {
             setIsLoading(false);
             window.location.href = '/login';
         }

@@ -107,6 +107,48 @@ def read_users_me(
 def logout():
     return {"message": "Logged out successfully"}
 
+@router.post("/get-token")
+async def get_token_from_email(
+    payload: dict,
+    db: Annotated[AsyncSession, Depends(get_db)]
+) -> dict:
+    """
+    Exchange email (from Supabase OAuth) for backend JWT token.
+    Used when frontend authenticates via Supabase but needs JWT for API calls.
+    """
+    email = payload.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Email required")
+    
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalars().first()
+    
+    if not user:
+        # Auto-create user if they don't exist (OAuth signup)
+        user = User(
+            email=email,
+            name=payload.get("name", email.split("@")[0]),
+            password_hash="oauth",  # OAuth users don't have password
+            role=UserRole.STUDENT,
+            onboarding_completed=False
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    
+    access_token = security.create_access_token(user.id)
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "role": user.role.value if hasattr(user.role, 'value') else str(user.role),
+            "onboarding_completed": user.onboarding_completed
+        }
+    }
+
 @router.post("/admin/login", response_model=Token)
 async def admin_login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],

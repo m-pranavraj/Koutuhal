@@ -72,7 +72,7 @@ export interface User {
     id: string;
     email: string;
     full_name?: string;
-    role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+    role: 'STUDENT' | 'MENTOR' | 'ORGANISATION' | 'ADMIN' | 'SUPER_ADMIN' | 'USER';
     is_active: boolean;
     onboarding_completed: boolean;
     profile_image_url?: string;

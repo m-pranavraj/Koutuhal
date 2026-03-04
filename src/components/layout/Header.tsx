@@ -258,9 +258,34 @@ export const Header = () => {
 
           {/* ── Right Actions ── */}
           <div className="flex items-center gap-4">
-            {isAuthenticated ? (
+            {isAuthenticated && user ? (
               <div className="flex items-center gap-3">
-                <span className="hidden sm:block text-sm text-neutral-400 font-medium">Hello, {user?.full_name?.split(' ')[0]}</span>
+                <div className="hidden sm:flex flex-col gap-0.5 text-right">
+                  <span className="text-sm font-bold text-white">{user?.full_name?.split(' ')[0]}</span>
+                  <span className="text-xs text-[#ADFF44] font-medium uppercase tracking-wider">{user?.role}</span>
+                </div>
+                {/* Role-specific dashboard link */}
+                {user?.role === 'MENTOR' && (
+                  <Link to="/dashboard" className="hidden sm:inline">
+                    <Button size="sm" variant="ghost" className="text-[#ADFF44] hover:bg-[#ADFF44]/10 font-bold">
+                      My Sessions
+                    </Button>
+                  </Link>
+                )}
+                {user?.role === 'ORGANISATION' && (
+                  <Link to="/dashboard" className="hidden sm:inline">
+                    <Button size="sm" variant="ghost" className="text-[#ADFF44] hover:bg-[#ADFF44]/10 font-bold">
+                      Post Jobs
+                    </Button>
+                  </Link>
+                )}
+                {user?.role === 'STUDENT' && (
+                  <Link to="/dashboard" className="hidden sm:inline">
+                    <Button size="sm" variant="ghost" className="text-[#ADFF44] hover:bg-[#ADFF44]/10 font-bold">
+                      Dashboard
+                    </Button>
+                  </Link>
+                )}
                 <Button variant="ghost" size="icon" onClick={logout} className="text-neutral-400 hover:text-red-400 hover:bg-red-950/30">
                   <LogOut className="w-4 h-4" />
                 </Button>
@@ -324,16 +349,28 @@ export const Header = () => {
 
                 {isAuthenticated && (
                   <>
-                    <div className="h-px bg-neutral-800 my-2" />
+                    <div className="h-px bg-neutral-800 my-4 mb-6" />
+                    <div className="px-5 py-4 bg-neutral-900 rounded-xl mb-4">
+                      <p className="text-xs text-neutral-500 uppercase tracking-wider font-bold mb-2">LOGGED IN AS</p>
+                      <p className="text-white font-bold mb-1">{user?.full_name}</p>
+                      <p className="text-[#ADFF44] text-sm font-bold uppercase tracking-wider">{user?.role}</p>
+                    </div>
                     <MobileNavItem to="/dashboard" label="DASHBOARD" isActive={isActive("/dashboard")} onClick={() => setMobileMenuOpen(false)} index={3} />
+                    {user?.role === 'MENTOR' && (
+                      <MobileNavItem to="/dashboard" label="MY SESSIONS" isActive={isActive("/dashboard")} onClick={() => setMobileMenuOpen(false)} index={4} />
+                    )}
+                    {user?.role === 'ORGANISATION' && (
+                      <MobileNavItem to="/dashboard" label="POST JOBS" isActive={isActive("/dashboard")} onClick={() => setMobileMenuOpen(false)} index={4} />
+                    )}
                     {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
-                      <MobileNavItem to="/admin" label="ADMIN" isActive={isActive("/admin")} onClick={() => setMobileMenuOpen(false)} index={4} />
+                      <MobileNavItem to="/admin" label="ADMIN" isActive={isActive("/admin")} onClick={() => setMobileMenuOpen(false)} index={5} />
                     )}
                     <button
                       onClick={() => { logout(); setMobileMenuOpen(false); }}
-                      className="flex items-center gap-4 px-5 py-4 rounded-xl text-red-400 hover:bg-neutral-900 w-full text-left mt-4"
+                      className="flex items-center gap-4 px-5 py-4 rounded-xl text-red-400 hover:bg-red-950/30 w-full text-left mt-4 font-bold uppercase text-xs tracking-wider"
                     >
-                      <span className="text-sm font-bold tracking-wider">LOG OUT</span>
+                      <LogOut className="w-4 h-4" />
+                      LOG OUT
                     </button>
                   </>
                 )}
