@@ -429,7 +429,7 @@ const Home = () => {
       {/* ━━━ TRUSTED BY LOGO STRIP ━━━━━━━━━━ */}
       <section className="py-10 bg-neutral-950 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4">
-          <p className="text-center text-neutral-500 text-xs font-bold tracking-widest uppercase mb-8">Trusted by Mentors from</p>
+          <p className="text-center text-[#ADFF44] text-xs font-bold tracking-widest uppercase mb-8">Trusted by Mentors from</p>
           <Marquee className="py-2" duration={20}>
             {["Meta", "Google", "McKinsey & Co", "Bain & Company", "Salesforce", "Qualcomm", "Finish Line", "Microsoft", "Amazon"].map((company, i) => (
               <div key={i} className="mx-8 grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all duration-500 cursor-default">
@@ -466,7 +466,7 @@ const Home = () => {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
                 whileHover={{ y: -10 }}
-                className={`group relative bg-neutral-900/40 backdrop-blur-xl border ${item.border} rounded-[2rem] p-8 transition-all cursor-pointer overflow-hidden shadow-2xl`}
+                className={`group relative bg-neutral-900/40 backdrop-blur-xl border ${item.border} rounded-[2rem] p-8 transition-all cursor-pointer overflow-hidden shadow-2xl hover:border-[#ADFF44]/50`}
               >
                 {/* Hover Spotlight */}
                 <div className={`absolute inset-0 bg-gradient-to-br from-${item.color.split('-')[1]}-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-duration-500`} />
@@ -486,7 +486,7 @@ const Home = () => {
                   </p>
 
                   <div className="mt-auto">
-                    <Link to={item.link} className="inline-flex items-center justify-center w-full py-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-sm font-bold text-white group-hover:tracking-wider">
+                    <Link to={item.link} className="inline-flex items-center justify-center w-full py-4 rounded-xl bg-[#ADFF44]/10 border border-[#ADFF44]/30 hover:bg-[#ADFF44]/20 hover:border-[#ADFF44]/60 transition-all text-sm font-bold text-[#ADFF44] group-hover:tracking-wider">
                       View Programs <ChevronRight className="h-4 w-4 ml-2" />
                     </Link>
                   </div>
@@ -780,14 +780,14 @@ const Home = () => {
             ))}
           </div>
 
-          <div className="mt-20 bg-neutral-900/30 rounded-3xl p-8 md:p-12 text-center relative overflow-hidden border border-neutral-800/50">
+          <div className="mt-20 bg-neutral-900/30 rounded-3xl p-8 md:p-12 text-center relative overflow-hidden border border-neutral-800/50 hover:border-[#ADFF44]/50 transition-colors duration-300">
             <div className="absolute inset-0 bg-gradient-to-r from-[#ADFF44]/5 via-transparent to-[#ADFF44]/5" />
             <h3 className="text-2xl font-display font-bold mb-8 relative z-10">World-Class Faculty Stats</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 relative z-10">
-              <div><p className="text-4xl font-black text-white">18+</p><p className="text-xs uppercase text-neutral-500 mt-2">Years Experience</p></div>
-              <div><p className="text-4xl font-black text-white">20+</p><p className="text-xs uppercase text-neutral-500 mt-2">Research Papers</p></div>
-              <div><p className="text-4xl font-black text-white">15k+</p><p className="text-xs uppercase text-neutral-500 mt-2">Students Guided</p></div>
-              <div><p className="text-4xl font-black text-white">100%</p><p className="text-xs uppercase text-neutral-500 mt-2">Young Learner Focus</p></div>
+              <div><p className="text-4xl font-black text-[#ADFF44]">18+</p><p className="text-xs uppercase text-neutral-500 mt-2">Years Experience</p></div>
+              <div><p className="text-4xl font-black text-[#ADFF44]">20+</p><p className="text-xs uppercase text-neutral-500 mt-2">Research Papers</p></div>
+              <div><p className="text-4xl font-black text-[#ADFF44]">15k+</p><p className="text-xs uppercase text-neutral-500 mt-2">Students Guided</p></div>
+              <div><p className="text-4xl font-black text-[#ADFF44]">100%</p><p className="text-xs uppercase text-neutral-500 mt-2">Young Learner Focus</p></div>
             </div>
           </div>
         </div>
