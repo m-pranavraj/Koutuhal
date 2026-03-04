@@ -531,7 +531,7 @@ const Home = () => {
                   <img
                     src={mentor.image}
                     alt={mentor.name}
-                    className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = "https://ui-avatars.com/api/?name=" + mentor.name + "&background=random";
                     }}
@@ -582,9 +582,6 @@ const Home = () => {
                                   <a href={mentor.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#ADFF44]/10 text-[#ADFF44] border border-[#ADFF44]/20 hover:bg-[#ADFF44] hover:text-black transition-all text-xs font-bold">
                                     <Linkedin className="h-4 w-4" /> LinkedIn
                                   </a>
-                                  <DialogClose className="h-8 w-8 rounded-lg bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 flex items-center justify-center text-neutral-400 hover:text-white transition-all">
-                                    <X className="h-4 w-4" />
-                                  </DialogClose>
                                 </div>
                               </div>
                               <p className="text-[#ADFF44] font-bold uppercase tracking-widest text-sm mb-1">{mentor.role} @ {mentor.company}</p>

@@ -94,6 +94,8 @@ async def analyze_resume_quick(
     """
     Public FAANG-level ATS resume analysis. No auth/DB/GCS.
     First validates the upload is actually a resume, then returns deep analysis.
+    Dynamic scoring: each resume gets unique scores based on actual content.
+    Anti-hallucination: scores strictly based on explicit resume content vs JD.
     """
     file_bytes = await resume.read()
     resume_text = _extract_text_from_upload(file_bytes, resume.content_type or "", resume.filename or "")
@@ -102,21 +104,35 @@ async def analyze_resume_quick(
 
     client = _groq_client()
 
-    prompt = f"""You are an elite FAANG-level ATS resume analyst and career coach with 20 years of experience.
+    # Detect if JD was properly provided
+    jd_available = bool(jd_text and jd_text.strip() and len(jd_text.strip()) > 20)
+    jd_section = jd_text[:3000] if jd_available else "No specific JD provided. Evaluate resume quality on general industry standards."
+
+    prompt = f"""You are an elite ATS resume analyst. Analyze this resume DYNAMICALLY — every resume must get DIFFERENT scores based on its actual content.
 
 TASK: Analyze the document text against the job description.
 
-STEP 1 — VALIDATION: First determine if the document is actually a resume/CV. It must contain professional work history, education, or skills sections. Random documents, forms, invoices, or articles are NOT resumes.
+STEP 1 — VALIDATION: First determine if the document is actually a resume/CV. It must contain work history, education, or skills sections. Random documents, forms, invoices, or articles are NOT resumes.
 
-STEP 2 — If it IS a resume, perform deep ATS analysis.
+STEP 2 — If it IS a resume, perform deep ATS analysis following these STRICT rules:
 
-JOB DESCRIPTION:
-{jd_text[:3000]}
+CRITICAL ANTI-HALLUCINATION RULES:
+1. Score ONLY based on what is EXPLICITLY written in the resume. Do not assume unstated skills.
+2. ATS Score must reflect actual keyword density vs JD requirements. A resume missing 60% of JD keywords cannot score above 45.
+3. Structure Score must reflect real formatting: Does it have clear section headers? Consistent date formats? Bullet points? Proper hierarchy?
+4. Impact Score must count ACTUAL quantified achievements (numbers, percentages, metrics). No metrics = score below 40.
+5. Each gap/strength must cite SPECIFIC content from the resume, not generic observations.
+6. Use SECOND PERSON perspective: "Your resume shows...", "You have...", NOT "The candidate has..." or "The applicant..."
+7. If JD describes a role completely unrelated to resume experience, alignment score MUST be below 35%.
+8. Generate UNIQUE insights — different resumes must produce different analysis, not template responses.
+
+{"JOB DESCRIPTION:" if jd_available else "EVALUATION CONTEXT:"}
+{jd_section}
 
 DOCUMENT TEXT:
-{resume_text[:4000]}
+{resume_text[:5000]}
 
-Respond ONLY with a valid JSON object, no markdown, no extra text:
+Respond ONLY with valid JSON (no markdown, no code blocks, no extra text):
 
 If NOT a resume:
 {{"is_resume": false}}
@@ -124,22 +140,22 @@ If NOT a resume:
 If it IS a resume:
 {{
   "is_resume": true,
-  "score": <integer 0-100, honest ATS compatibility score>,
+  "score": <integer 0-100, ATS compatibility. Count JD keyword matches / total JD keywords * 100. Be HONEST.>,
   "grade": <"S" if 90-100, "A" if 80-89, "B" if 65-79, "C" if 50-64, "D" if below 50>,
-  "missingKeywords": [<up to 10 critical JD keywords absent from resume>],
-  "foundKeywords": [<up to 12 important JD keywords present in resume>],
-  "structureScore": <integer 0-100, formatting and structure quality>,
-  "impactScore": <integer 0-100, use of metrics and quantified achievements>,
+  "missingKeywords": [<up to 10 critical JD keywords NOT found in resume>],
+  "foundKeywords": [<up to 12 JD keywords that ARE present in resume>],
+  "structureScore": <integer 0-100. Check: section headers present? bullet points? dates consistent? professional email? no typos? Each missing element = -15 points>,
+  "impactScore": <integer 0-100. Count quantified achievements with numbers/metrics. 0 metrics = 20, 1-2 = 40, 3-4 = 60, 5+ = 80+>,
   "criticalGaps": [
-    {{"gap": "<specific gap>", "severity": "<High|Medium|Low>", "fix": "<exact actionable fix>"}},
+    {{"gap": "<specific missing skill/keyword from JD>", "severity": "<High|Medium|Low>", "fix": "<exact actionable fix referencing YOUR resume content>"}},
     ...up to 5
   ],
   "strengths": [
-    {{"strength": "<specific strength found>", "evidence": "<quote or paraphrase from resume>"}},
+    {{"strength": "<specific strength>", "evidence": "<exact quote or paraphrase FROM the resume text>"}},
     ...up to 4
   ],
   "atsRecommendations": [
-    "<specific, actionable recommendation>",
+    "<specific, actionable recommendation using 'you/your' perspective>",
     ...up to 6
   ]
 }}"""
@@ -147,29 +163,106 @@ If it IS a resume:
     try:
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-            max_tokens=1200,
+            messages=[
+                {"role": "system", "content": "You output ONLY valid raw JSON. No markdown. No explanations. Every resume gets unique, honest scores."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.15,
+            max_tokens=1500,
         )
-        result = _parse_groq_json(response.choices[0].message.content)
+        
+        raw_response = response.choices[0].message.content
+        
+        # Robust JSON parsing with fallback
+        try:
+            result = _parse_groq_json(raw_response)
+        except _json.JSONDecodeError:
+            logger.warning("Primary JSON parse failed, trying fallback extraction")
+            if "{" in raw_response and "}" in raw_response:
+                start = raw_response.find("{")
+                end = raw_response.rfind("}") + 1
+                try:
+                    result = _json.loads(raw_response[start:end])
+                except _json.JSONDecodeError:
+                    logger.error("Fallback JSON parse also failed. Raw: %s", raw_response[:500])
+                    raise HTTPException(status_code=500, detail="AI returned an invalid response. Please try again.")
+            else:
+                raise HTTPException(status_code=500, detail="AI returned an invalid response. Please try again.")
 
         if not result.get("is_resume", True):
             return {"is_resume": False}
 
+        # Validate and sanitize scores
+        score = max(0, min(100, int(result.get("score", 50))))
+        structure_score = max(0, min(100, int(result.get("structureScore", 50))))
+        impact_score = max(0, min(100, int(result.get("impactScore", 50))))
+        
+        # Sanity check: if many keywords missing, score can't be too high
+        missing = result.get("missingKeywords", [])
+        found = result.get("foundKeywords", [])
+        if len(missing) > 0 and len(found) > 0:
+            keyword_ratio = len(found) / (len(found) + len(missing))
+            max_reasonable_score = int(keyword_ratio * 100) + 15  # small grace margin
+            if score > max_reasonable_score:
+                score = max_reasonable_score
+        
+        # Determine grade based on validated score
+        if score >= 90:
+            grade = "S"
+        elif score >= 80:
+            grade = "A"
+        elif score >= 65:
+            grade = "B"
+        elif score >= 50:
+            grade = "C"
+        else:
+            grade = "D"
+
+        # Sanitize strengths to ensure proper structure
+        strengths = result.get("strengths", [])
+        sanitized_strengths = []
+        for s in strengths:
+            if isinstance(s, dict):
+                sanitized_strengths.append({
+                    "strength": _coerce_to_string(s.get("strength", "")),
+                    "evidence": _coerce_to_string(s.get("evidence", ""))
+                })
+            elif isinstance(s, str):
+                sanitized_strengths.append({"strength": s, "evidence": ""})
+        
+        # Sanitize critical gaps
+        gaps = result.get("criticalGaps", [])
+        sanitized_gaps = []
+        for g in gaps:
+            if isinstance(g, dict):
+                sanitized_gaps.append({
+                    "gap": _coerce_to_string(g.get("gap", "")),
+                    "severity": g.get("severity", "Medium"),
+                    "fix": _coerce_to_string(g.get("fix", ""))
+                })
+            elif isinstance(g, str):
+                sanitized_gaps.append({"gap": g, "severity": "Medium", "fix": ""})
+        
+        # Sanitize recommendations to strings
+        recs = result.get("atsRecommendations", [])
+        sanitized_recs = [_coerce_to_string(r) for r in recs]
+
         return {
             "is_resume": True,
-            "score": int(result.get("score", 50)),
-            "grade": result.get("grade", "C"),
-            "missingKeywords": result.get("missingKeywords", []),
-            "foundKeywords": result.get("foundKeywords", []),
-            "structureScore": int(result.get("structureScore", 50)),
-            "impactScore": int(result.get("impactScore", 50)),
-            "criticalGaps": result.get("criticalGaps", []),
-            "strengths": result.get("strengths", []),
-            "atsRecommendations": result.get("atsRecommendations", []),
+            "score": score,
+            "grade": grade,
+            "missingKeywords": [_coerce_to_string(k) for k in missing],
+            "foundKeywords": [_coerce_to_string(k) for k in found],
+            "structureScore": structure_score,
+            "impactScore": impact_score,
+            "criticalGaps": sanitized_gaps,
+            "strengths": sanitized_strengths,
+            "atsRecommendations": sanitized_recs,
             "resume_text": resume_text
         }
 
+    except HTTPException:
+        raise
     except _json.JSONDecodeError as e:
         logger.error("Groq returned invalid JSON: %s", e)
         raise HTTPException(status_code=500, detail="AI returned an invalid response. Please try again.")
