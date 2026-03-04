@@ -28,11 +28,11 @@ export const MentorCard = ({ mentor, index }: { mentor: Mentor, index: number })
       {/* Header */}
       <div className="flex gap-4 mb-4 pt-2">
         <div className="relative shrink-0">
-          <div className="w-16 h-16 rounded-full p-[2px] bg-gradient-to-br from-[#ADFF44] to-[#8BCC36]">
+          <div className="w-16 h-16 rounded-full p-[2px] bg-gradient-to-br from-[#ADFF44] to-[#8BCC36] group-hover:shadow-lg group-hover:shadow-[#ADFF44]/50 transition-shadow duration-300">
             <img
               src={mentor.image}
               alt={mentor.name}
-              className="w-full h-full rounded-full object-cover border-2 border-white"
+              className="w-full h-full rounded-full object-cover border-2 border-white filter grayscale group-hover:grayscale-0 transition-all duration-500"
             />
           </div>
           {isAvailable && (

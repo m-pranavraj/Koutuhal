@@ -217,7 +217,7 @@ const SearchMentors = () => {
                   <div className="flex items-center gap-4 mb-4">
                     <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#ADFF44]/20 to-neutral-800 flex items-center justify-center text-xl font-bold text-[#ADFF44] overflow-hidden border-2 border-neutral-700 group-hover:border-[#ADFF44]/50 transition-colors">
                       {mentor.avatar_url ? (
-                        <img src={mentor.avatar_url} alt={mentor.name} className="w-full h-full object-cover" />
+                        <img src={mentor.avatar_url} alt={mentor.name} className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-500" />
                       ) : (
                         mentor.name.charAt(0).toUpperCase()
                       )}

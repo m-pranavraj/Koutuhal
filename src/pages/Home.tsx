@@ -531,7 +531,7 @@ const Home = () => {
                   <img
                     src={mentor.image}
                     alt={mentor.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700 filter grayscale group-hover:grayscale-0"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = "https://ui-avatars.com/api/?name=" + mentor.name + "&background=random";
                     }}
@@ -573,7 +573,7 @@ const Home = () => {
                         <div className="p-8 relative z-10">
                           <div className="flex flex-col md:flex-row gap-6 mb-8">
                             <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-[#ADFF44]/20 bg-neutral-900 shrink-0">
-                              <img src={mentor.image} alt={mentor.name} className="w-full h-full object-cover" />
+                              <img src={mentor.image} alt={mentor.name} className="w-full h-full object-cover filter grayscale" />
                             </div>
                             <div className="flex-1">
                               <div className="flex items-center justify-between gap-4">
