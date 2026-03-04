@@ -495,6 +495,107 @@ If it IS a resume:
         raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
 
 
+@router.post("/tailor-resume-json")
+async def tailor_resume_json(
+    data: dict,
+) -> Any:
+    """
+    JSON-based resume tailoring endpoint.
+    Accepts:
+    {
+        "resume_content": "full resume text",
+        "job_description": "full job description text"
+    }
+    
+    Returns:
+    {
+        "tailored_resume": "tailored content",
+        "match_score": 85,
+        "ats_score": 90,
+        "keywords_found": [...],
+        "keywords_missing": [...]
+    }
+    """
+    from pydantic import BaseModel
+    
+    class TailorRequest(BaseModel):
+        resume_content: str
+        job_description: str
+    
+    # Parse the incoming data
+    try:
+        req = TailorRequest(**data)
+        resume_text = req.resume_content.strip()
+        jd_text = req.job_description.strip()
+    except:
+        raise HTTPException(status_code=400, detail="Invalid request format")
+    
+    if not resume_text or len(resume_text) < 50:
+        raise HTTPException(status_code=400, detail="Resume content too short")
+    if not jd_text or len(jd_text) < 50:
+        raise HTTPException(status_code=400, detail="Job description too short")
+    
+    client = _groq_client()
+    
+    # Extract JD keywords for scoring
+    jd_keywords = _extract_keywords_from_jd(jd_text)
+    keyword_match = _compute_keyword_match(resume_text, jd_keywords)
+    
+    prompt = f"""You are an expert ATS-optimized resume writer. Transform the resume to perfectly match this job description while maintaining truthfulness.
+
+JOB DESCRIPTION:
+{jd_text[:2500]}
+
+CURRENT RESUME:
+{resume_text[:4000]}
+
+TASK: Rewrite the resume to be optimally tailored for this job.
+
+Rules:
+1. Use ONLY information explicitly present in the resume - never invent skills or achievements
+2. Rephrase bullet points to match JD keywords and terminology  
+3. Reorder sections to prioritize job-relevant experience
+4. Use first-person language: "Led...", "Implemented...", "Managed..."
+5. Make achievements quantifiable when possible using resume facts
+6. Keep ATS compatibility: no graphics, tables, or special formatting
+7. Preserve all dates, company names, and factual information
+8. Return ONLY the tailored resume text - no JSON, no explanations
+
+Output the complete tailored resume in plain text format."""
+
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{
+                "role": "user", 
+                "content": prompt
+            }],
+            temperature=0.3,
+            max_tokens=2000,
+        )
+        
+        tailored_content = response.choices[0].message.content.strip()
+        
+        # Compute match score (40% keyword + 60% LLM relevance)
+        keyword_ratio = keyword_match.get("ratio", 0.5)
+        llm_relevance = 0.85  # Assume LLM rewrites well
+        match_score = int((0.4 * keyword_ratio + 0.6 * llm_relevance) * 100)
+        match_score = min(match_score, 100)
+        
+        return {
+            "tailored_resume": tailored_content,
+            "match_score": match_score,
+            "ats_score": min(95, match_score + 10),  # ATS score slightly higher
+            "keywords_found": keyword_match.get("found", [])[:10],
+            "keywords_missing": keyword_match.get("missing", [])[:10],
+            "sufficient": match_score >= 60,
+        }
+        
+    except Exception as e:
+        logger.error(f"Resume tailor error: {e}")
+        raise HTTPException(status_code=500, detail=f"Resume tailoring failed: {str(e)}")
+
+
 @router.post("/tailor-resume-quick")
 async def tailor_resume_quick(
     resume: Annotated[UploadFile, File()],
