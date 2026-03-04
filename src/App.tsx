@@ -33,6 +33,8 @@ import AiTutorTeaser from "@/pages/AiTutorTeaser";
 import SchoolsProgram from "@/pages/SchoolsProgram";
 import CollegesProgram from "@/pages/CollegesProgram";
 import BusinessProgram from "@/pages/BusinessProgram";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsAndConditions from "@/pages/TermsAndConditions";
 const queryClient = new QueryClient();
 
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -102,6 +104,8 @@ const App = () => (
                   <Route path="/programs/schools" element={<SchoolsProgram />} />
                   <Route path="/programs/colleges" element={<CollegesProgram />} />
                   <Route path="/programs/business" element={<BusinessProgram />} />
+                  <Route path="/privacy" element={<PrivacyPolicy />} />
+                  <Route path="/terms" element={<TermsAndConditions />} />
 
                   <Route element={<ProtectedRoute requireOnboarding={true} />}>
                     <Route path="/onboarding" element={<OnboardingRolePage />} />

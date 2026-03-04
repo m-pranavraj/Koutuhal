@@ -26,6 +26,7 @@ import {
   Rocket,
   MessageSquare,
   Linkedin,
+  X,
 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +38,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogDescription,
+  DialogClose,
 } from "@/components/ui/dialog";
 import udayanImg from '@/assets/mentors/udyan.png.jpeg';
 import shireenImg from '@/assets/mentors/shireen.png.jpeg';
@@ -427,8 +429,9 @@ const Home = () => {
       </section>
 
       {/* ━━━ TRUSTED BY LOGO STRIP ━━━━━━━━━━ */}
-      <section className="py-10 bg-neutral-950 border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-4">
+      <section className="py-10 bg-neutral-950 border-b border-white/5 relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#ADFF44]/5 via-transparent to-[#ADFF44]/5 pointer-events-none" />
+        <div className="max-w-7xl mx-auto px-4 relative z-10">
           <p className="text-center text-[#ADFF44] text-xs font-bold tracking-widest uppercase mb-8">Trusted by Mentors from</p>
           <Marquee className="py-2" duration={20}>
             {["Meta", "Google", "McKinsey & Co", "Bain & Company", "Salesforce", "Qualcomm", "Finish Line", "Microsoft", "Amazon"].map((company, i) => (
@@ -444,6 +447,7 @@ const Home = () => {
       <section className="relative z-20 bg-neutral-950 py-24 px-4 border-t border-white/5 overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
         <div className="absolute top-[-10%] left-0 w-full h-[500px] bg-gradient-to-b from-black via-transparent to-transparent pointer-events-none" />
+        <div className="absolute left-0 top-0 w-1 h-full bg-gradient-to-b from-[#ADFF44]/20 via-[#ADFF44]/5 to-transparent" />
 
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center mb-16">
@@ -500,6 +504,7 @@ const Home = () => {
       {/* ━━━ OUR MENTORS ━━━━━━━━━━━━━━━━━━━━ */}
       <section id="mentors" className="py-24 px-4 bg-neutral-950 relative overflow-hidden">
         <div className="absolute top-1/2 left-0 w-[500px] h-[500px] bg-[#ADFF44]/5 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-[300px] h-[300px] bg-[#ADFF44]/3 blur-[100px] rounded-full pointer-events-none" />
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center mb-16">
             <Badge className="mb-4 bg-[#ADFF44]/10 text-[#ADFF44] border-0 px-3 py-1 text-xs font-display">INDUSTRY LEADERS</Badge>
@@ -526,7 +531,7 @@ const Home = () => {
                   <img
                     src={mentor.image}
                     alt={mentor.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = "https://ui-avatars.com/api/?name=" + mentor.name + "&background=random";
                     }}
@@ -573,9 +578,14 @@ const Home = () => {
                             <div className="flex-1">
                               <div className="flex items-center justify-between gap-4">
                                 <DialogTitle className="text-3xl font-black font-display tracking-tight">{mentor.name}</DialogTitle>
-                                <a href={mentor.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0077B5]/10 text-[#0077B5] border border-[#0077B5]/20 hover:bg-[#0077B5] hover:text-white transition-all text-xs font-bold">
-                                  <Linkedin className="h-4 w-4" /> LinkedIn
-                                </a>
+                                <div className="flex items-center gap-2">
+                                  <a href={mentor.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#ADFF44]/10 text-[#ADFF44] border border-[#ADFF44]/20 hover:bg-[#ADFF44] hover:text-black transition-all text-xs font-bold">
+                                    <Linkedin className="h-4 w-4" /> LinkedIn
+                                  </a>
+                                  <DialogClose className="h-8 w-8 rounded-lg bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 flex items-center justify-center text-neutral-400 hover:text-white transition-all">
+                                    <X className="h-4 w-4" />
+                                  </DialogClose>
+                                </div>
                               </div>
                               <p className="text-[#ADFF44] font-bold uppercase tracking-widest text-sm mb-1">{mentor.role} @ {mentor.company}</p>
                               <div className="flex items-center gap-4 mt-2">
@@ -637,9 +647,11 @@ const Home = () => {
                           </div>
 
                           <div className="mt-8 pt-6 border-t border-neutral-900 flex justify-between items-center bg-neutral-950/50 backdrop-blur-xl">
-                            <Button className="w-full bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-black uppercase tracking-widest py-6 rounded-2xl shadow-[0_0_20px_rgba(173,255,68,0.2)]">
-                              Book 1:1 Session
-                            </Button>
+                            <Link to="/search-experts" className="w-full">
+                              <Button className="w-full bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-black uppercase tracking-widest py-6 rounded-2xl shadow-[0_0_20px_rgba(173,255,68,0.2)]">
+                                Book 1:1 Session
+                              </Button>
+                            </Link>
                           </div>
                         </div>
                       </div>
@@ -672,8 +684,9 @@ const Home = () => {
       </section>
 
       {/* ━━━ CURRICULUM + WHY CHOOSE (Bento Grid) ━━━ */}
-      <section className="py-24 px-4 bg-neutral-950">
-        <div className="max-w-7xl mx-auto">
+      <section className="py-24 px-4 bg-neutral-950 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#ADFF44]/5 blur-[120px] rounded-full pointer-events-none" />
+        <div className="max-w-7xl mx-auto relative z-10">
           <Badge className="mb-6 bg-[#ADFF44]/10 text-[#ADFF44] border-0 px-3 py-1 text-xs font-display">PROGRAM OVERVIEW</Badge>
 
           <div className="grid lg:grid-cols-2 gap-16 mb-24">
@@ -794,8 +807,9 @@ const Home = () => {
       </section>
 
       {/* ━━━ SUCCESS STORIES (Grid) ━━━━━━━━━ */}
-      <section id="reviews" className="py-24 px-4 bg-neutral-950">
-        <div className="max-w-full overflow-hidden">
+      <section id="reviews" className="py-24 px-4 bg-neutral-950 relative overflow-hidden">
+        <div className="absolute left-0 top-1/2 w-[500px] h-[500px] bg-[#ADFF44]/5 blur-[120px] rounded-full pointer-events-none -translate-y-1/2" />
+        <div className="max-w-full overflow-hidden relative z-10">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-display font-black mb-4">Success <span className="text-[#ADFF44]">Stories</span></h2>
             <p className="text-neutral-500">Hear from our community of learners.</p>
@@ -823,8 +837,9 @@ const Home = () => {
       </section>
 
       {/* ━━━ PRICING (Updated) ━━━━━━━━━━━━━━ */}
-      <section className="py-28 px-4 bg-black">
-        <div className="max-w-6xl mx-auto">
+      <section className="py-28 px-4 bg-black relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-[500px] h-[500px] bg-[#ADFF44]/5 blur-[120px] rounded-full pointer-events-none" />
+        <div className="max-w-6xl mx-auto relative z-10">
           <div className="text-center mb-16">
             <Badge className="mb-4 bg-[#ADFF44]/10 text-[#ADFF44] border-[#ADFF44]/20 px-4 py-1 text-xs font-display">PRICING</Badge>
             <h2 className="text-4xl md:text-6xl font-display font-black tracking-tight">
@@ -866,14 +881,16 @@ const Home = () => {
                       </li>
                     ))}
                   </ul>
-                  <Button
-                    className={`w-full h-12 text-sm font-bold rounded-xl transition-all ${plan.isPopular
-                      ? 'bg-[#ADFF44] hover:bg-[#9BE63D] text-black border-0 shadow-[0_0_20px_rgba(173,255,68,0.15)]'
-                      : 'bg-transparent border border-neutral-700 text-white hover:border-[#ADFF44] hover:text-[#ADFF44]'
-                      }`}
-                  >
-                    Start Learning
-                  </Button>
+                  <Link to="/login" className="block w-full">
+                    <Button
+                      className={`w-full h-12 text-sm font-bold rounded-xl transition-all ${plan.isPopular
+                        ? 'bg-[#ADFF44] hover:bg-[#9BE63D] text-black border-0 shadow-[0_0_20px_rgba(173,255,68,0.15)]'
+                        : 'bg-transparent border border-neutral-700 text-white hover:border-[#ADFF44] hover:text-[#ADFF44]'
+                        }`}
+                    >
+                      Start Learning
+                    </Button>
+                  </Link>
                 </div>
               </motion.div>
             ))}

@@ -4,18 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 const quickLinks = [
-  { name: 'About Us', href: '/#about' },
+  { name: 'About Us', href: '/about' },
   { name: 'Courses', href: '/courses' },
-  { name: 'Instructors', href: '/#instructors' },
-  { name: 'Success Stories', href: '/#testimonials' },
+  { name: 'Instructors', href: '/#mentors' },
+  { name: 'Success Stories', href: '/#reviews' },
   { name: 'Career Support', href: '/jobs' },
 ];
 
 const legalLinks = [
   { name: 'Privacy Policy', href: '/privacy' },
   { name: 'Terms and Conditions', href: '/terms' },
-  { name: 'Cancellation & Refunds', href: '/refunds' },
-  { name: 'Shipping', href: '/shipping' },
 ];
 
 export const Footer = () => {
@@ -42,6 +40,10 @@ export const Footer = () => {
               <a href="tel:+919730797309" className="flex items-center gap-2 hover:text-white">
                 <Phone className="h-4 w-4" />
                 97307 97309
+              </a>
+              <a href="tel:+919225563280" className="flex items-center gap-2 hover:text-white">
+                <Phone className="h-4 w-4" />
+                92255 63280
               </a>
               <p className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
@@ -85,7 +87,7 @@ export const Footer = () => {
             <div className="mt-6">
               <h4 className="mb-3 text-sm font-semibold text-white">Follow Us</h4>
               <div className="flex gap-3">
-                <a href="#" className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900 transition-colors hover:bg-[#ADFF44] hover:text-black">
+                <a href="https://in.linkedin.com/company/koutuhal-ai" target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900 transition-colors hover:bg-[#ADFF44] hover:text-black">
                   <Linkedin className="h-4 w-4" />
                 </a>
                 <a href="#" className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900 transition-colors hover:bg-[#ADFF44] hover:text-black">
@@ -115,12 +117,16 @@ export const Footer = () => {
               </Button>
             </div>
             <div className="mt-6 flex gap-2">
-              <Button variant="outline" size="sm" className="border-neutral-800 text-neutral-400 hover:bg-neutral-900 hover:text-[#ADFF44]">
-                Book a Call
-              </Button>
-              <Button variant="outline" size="sm" className="border-neutral-800 text-neutral-400 hover:bg-neutral-900 hover:text-[#ADFF44]">
-                Contact Us
-              </Button>
+              <a href="https://calendly.com/koutuhal" target="_blank" rel="noopener noreferrer" className="w-full">
+                <Button variant="outline" size="sm" className="border-[#ADFF44] text-[#ADFF44] hover:bg-[#ADFF44] hover:text-black font-bold w-full">
+                  Book a Call
+                </Button>
+              </a>
+              <Link to="/contact" className="w-full">
+                <Button variant="outline" size="sm" className="border-[#ADFF44] text-[#ADFF44] hover:bg-[#ADFF44] hover:text-black font-bold w-full">
+                  Contact Us
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

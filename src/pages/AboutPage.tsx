@@ -114,6 +114,86 @@ const AboutPage = () => {
                 </div>
             </section>
 
+            {/* ━━━ TEAM SECTION ━━━━━━━━━━━━━━━━━━━ */}
+            <section className="py-24 px-4 bg-black border-t border-neutral-800">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-16">
+                        <h2 className="text-4xl md:text-5xl font-display font-black text-white mb-6">
+                            Meet Our <span className="text-[#ADFF44]">Team</span>
+                        </h2>
+                        <p className="text-neutral-400 max-w-2xl mx-auto text-lg">
+                            Brilliant minds working together to transform AI education in India.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="group">
+                                <div className="aspect-[3/4] rounded-2xl overflow-hidden border-2 border-neutral-800 bg-neutral-950 flex items-center justify-center hover:border-[#ADFF44]/50 transition-colors relative mb-4">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 to-neutral-950 flex items-center justify-center">
+                                        <div className="text-center">
+                                            <div className="text-4xl font-black text-neutral-700 mb-2">👤</div>
+                                            <p className="text-neutral-600 text-sm">Team Member Photo</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <h3 className="text-lg font-bold text-white mb-1">Team Member {i}</h3>
+                                <p className="text-[#ADFF44] text-sm font-medium">Position Title</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ━━━ PLATFORM FEATURES ━━━━━━━━━━━━━━━ */}
+            <section className="py-24 px-4 bg-neutral-900/30 border-t border-neutral-800">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-16">
+                        <Badge className="mb-4 bg-white/10 text-white border-0 px-3 py-1 text-xs font-display">WHY KOUTUHAL?</Badge>
+                        <h2 className="text-3xl md:text-5xl font-display font-bold text-white mb-6">
+                            Engineered for <span className="text-[#ADFF44]">Success</span>.
+                        </h2>
+                        <p className="text-neutral-400 max-w-2xl mx-auto text-lg">
+                            We don't just teach. We provide the enterprise-grade tools you need to crack top roles.
+                        </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-3 gap-8">
+                        {/* Feature 1 */}
+                        <div className="bg-neutral-950 border border-neutral-800 p-8 rounded-3xl hover:border-[#ADFF44]/50 transition-colors group">
+                            <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center mb-6 group-hover:bg-[#ADFF44] transition-colors">
+                                <Rocket className="w-7 h-7 text-[#ADFF44] group-hover:text-black transition-colors" />
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-3">AI Resume ATS</h3>
+                            <p className="text-neutral-400 leading-relaxed">
+                                Beat the bots with our proprietary ATS scanner. Get a similarity score against your target JD and AI-generated suggestions to boost your ranking.
+                            </p>
+                        </div>
+
+                        {/* Feature 2 */}
+                        <div className="bg-neutral-950 border border-neutral-800 p-8 rounded-3xl hover:border-[#ADFF44]/50 transition-colors group">
+                            <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center mb-6 group-hover:bg-[#ADFF44] transition-colors">
+                                <Target className="w-7 h-7 text-[#ADFF44] group-hover:text-black transition-colors" />
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-3">Private Job Portal</h3>
+                            <p className="text-neutral-400 leading-relaxed">
+                                Exclusive access to hidden job listings from our partner network. Direct referrals to hiring managers, bypassing the standard queue.
+                            </p>                        </div>
+
+                        {/* Feature 3 */}
+                        <div className="bg-neutral-950 border border-neutral-800 p-8 rounded-3xl hover:border-[#ADFF44]/50 transition-colors group">
+                            <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center mb-6 group-hover:bg-[#ADFF44] transition-colors">
+                                <TrendingUp className="w-7 h-7 text-[#ADFF44] group-hover:text-black transition-colors" />
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-3">Gamified Ranking</h3>
+                            <p className="text-neutral-400 leading-relaxed">
+                                Compete on the global leaderboard. Top-ranked candidates get highlighted directly to recruiters as "Elite Talent".
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </div>
     );
 };
