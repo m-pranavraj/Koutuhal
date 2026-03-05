@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
     GraduationCap,
@@ -20,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 const SchoolsProgram = () => {
+    const navigate = useNavigate();
     const curriculum = [
         { week: "Week 1", title: "Introduction to AI", topics: ["What is AI and Machine Learning?", "Real-world AI applications", "Setting up your first AI tools"], icon: Cpu },
         { week: "Week 2", title: "Text Generation with AI", topics: ["Understanding language models", "Creating content with ChatGPT", "Writing assistance and homework help"], icon: BookOpen },
@@ -67,10 +69,10 @@ const SchoolsProgram = () => {
                             Comprehensive AI curriculum designed specifically for school students to learn AI fundamentals, tools, and practical applications.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <Button size="lg" className="h-14 px-8 bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-bold rounded-2xl text-base shadow-[0_0_20px_rgba(173,255,68,0.2)]">
+                            <Button size="lg" onClick={() => navigate('/contact')} className="h-14 px-8 bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-bold rounded-2xl text-base shadow-[0_0_20px_rgba(173,255,68,0.2)]">
                                 Join PathWay Now
                             </Button>
-                            <Button size="lg" variant="outline" className="h-14 px-8 border-neutral-800 bg-white/5 hover:bg-white/10 font-bold rounded-2xl text-base text-white">
+                            <Button size="lg" onClick={() => navigate('/contact')} variant="outline" className="h-14 px-8 border-neutral-800 bg-white/5 hover:bg-white/10 font-bold rounded-2xl text-base text-white">
                                 Request Program Info
                             </Button>
                         </div>

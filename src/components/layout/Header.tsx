@@ -261,7 +261,7 @@ export const Header = () => {
             {isAuthenticated && user ? (
               <div className="flex items-center gap-3">
                 <div className="hidden sm:flex flex-col gap-0.5 text-right">
-                  <span className="text-sm font-bold text-white">{user?.full_name?.split(' ')[0]}</span>
+                  <span className="text-sm font-bold text-white">{user?.name?.split(' ')[0]}</span>
                   <span className="text-xs text-[#ADFF44] font-medium uppercase tracking-wider">{user?.role}</span>
                 </div>
                 {/* Role-specific dashboard link */}
@@ -352,7 +352,7 @@ export const Header = () => {
                     <div className="h-px bg-neutral-800 my-4 mb-6" />
                     <div className="px-5 py-4 bg-neutral-900 rounded-xl mb-4">
                       <p className="text-xs text-neutral-500 uppercase tracking-wider font-bold mb-2">LOGGED IN AS</p>
-                      <p className="text-white font-bold mb-1">{user?.full_name}</p>
+                      <p className="text-white font-bold mb-1">{user?.name}</p>
                       <p className="text-[#ADFF44] text-sm font-bold uppercase tracking-wider">{user?.role}</p>
                     </div>
                     <MobileNavItem to="/dashboard" label="DASHBOARD" isActive={isActive("/dashboard")} onClick={() => setMobileMenuOpen(false)} index={3} />

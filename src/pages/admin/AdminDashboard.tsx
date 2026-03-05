@@ -74,7 +74,7 @@ export default function AdminDashboard() {
                         <TableBody>
                             {users.map((u) => (
                                 <TableRow key={u.id} className="border-zinc-800 hover:bg-zinc-800/50">
-                                    <TableCell className="font-medium text-white">{u.full_name}</TableCell>
+                                    <TableCell className="font-medium text-white">{u.name}</TableCell>
                                     <TableCell className="text-zinc-300">{u.email}</TableCell>
                                     <TableCell>
                                         <span className={`px-2 py-1 rounded text-xs ${u.role === 'ADMIN' ? 'bg-red-500/20 text-red-500' : 'bg-[#ADFF44]/20 text-[#ADFF44]'}`}>

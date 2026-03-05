@@ -41,10 +41,6 @@ export const Footer = () => {
                 <Phone className="h-4 w-4" />
                 97307 97309
               </a>
-              <a href="tel:+919225563280" className="flex items-center gap-2 hover:text-white">
-                <Phone className="h-4 w-4" />
-                92255 63280
-              </a>
               <p className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
                 Bangalore, Karnataka, India

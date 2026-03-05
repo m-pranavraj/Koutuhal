@@ -55,7 +55,7 @@ export default function OnboardingRolePage() {
         <div className="min-h-screen flex items-center justify-center bg-black/95 p-4">
             <div className="max-w-4xl w-full">
                 <div className="text-center mb-12">
-                    <h1 className="text-4xl font-bold text-white mb-4">Welcome, {user?.full_name}</h1>
+                    <h1 className="text-4xl font-bold text-white mb-4">Welcome, {user?.name}</h1>
                     <p className="text-zinc-400 text-lg">Tell us who you are to get started.</p>
                 </div>
 

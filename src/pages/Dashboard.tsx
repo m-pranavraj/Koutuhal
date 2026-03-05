@@ -17,7 +17,7 @@ const StudentDashboard = ({ user, stats, token }: { user: any; stats: any; token
         <motion.div className="space-y-12">
           {/* Header */}
           <div className="space-y-2">
-            <h1 className="text-5xl font-bold text-white">Welcome back, <span className="text-[#ADFF44]">{user?.full_name?.split(' ')[0]}</span>! 📚</h1>
+            <h1 className="text-5xl font-bold text-white">Welcome back, <span className="text-[#ADFF44]">{user?.name?.split(' ')[0]}</span>! 📚</h1>
             <p className="text-neutral-400">Manage your career journey, applications, and learning path</p>
           </div>
 
@@ -328,7 +328,7 @@ const Dashboard = () => {
     }
   };
 
-  const userName = user?.full_name || "there";
+  const userName = user?.name || "there";
   const totalApps = stats?.total_applications ?? 0;
   const totalResumes = stats?.total_resumes ?? 0;
   const totalJobs = stats?.total_jobs ?? 0;

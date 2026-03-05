@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 const newUser = {
                     id: authUser.id,
                     email: authUser.email!,
-                    full_name: authUser.user_metadata?.name || authUser.email!.split('@')[0],
+                    name: authUser.user_metadata?.name || authUser.email!.split('@')[0],
                     role: 'STUDENT' as const,
                     profile_image_url: authUser.user_metadata?.avatar_url,
                     onboarding_completed: false,
@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
                 return {
                     id: insertedUser.id,
-                    full_name: insertedUser.full_name,
+                    name: insertedUser.name,
                     email: insertedUser.email,
                     profile_image_url: insertedUser.profile_image_url || undefined,
                     role: insertedUser.role,
@@ -93,7 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             return {
                 id: data.id,
-                full_name: data.full_name,
+                name: data.name,
                 email: data.email,
                 profile_image_url: data.profile_image_url || undefined,
                 role: data.role,
@@ -191,11 +191,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     }
                 }
             } else if (credentials.method === 'google') {
-                // Trigger OAuth with redirect to current page + callback
+                // Trigger OAuth with redirect to Supabase callback endpoint
                 const { error } = await supabase.auth.signInWithOAuth({
                     provider: 'google',
                     options: {
-                        redirectTo: `${window.location.origin}/`,
+                        redirectTo: `${window.location.origin}/auth/callback`,
                         queryParams: {
                             access_type: 'offline',
                             prompt: 'consent',
@@ -236,7 +236,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     .insert([{
                         id: data.user.id,
                         email: userData.email,
-                        full_name: userData.name,
+                        name: userData.name,
                         role: userData.role as 'STUDENT' | 'MENTOR' | 'ORGANISATION' | 'ADMIN' | 'SUPER_ADMIN',
                         onboarding_completed: false,
                         is_active: true
@@ -290,7 +290,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (data) {
                 const updatedUser = {
                     id: data.id,
-                    full_name: data.full_name,
+                    name: data.name,
                     email: data.email,
                     profile_image_url: data.profile_image_url || undefined,
                     role: data.role,

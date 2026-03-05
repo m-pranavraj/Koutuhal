@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
     BookOpen,
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/accordion";
 
 const CollegesProgram = () => {
+    const navigate = useNavigate();
     const curriculum = [
         { week: "Week 1", title: "Foundation - Introduction to AI and ML", topics: ["What is AI, ML, and Deep Learning", "History and evolution of AI", "Real-world applications and use cases", "Setting up development environment"], icon: Cpu },
         { week: "Week 2", title: "Text AI and Language Models", topics: ["Understanding Large Language Models (LLMs)", "GPT, Claude, and other text models", "Prompt engineering fundamentals", "Building text applications"], icon: Code2 },
@@ -67,27 +69,27 @@ const CollegesProgram = () => {
         <div className="min-h-screen bg-black text-white selection:bg-[#ADFF44] selection:text-black">
             {/* Hero Section */}
             <section className="relative pt-32 pb-20 px-4 overflow-hidden">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1100px] h-[700px] bg-purple-500/10 blur-[120px] rounded-full opacity-40" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1100px] h-[700px] bg-[#ADFF44]/10 blur-[120px] rounded-full opacity-40" />
                 <div className="max-w-7xl mx-auto relative z-10 text-center">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5 }}
                     >
-                        <Badge className="mb-6 bg-purple-500/10 text-purple-400 border border-purple-500/20 px-4 py-1.5 text-xs font-bold tracking-widest uppercase">
+                        <Badge className="mb-6 bg-[#ADFF44]/10 text-[#ADFF44] border border-[#ADFF44]/20 px-4 py-1.5 text-xs font-bold tracking-widest uppercase">
                             Master Generative AI Bootcamp
                         </Badge>
                         <h1 className="text-5xl md:text-8xl font-black tracking-tight mb-8 leading-[0.9]">
-                            Architecting <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ADFF44] to-purple-400">The Future</span>
+                            Architecting <br /> <span className="text-[#ADFF44]">The Future</span>
                         </h1>
                         <p className="text-neutral-400 text-lg md:text-xl max-w-3xl mx-auto mb-10 leading-relaxed">
                             Comprehensive program covering generative AI fundamentals, tools, and production-ready applications. From basics to advanced implementation.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <Button size="lg" className="h-14 px-10 bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-black rounded-2xl text-base tracking-widest uppercase transition-all">
+                            <Button size="lg" onClick={() => navigate('/contact')} className="h-14 px-10 bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-black rounded-2xl text-base tracking-widest uppercase transition-all">
                                 Join Bootcamp Now
                             </Button>
-                            <Button size="lg" variant="outline" className="h-14 px-10 border-neutral-800 bg-white/5 hover:bg-white/10 font-bold rounded-2xl text-base text-white">
+                            <Button size="lg" onClick={() => navigate('/contact')} variant="outline" className="h-14 px-10 border-neutral-800 bg-white/5 hover:bg-white/10 font-bold rounded-2xl text-base text-white">
                                 Request Info
                             </Button>
                         </div>

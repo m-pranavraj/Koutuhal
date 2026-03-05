@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
     Briefcase,
@@ -22,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 const BusinessProgram = () => {
+    const navigate = useNavigate();
     const curriculum = [
         { week: "Week 1", title: "Introduction to AI & Business Fundamentals", topics: ["Understanding AI, Machine Learning, and Business Applications", "Overview of AI-powered business tools and platforms", "Setting up your AI toolkit for business"], icon: Briefcase },
         { week: "Week 2", title: "Strategic AI for Product Creation", topics: ["Using Generative AI for product development", "Creating prototypes and MVPs with AI tools", "AI-powered market research and validation"], icon: Target },
@@ -63,10 +65,10 @@ const BusinessProgram = () => {
                             Learn how to leverage AI tools and strategies to drive business growth, improve efficiency, and stay competitive in the digital age.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <Button size="lg" className="h-16 px-10 bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-black rounded-2xl text-base tracking-widest uppercase shadow-[0_0_30px_rgba(173,255,68,0.2)]">
+                            <Button size="lg" onClick={() => navigate('/contact')} className="h-16 px-10 bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-black rounded-2xl text-base tracking-widest uppercase shadow-[0_0_30px_rgba(173,255,68,0.2)]">
                                 Transform My Business
                             </Button>
-                            <Button size="lg" variant="outline" className="h-16 px-10 border-neutral-800 bg-white/5 hover:bg-white/10 font-bold rounded-2xl text-base text-white">
+                            <Button size="lg" onClick={() => navigate('/contact')} variant="outline" className="h-16 px-10 border-neutral-800 bg-white/5 hover:bg-white/10 font-bold rounded-2xl text-base text-white">
                                 Request Program Info
                             </Button>
                         </div>

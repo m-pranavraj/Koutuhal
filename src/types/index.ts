@@ -71,7 +71,7 @@ export const courseLevels = ["All", "Beginner", "Intermediate", "Advanced"];
 export interface User {
     id: string;
     email: string;
-    full_name?: string;
+    name?: string;
     role: 'STUDENT' | 'MENTOR' | 'ORGANISATION' | 'ADMIN' | 'SUPER_ADMIN' | 'USER';
     is_active: boolean;
     onboarding_completed: boolean;

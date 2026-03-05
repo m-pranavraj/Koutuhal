@@ -460,7 +460,7 @@ const Home = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { title: "AI for Schools", icon: GraduationCap, color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20", desc: "Curriculum aligned with NEP 2020 for young minds.", link: "/programs/schools" },
-              { title: "AI for Colleges", icon: BookOpen, color: "text-purple-400", bg: "bg-purple-400/10", border: "border-purple-400/20", desc: "Advanced operational AI skills for undergraduates.", link: "/programs/colleges" },
+              { title: "AI for Colleges", icon: BookOpen, color: "text-[#ADFF44]", bg: "bg-[#ADFF44]/10", border: "border-[#ADFF44]/20", desc: "Advanced operational AI skills for undergraduates.", link: "/programs/colleges" },
               { title: "AI for Businesses", icon: Briefcase, color: "text-orange-400", bg: "bg-orange-400/10", border: "border-orange-400/20", desc: "Corporate training to boost workforce productivity.", link: "/programs/business" }
             ].map((item, i) => (
               <motion.div
