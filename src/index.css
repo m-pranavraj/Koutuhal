@@ -48,36 +48,40 @@
   }
 
   .dark {
-    /* Pure black dashboard background with Green text */
+    /* Pure black dashboard background with White UI & Green Accents */
     --background: 0 0% 0%;
-    --foreground: 82 100% 63%;
-    /* #ADFF44 */
+    --foreground: 0 0% 100%;
+    /* White for all standard text and icons */
 
     --card: 0 0% 3%;
-    --card-foreground: 82 100% 63%;
+    --card-foreground: 0 0% 100%;
 
     --popover: 0 0% 3%;
-    --popover-foreground: 82 100% 63%;
+    --popover-foreground: 0 0% 100%;
 
     /* Sidebar Variables for Dashboard */
     --sidebar-background: 0 0% 0%;
-    --sidebar-foreground: 82 100% 63%;
+    --sidebar-foreground: 0 0% 100%;
+    /* White Icons / base text */
     --sidebar-primary: 82 100% 63%;
+    /* Neon Green (#ADFF44) for active States */
     --sidebar-primary-foreground: 0 0% 0%;
     --sidebar-accent: 0 0% 8%;
     --sidebar-accent-foreground: 82 100% 63%;
+    /* Neon Green for Highlights */
     --sidebar-border: 0 0% 12%;
     --sidebar-ring: 82 100% 63%;
 
     --primary: 82 100% 63%;
+    /* Neon Green */
     --primary-foreground: 0 0% 0%;
 
     /* Slightly lighter for secondary elements */
     --secondary: 120 6% 14%;
-    --secondary-foreground: 82 100% 63%;
+    --secondary-foreground: 0 0% 100%;
 
     --muted: 0 0% 6%;
-    --muted-foreground: 82 100% 40%;
+    --muted-foreground: 0 0% 64%;
     /* darker green for muted */
 
     --accent: 82 100% 63%;
