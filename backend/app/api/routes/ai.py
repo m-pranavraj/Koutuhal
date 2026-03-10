@@ -80,9 +80,59 @@ async def ai_tailor(
     try:
         groq_client = _groq_client()
         
-        system_prompt = "You are an expert career coach and ATS optimization specialist. Your task is to mathematically and strategically tailor the user's resume to the provided Job Description. Keep the formatting ATS-friendly and ensure you use the exact keywords from the JD without lying. Output ONLY the tailored resume content, ready to be saved as a document. Do not include introductory conversational text."
+        system_prompt = """
+You are an expert career coach and ATS optimization specialist. 
+Your task is to mathematically and strategically tailor the user's resume to the provided Job Description. 
+
+OUTPUT FORMAT:
+You must output ONLY a valid JSON object. Do not include any conversational text or markdown formatting outside the JSON.
+The JSON must follow this exact schema:
+{
+  "personalInfo": {
+    "fullName": "string",
+    "email": "string",
+    "phone": "string",
+    "location": "string",
+    "links": ["string"]
+  },
+  "summary": "Professional summary optimized for the JD (2-3 sentences)",
+  "experience": [
+    {
+      "company": "string",
+      "role": "string",
+      "duration": "string",
+      "location": "string",
+      "bulletPoints": ["string tailored to JD with metrics"]
+    }
+  ],
+  "education": [
+    {
+      "institution": "string",
+      "degree": "string",
+      "duration": "string",
+      "location": "string",
+      "cgpa": "string"
+    }
+  ],
+  "skills": ["string (industry keywords)"],
+  "projects": [
+    {
+      "name": "string",
+      "description": "string (1-2 sentences)",
+      "technologies": ["string"],
+      "link": "string"
+    }
+  ],
+  "certifications": ["string"]
+}
+
+RULES:
+1. Use exact keywords from the JD where appropriate.
+2. Quantify achievements (e.g., 'Improved accuracy by 15%').
+3. Keep it ATS-friendly.
+"""
         
-        user_prompt = f"Job Description:\n{request.jobDescription}\n\nOriginal Resume:\n{request.resumeText}\n\nPlease tailor my resume to this job description."
+        user_prompt = f"Job Description:\n{request.jobDescription}\n\nOriginal Resume:\n{request.resumeText}\n\nPlease tailor my resume to this job description and return the structured JSON."
 
         messages = [
             {"role": "system", "content": system_prompt},
@@ -92,12 +142,21 @@ async def ai_tailor(
         completion = groq_client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=messages,
-            temperature=0.5,
+            temperature=0.3,
             max_tokens=4000
         )
         
         reply = completion.choices[0].message.content
-        return {"tailoredResume": reply}
+        try:
+            tailored_json = _parse_groq_json(reply)
+            return {"tailoredResume": tailored_json}
+        except Exception as e:
+            logger.error(f"JSON Parse error in tailor: {e}")
+            # Fallback for unexpected format
+            return {"tailoredResume": {"rawText": reply}}
+    except Exception as e:
+        logger.error(f"Tailor API error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process tailor request")
     except Exception as e:
         logger.error(f"Tailor API error: {e}")
         raise HTTPException(status_code=500, detail="Failed to process tailor request")
