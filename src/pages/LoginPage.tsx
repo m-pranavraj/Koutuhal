@@ -84,10 +84,6 @@ const LoginPage = () => {
                             </div>
                         )}
 
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-neutral-800" /></div>
-                            <div className="relative flex justify-center text-xs uppercase"><span className="bg-black px-2 text-neutral-500">Or continue with email</span></div>
-                        </div>
 
                         <div className="space-y-2">
                             <Label className="text-white font-medium">Email</Label>
