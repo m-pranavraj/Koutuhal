@@ -48,21 +48,21 @@
   }
 
   .dark {
-    /* Pure black dashboard background with White UI & Green Accents */
+    /* Pure black dashboard background with Green UI text & White Icons */
     --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
-    /* White for all standard text and icons */
+    --foreground: 82 100% 63%;
+    /* Neon Green for all text */
 
     --card: 0 0% 3%;
-    --card-foreground: 0 0% 100%;
+    --card-foreground: 82 100% 63%;
 
     --popover: 0 0% 3%;
-    --popover-foreground: 0 0% 100%;
+    --popover-foreground: 82 100% 63%;
 
     /* Sidebar Variables for Dashboard */
     --sidebar-background: 0 0% 0%;
-    --sidebar-foreground: 0 0% 100%;
-    /* White Icons / base text */
+    --sidebar-foreground: 82 100% 63%;
+    /* Neon Green base text */
     --sidebar-primary: 82 100% 63%;
     /* Neon Green (#ADFF44) for active States */
     --sidebar-primary-foreground: 0 0% 0%;
@@ -103,6 +103,12 @@
     --warning-foreground: 0 0% 0%;
     --gold: 82 100% 63%;
     --gold-light: 82 100% 75%;
+  }
+
+  /* Force all lucide icons in dark mode to be white */
+  .dark svg.lucide,
+  .dark .lucide {
+    color: #ffffff;
   }
 }
 
