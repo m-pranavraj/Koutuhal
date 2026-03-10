@@ -166,44 +166,34 @@ const App = () => (
                   />
 
                   {/* ── DASHBOARD ROUTES (no public Header/Footer) ────────── */}
-                  {/* Any authenticated user */}
-                  <Route path="/dashboard" element={<DashRoute><DashboardHome /></DashRoute>} />
-                  <Route path="/dashboard/settings" element={<DashRoute><SettingsPage /></DashRoute>} />
-
-                  {/* Student-only */}
-                  <Route path="/dashboard/jobs" element={<DashRoute allowedRoles={["student"]}><BrowseJobs /></DashRoute>} />
-                  <Route path="/dashboard/mentors" element={<DashRoute allowedRoles={["student"]}><FindMentors /></DashRoute>} />
-                  <Route path="/dashboard/book-mentor" element={<DashRoute allowedRoles={["student"]}><BookMentor /></DashRoute>} />
-                  <Route path="/dashboard/resume-tailor" element={<DashRoute allowedRoles={["student"]}><ResumeTailor /></DashRoute>} />
-
-                  {/* Shared: student + organization */}
-                  <Route path="/dashboard/applications" element={<DashRoute allowedRoles={["student", "organization"]}><ApplicationsRouter /></DashRoute>} />
-                  <Route path="/dashboard/assessments" element={<DashRoute allowedRoles={["student", "organization"]}><AssessmentsRouter /></DashRoute>} />
-                  <Route path="/dashboard/interviews" element={<DashRoute allowedRoles={["student", "organization"]}><InterviewsRouter /></DashRoute>} />
-                  <Route path="/dashboard/offers" element={<DashRoute allowedRoles={["student", "organization"]}><OffersRouter /></DashRoute>} />
-
-                  {/* Organization-only */}
-                  <Route path="/dashboard/post-job" element={<DashRoute allowedRoles={["organization"]}><PostJob /></DashRoute>} />
-                  <Route path="/dashboard/listings" element={<DashRoute allowedRoles={["organization"]}><MyListings /></DashRoute>} />
-
-                  {/* Sessions: student + mentor */}
-                  <Route path="/dashboard/sessions" element={<DashRoute allowedRoles={["student", "mentor"]}><SessionsRouter /></DashRoute>} />
-
-                  {/* Mentor-only */}
-                  <Route path="/dashboard/availability" element={<DashRoute allowedRoles={["mentor"]}><MentorAvailability /></DashRoute>} />
-                  <Route path="/dashboard/reviews" element={<DashRoute allowedRoles={["mentor"]}><MentorReviews /></DashRoute>} />
-
-                  {/* College-only */}
-                  <Route path="/dashboard/students" element={<DashRoute allowedRoles={["college"]}><CollegeStudents /></DashRoute>} />
-                  <Route path="/dashboard/placement-tracking" element={<DashRoute allowedRoles={["college"]}><PlacementTracking /></DashRoute>} />
-                  <Route path="/dashboard/reports" element={<DashRoute allowedRoles={["college"]}><CollegeReports /></DashRoute>} />
-
-                  {/* Admin-only */}
-                  <Route path="/dashboard/admin/users" element={<DashRoute allowedRoles={["admin"]}><AdminUsers /></DashRoute>} />
-                  <Route path="/dashboard/admin/analytics" element={<DashRoute allowedRoles={["admin"]}><AdminAnalytics /></DashRoute>} />
-                  <Route path="/dashboard/admin/moderation" element={<DashRoute allowedRoles={["admin"]}><AdminModeration /></DashRoute>} />
-
-                  {/* 404 fallback */}
+                  <Route path="/dashboard/*" element={
+                    <div className="dark min-h-screen bg-background text-foreground">
+                      <Routes>
+                        <Route path="/" element={<DashRoute><DashboardHome /></DashRoute>} />
+                        <Route path="/settings" element={<DashRoute><SettingsPage /></DashRoute>} />
+                        <Route path="/jobs" element={<DashRoute allowedRoles={["student"]}><BrowseJobs /></DashRoute>} />
+                        <Route path="/mentors" element={<DashRoute allowedRoles={["student"]}><FindMentors /></DashRoute>} />
+                        <Route path="/book-mentor" element={<DashRoute allowedRoles={["student"]}><BookMentor /></DashRoute>} />
+                        <Route path="/resume-tailor" element={<DashRoute allowedRoles={["student"]}><ResumeTailor /></DashRoute>} />
+                        <Route path="/applications" element={<DashRoute allowedRoles={["student", "organization"]}><ApplicationsRouter /></DashRoute>} />
+                        <Route path="/assessments" element={<DashRoute allowedRoles={["student", "organization"]}><AssessmentsRouter /></DashRoute>} />
+                        <Route path="/interviews" element={<DashRoute allowedRoles={["student", "organization"]}><InterviewsRouter /></DashRoute>} />
+                        <Route path="/offers" element={<DashRoute allowedRoles={["student", "organization"]}><OffersRouter /></DashRoute>} />
+                        <Route path="/post-job" element={<DashRoute allowedRoles={["organization"]}><PostJob /></DashRoute>} />
+                        <Route path="/listings" element={<DashRoute allowedRoles={["organization"]}><MyListings /></DashRoute>} />
+                        <Route path="/sessions" element={<DashRoute allowedRoles={["student", "mentor"]}><SessionsRouter /></DashRoute>} />
+                        <Route path="/availability" element={<DashRoute allowedRoles={["mentor"]}><MentorAvailability /></DashRoute>} />
+                        <Route path="/reviews" element={<DashRoute allowedRoles={["mentor"]}><MentorReviews /></DashRoute>} />
+                        <Route path="/students" element={<DashRoute allowedRoles={["college"]}><CollegeStudents /></DashRoute>} />
+                        <Route path="/placement-tracking" element={<DashRoute allowedRoles={["college"]}><PlacementTracking /></DashRoute>} />
+                        <Route path="/reports" element={<DashRoute allowedRoles={["college"]}><CollegeReports /></DashRoute>} />
+                        <Route path="/admin/users" element={<DashRoute allowedRoles={["admin"]}><AdminUsers /></DashRoute>} />
+                        <Route path="/admin/analytics" element={<DashRoute allowedRoles={["admin"]}><AdminAnalytics /></DashRoute>} />
+                        <Route path="/admin/moderation" element={<DashRoute allowedRoles={["admin"]}><AdminModeration /></DashRoute>} />
+                      </Routes>
+                    </div>
+                  } />
+                  {/* ── ERROR 404 ────────── */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>

@@ -7,6 +7,44 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { FileText, Upload, Sparkles, Download, Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Document, Page, Text, View, StyleSheet, pdf, Font } from "@react-pdf/renderer";
+
+// Register fonts for PDF (using standard Helvetica for ATS safety)
+const styles = StyleSheet.create({
+  page: {
+    flexDirection: "column",
+    backgroundColor: "#ffffff",
+    padding: 40,
+    fontFamily: "Helvetica",
+  },
+  section: {
+    margin: 10,
+    padding: 10,
+    flexGrow: 1,
+  },
+  text: {
+    fontSize: 11,
+    lineHeight: 1.5,
+    color: "#333333",
+  },
+  header: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 20,
+    color: "#000000",
+  }
+});
+
+// Define the PDF Document Structure
+const ResumePDF = ({ content }: { content: string }) => (
+  <Document>
+    <Page size="A4" style={styles.page}>
+      <View style={styles.section}>
+        <Text style={styles.text}>{content}</Text>
+      </View>
+    </Page>
+  </Document>
+);
 
 const ResumeTailor = () => {
   const [jd, setJd] = useState("");
@@ -37,14 +75,20 @@ const ResumeTailor = () => {
     }
   };
 
-  const handleDownload = () => {
-    const blob = new Blob([tailoredResume], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "tailored-resume.txt";
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleDownload = async () => {
+    if (!tailoredResume) return;
+
+    try {
+      const blob = await pdf(<ResumePDF content={tailoredResume} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "Tailored_Resume_Koutuhal.pdf";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast({ title: "Failed to generate PDF", variant: "destructive" });
+    }
   };
 
   return (
