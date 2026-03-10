@@ -32,12 +32,15 @@ class ChatRequest(BaseModel):
     query: str
     role: str
 
+class TailorRequest(BaseModel):
+    jobDescription: str
+    resumeText: str
+
 router = APIRouter()
 
 @router.post("/chat")
 async def ai_chat(
-    request: ChatRequest,
-    current_user: User = Depends(deps.get_current_user)
+    request: ChatRequest
 ):
     try:
         groq_client = _groq_client()
@@ -69,6 +72,35 @@ async def ai_chat(
     except Exception as e:
         logger.error(f"Chat API error: {e}")
         raise HTTPException(status_code=500, detail="Failed to process chat request")
+
+@router.post("/tailor")
+async def ai_tailor(
+    request: TailorRequest
+):
+    try:
+        groq_client = _groq_client()
+        
+        system_prompt = "You are an expert career coach and ATS optimization specialist. Your task is to mathematically and strategically tailor the user's resume to the provided Job Description. Keep the formatting ATS-friendly and ensure you use the exact keywords from the JD without lying. Output ONLY the tailored resume content, ready to be saved as a document. Do not include introductory conversational text."
+        
+        user_prompt = f"Job Description:\n{request.jobDescription}\n\nOriginal Resume:\n{request.resumeText}\n\nPlease tailor my resume to this job description."
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+        
+        completion = groq_client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=messages,
+            temperature=0.5,
+            max_tokens=4000
+        )
+        
+        reply = completion.choices[0].message.content
+        return {"tailoredResume": reply}
+    except Exception as e:
+        logger.error(f"Tailor API error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process tailor request")
 
 import io
 import json as _json

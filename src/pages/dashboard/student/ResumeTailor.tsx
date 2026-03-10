@@ -61,10 +61,22 @@ const ResumeTailor = () => {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("tailor-resume", {
-        body: { jobDescription: jd, resumeText },
+      // Use the FastAPI backend endpoint instead of Supabase Edge Function
+      const token = localStorage.getItem("koutuhal_token") || "";
+      const res = await fetch("/api/v1/ai/tailor", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ jobDescription: jd, resumeText }),
       });
-      if (error) throw error;
+
+      if (!res.ok) {
+        throw new Error("Failed to tailor resume. Ensure backend is running.");
+      }
+
+      const data = await res.json();
       setTailoredResume(data.tailoredResume || "No result received.");
       setIsEditing(false);
       toast({ title: "Resume tailored successfully!" });
