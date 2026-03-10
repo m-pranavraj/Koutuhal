@@ -26,7 +26,49 @@ import uuid
 from app.core.limiter import limiter
 from fastapi import Request
 
+from pydantic import BaseModel
+
+class ChatRequest(BaseModel):
+    query: str
+    role: str
+
 router = APIRouter()
+
+@router.post("/chat")
+async def ai_chat(
+    request: ChatRequest,
+    current_user: User = Depends(deps.get_current_user)
+):
+    try:
+        groq_client = _groq_client()
+        
+        # Contextual prompt based on role
+        if request.role == 'organization':
+            system_prompt = "You are Koutuhal AI, an expert assistant for recruiters and organizations. Your primary goal is to help them draft job descriptions (JDs), evaluate candidates, and manage placements. Keep responses concise, professional, and directly actionable."
+        elif request.role == 'mentor':
+            system_prompt = "You are Koutuhal AI, an expert assistant for mentors. Your primary goal is to help them prepare for sessions, answer student questions, and provide career guidance. Keep responses insightful and encouraging."
+        elif request.role == 'college':
+            system_prompt = "You are Koutuhal AI, an expert assistant for college placement officers (TPOs). Your primary goal is to help them organize placement drives, write announcements, and track student success. Keep responses organized and administrative."
+        else: # student
+            system_prompt = "You are Koutuhal AI, a friendly and expert career assistant for students. Your primary goal is to help them navigate the platform, improve their resumes, prepare for interviews, and find jobs. Be encouraging, clear, and actionable."
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": request.query}
+        ]
+        
+        completion = groq_client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=messages,
+            temperature=0.7,
+            max_tokens=600
+        )
+        
+        reply = completion.choices[0].message.content
+        return {"reply": reply}
+    except Exception as e:
+        logger.error(f"Chat API error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process chat request")
 
 import io
 import json as _json

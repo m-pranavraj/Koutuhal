@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -139,7 +139,8 @@ const MobileNavItem = ({
 /* ═════════════════════════════════════ */
 export const Header = () => {
   const location = useLocation();
-  const { isAuthenticated, logout, user } = useAuth();
+  const navigate = useNavigate();
+  const { user, profile, roles, signOut } = useAuth();
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -226,12 +227,7 @@ export const Header = () => {
 
           {/* ── Logo ── */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-[#ADFF44] flex items-center justify-center text-black font-bold text-lg shadow-[0_0_20px_rgba(173,255,68,0.2)]">
-              K
-            </div>
-            <span className="text-xl font-bold text-white tracking-tight">
-              Koutuhal<span className="text-[#ADFF44]">.</span>ai
-            </span>
+            <img src="/logo.png" alt="Koutuhal Logo" className="h-16 w-auto object-contain" />
           </Link>
 
           {/* ── Desktop Nav (Pill) ── */}
@@ -247,46 +243,46 @@ export const Header = () => {
             ))}
 
             {/* Admin Link if authorized */}
-            {isAuthenticated && (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
+            {!!user && roles.includes('admin') && (
               <NavItem to="/admin" label="ADMIN" isActive={isActive("/admin")} />
             )}
             {/* Dashboard Link if authorized */}
-            {isAuthenticated && (
+            {!!user && (
               <NavItem to="/dashboard" label="DASHBOARD" isActive={isActive("/dashboard")} />
             )}
           </nav>
 
           {/* ── Right Actions ── */}
           <div className="flex items-center gap-4">
-            {isAuthenticated && user ? (
+            {!!user ? (
               <div className="flex items-center gap-3">
                 <div className="hidden sm:flex flex-col gap-0.5 text-right">
-                  <span className="text-sm font-bold text-white">{user?.name?.split(' ')[0]}</span>
-                  <span className="text-xs text-[#ADFF44] font-medium uppercase tracking-wider">{user?.role}</span>
+                  <span className="text-sm font-bold text-white">{(profile?.full_name || 'User').split(' ')[0]}</span>
+                  <span className="text-xs text-[#ADFF44] font-medium uppercase tracking-wider">{roles[0] || 'student'}</span>
                 </div>
                 {/* Role-specific dashboard link */}
-                {user?.role === 'MENTOR' && (
+                {roles.includes('mentor') && (
                   <Link to="/dashboard" className="hidden sm:inline">
                     <Button size="sm" variant="ghost" className="text-[#ADFF44] hover:bg-[#ADFF44]/10 font-bold">
                       My Sessions
                     </Button>
                   </Link>
                 )}
-                {user?.role === 'ORGANISATION' && (
+                {roles.includes('organization') && (
                   <Link to="/dashboard" className="hidden sm:inline">
                     <Button size="sm" variant="ghost" className="text-[#ADFF44] hover:bg-[#ADFF44]/10 font-bold">
                       Post Jobs
                     </Button>
                   </Link>
                 )}
-                {user?.role === 'STUDENT' && (
+                {roles.includes('student') && (
                   <Link to="/dashboard" className="hidden sm:inline">
                     <Button size="sm" variant="ghost" className="text-[#ADFF44] hover:bg-[#ADFF44]/10 font-bold">
                       Dashboard
                     </Button>
                   </Link>
                 )}
-                <Button variant="ghost" size="icon" onClick={logout} className="text-neutral-400 hover:text-red-400 hover:bg-red-950/30">
+                <Button variant="ghost" size="icon" onClick={async () => { await signOut(); navigate("/"); window.scrollTo(0, 0); }} className="text-neutral-400 hover:text-red-400 hover:bg-red-950/30">
                   <LogOut className="w-4 h-4" />
                 </Button>
               </div>
@@ -347,26 +343,26 @@ export const Header = () => {
                   />
                 ))}
 
-                {isAuthenticated && (
+                {!!user && (
                   <>
                     <div className="h-px bg-neutral-800 my-4 mb-6" />
                     <div className="px-5 py-4 bg-neutral-900 rounded-xl mb-4">
                       <p className="text-xs text-neutral-500 uppercase tracking-wider font-bold mb-2">LOGGED IN AS</p>
-                      <p className="text-white font-bold mb-1">{user?.name}</p>
-                      <p className="text-[#ADFF44] text-sm font-bold uppercase tracking-wider">{user?.role}</p>
+                      <p className="text-white font-bold mb-1">{profile?.full_name || 'User'}</p>
+                      <p className="text-[#ADFF44] text-sm font-bold uppercase tracking-wider">{roles[0] || 'student'}</p>
                     </div>
                     <MobileNavItem to="/dashboard" label="DASHBOARD" isActive={isActive("/dashboard")} onClick={() => setMobileMenuOpen(false)} index={3} />
-                    {user?.role === 'MENTOR' && (
+                    {roles.includes('mentor') && (
                       <MobileNavItem to="/dashboard" label="MY SESSIONS" isActive={isActive("/dashboard")} onClick={() => setMobileMenuOpen(false)} index={4} />
                     )}
-                    {user?.role === 'ORGANISATION' && (
+                    {roles.includes('organization') && (
                       <MobileNavItem to="/dashboard" label="POST JOBS" isActive={isActive("/dashboard")} onClick={() => setMobileMenuOpen(false)} index={4} />
                     )}
-                    {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
+                    {roles.includes('admin') && (
                       <MobileNavItem to="/admin" label="ADMIN" isActive={isActive("/admin")} onClick={() => setMobileMenuOpen(false)} index={5} />
                     )}
                     <button
-                      onClick={() => { logout(); setMobileMenuOpen(false); }}
+                      onClick={async () => { await signOut(); setMobileMenuOpen(false); navigate("/"); window.scrollTo(0, 0); }}
                       className="flex items-center gap-4 px-5 py-4 rounded-xl text-red-400 hover:bg-red-950/30 w-full text-left mt-4 font-bold uppercase text-xs tracking-wider"
                     >
                       <LogOut className="w-4 h-4" />
@@ -375,7 +371,7 @@ export const Header = () => {
                   </>
                 )}
 
-                {!isAuthenticated && (
+                {!user && (
                   <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="mt-6">
                     <Button className="w-full rounded-xl bg-[#ADFF44] text-black font-bold h-12">
                       EXPLORE FREE

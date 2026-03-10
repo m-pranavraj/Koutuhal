@@ -92,7 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
         ]);
 
-        const userRoles: AppRole[] = rolesRes.error ? [] : (rolesRes.data ?? []).map((r) => r.role);
+        const userRoles: AppRole[] = rolesRes.error ? [] : (rolesRes.data ?? []).map((r) => r.role.toLowerCase() as AppRole);
         setRoles(userRoles);
         setProfile(profileRes.error ? null : profileRes.data);
 

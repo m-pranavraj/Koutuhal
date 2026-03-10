@@ -644,7 +644,7 @@ const Home = () => {
                           </div>
 
                           <div className="mt-8 pt-6 border-t border-neutral-900 flex justify-between items-center bg-neutral-950/50 backdrop-blur-xl">
-                            <Link to="/search-experts" className="w-full">
+                            <Link to="/book-a-call" className="w-full">
                               <Button className="w-full bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-black uppercase tracking-widest py-6 rounded-2xl shadow-[0_0_20px_rgba(173,255,68,0.2)]">
                                 Book 1:1 Session
                               </Button>

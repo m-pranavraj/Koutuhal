@@ -4,27 +4,28 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, ArrowRight } from 'lucide-react';
+import { Loader2, ArrowRight, GraduationCap, User, Building2, Briefcase } from 'lucide-react';
 
 const SignUpPage = () => {
-    const { register, isLoading, authError } = useAuth();
+    const { signUp, loading } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState('STUDENT');
+    const [role, setRole] = useState('student');
+    const [error, setError] = useState('');
 
     const from = (location.state as any)?.from?.pathname || "/onboarding";
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
         try {
-            await register({ name, email, password, role });
-            navigate(from, { replace: true });
-        } catch (error) {
-            console.error("Registration component error:", error);
+            await signUp(email, password, name, role as any);
+            navigate('/dashboard', { replace: true });
+        } catch (err: any) {
+            setError(err.message || 'Sign up failed. Please try again.');
         }
     };
 
@@ -37,7 +38,7 @@ const SignUpPage = () => {
 
                 <div className="relative z-10">
                     <Link to="/" className="flex items-center gap-3 w-fit">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center font-display font-bold text-black bg-[#ADFF44] text-lg">K</div>
+                        <img src="/logo.png" alt="Koutuhal Logo" className="h-14 w-auto object-contain" />
                         <span className="text-xl font-display font-bold text-white tracking-tight">Koutuhal.ai</span>
                     </Link>
                 </div>
@@ -62,9 +63,9 @@ const SignUpPage = () => {
                     </div>
 
                     <form onSubmit={handleRegister} className="space-y-4">
-                        {authError && (
+                        {error && (
                             <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-sm rounded-lg">
-                                {authError}
+                                {error}
                             </div>
                         )}
 
@@ -103,26 +104,38 @@ const SignUpPage = () => {
                             />
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="space-y-2 pt-2 pb-2">
                             <Label className="text-white font-medium">I am a...</Label>
-                            <Select value={role} onValueChange={setRole}>
-                                <SelectTrigger className="bg-neutral-900 border-neutral-800 text-white h-11">
-                                    <SelectValue placeholder="Select your role" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-neutral-900 border-neutral-800 text-white">
-                                    <SelectItem value="STUDENT">Student</SelectItem>
-                                    <SelectItem value="MENTOR">Mentor</SelectItem>
-                                    <SelectItem value="ORGANISATION">Organisation</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <div className="grid grid-cols-2 gap-3 mt-2">
+                                {[
+                                    { id: 'student', title: 'Student', icon: <GraduationCap className={`h-5 w-5 mb-1 transition-colors ${role === 'student' ? 'text-black' : 'text-[#ADFF44]'}`} /> },
+                                    { id: 'mentor', title: 'Mentor', icon: <User className={`h-5 w-5 mb-1 transition-colors ${role === 'mentor' ? 'text-black' : 'text-[#ADFF44]'}`} /> },
+                                    { id: 'organization', title: 'Organisation', icon: <Building2 className={`h-5 w-5 mb-1 transition-colors ${role === 'organization' ? 'text-black' : 'text-[#ADFF44]'}`} /> },
+                                    { id: 'college', title: 'College', icon: <Briefcase className={`h-5 w-5 mb-1 transition-colors ${role === 'college' ? 'text-black' : 'text-[#ADFF44]'}`} /> },
+                                ].map((item) => (
+                                    <div
+                                        key={item.id}
+                                        onClick={() => setRole(item.id)}
+                                        className={`cursor-pointer border rounded-xl p-3 flex flex-col items-center justify-center text-center transition-all ${role === item.id
+                                            ? "border-[#ADFF44] bg-[#ADFF44] shadow-[0_0_15px_rgba(173,255,68,0.2)]"
+                                            : "border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800 hover:border-neutral-700"
+                                            }`}
+                                    >
+                                        {item.icon}
+                                        <span className={`text-xs font-bold tracking-wide transition-colors ${role === item.id ? "text-black" : "text-neutral-400"}`}>
+                                            {item.title}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
                         <Button
                             type="submit"
                             className="w-full h-12 bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-bold"
-                            disabled={isLoading}
+                            disabled={loading}
                         >
-                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Create Account
                         </Button>
                     </form>

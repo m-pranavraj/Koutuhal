@@ -99,7 +99,7 @@ const Auth = () => {
           <Card className="border shadow-xl">
             <CardHeader className="text-center pb-2">
               <CardTitle className="text-2xl font-bold">Choose Your Role</CardTitle>
-              <CardDescription>Welcome {user?.user_metadata?.full_name || ""}! Select how you'll use TalentBridge.</CardDescription>
+              <CardDescription>Welcome {user?.user_metadata?.full_name || ""}! Select how you'll use Koutuhal.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-3">
@@ -109,8 +109,8 @@ const Auth = () => {
                     type="button"
                     onClick={() => setRole(r.value)}
                     className={`flex items-center gap-4 rounded-xl border-2 p-4 text-left transition-all ${role === r.value
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary/50"
+                      ? "border-primary bg-primary/10"
+                      : "border-border hover:border-primary/50"
                       }`}
                   >
                     <div className="text-primary">{r.icon}</div>

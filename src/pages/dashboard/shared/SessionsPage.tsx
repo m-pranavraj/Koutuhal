@@ -46,7 +46,7 @@ const SessionsPage = ({ role }: SessionsPageProps) => {
 
   const generateMeetingLink = () => {
     const roomId = crypto.randomUUID().slice(0, 8);
-    return `https://meet.jit.si/TalentBridge-${roomId}`;
+    return `https://meet.jit.si/Koutuhal-${roomId}`;
   };
 
   const updateStatus = async (sessionId: string, status: string) => {

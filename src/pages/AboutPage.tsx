@@ -29,15 +29,15 @@ const TEAM_MEMBERS: TeamMember[] = [
     },
     {
         id: "founding-engineer",
-        name: "Coming Soon",
+        name: "M Pranav Raj",
         role: "Founding Engineer (Tech)",
-        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop",
-        bio: "Our exceptional founding engineer bringing world-class technical expertise to build Koutuhal's AI-powered platform. Driving innovation in machine learning, backend infrastructure, and scalable system design.",
-        expertise: ["AI/ML", "Backend Architecture", "System Design", "Python", "FastAPI"],
+        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop", // Will replace image path shortly
+        bio: "Our exceptional founding engineer bringing world-class technical expertise to build Koutuhal's AI-powered platform. Driving innovation in web development, machine learning, automations, product development, agentic AI, and multi-agent systems.",
+        expertise: ["Web Development", "AI/ML", "Automations", "Product Development", "Agentic AI", "Multi-Agent Systems"],
     },
     {
         id: "founders-office",
-        name: "Coming Soon",
+        name: "Aldrich Christie",
         role: "Founders Office",
         image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=500&fit=crop",
         bio: "Driving operational excellence and strategic initiatives from the founder's office. Managing key partnerships, go-to-market strategy, and organizational scaling at Koutuhal.",
@@ -45,9 +45,9 @@ const TEAM_MEMBERS: TeamMember[] = [
     },
     {
         id: "designer",
-        name: "Coming Soon",
-        role: "Product Designer",
-        image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=500&fit=crop",
+        name: "Advitya Sirohi",
+        role: "Designer",
+        image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=500&fit=crop", // Will replace image path shortly
         bio: "Creating beautiful, intuitive user experiences that make career acceleration delightful. Focused on design systems, user research, and product aesthetics at Koutuhal.",
         expertise: ["UI/UX Design", "Design Systems", "User Research", "Figma", "Design Thinking"],
     },
@@ -312,10 +312,10 @@ const AboutPage = () => {
             </section>
 
             {/* Team Member Modal */}
-            <TeamMemberModal 
-                member={selectedMember} 
-                isOpen={isModalOpen} 
-                onClose={() => setIsModalOpen(false)} 
+            <TeamMemberModal
+                member={selectedMember}
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
             />
         </div>
     );

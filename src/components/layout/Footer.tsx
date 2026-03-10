@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Mail, Phone, MapPin, Linkedin, Twitter, Instagram } from 'lucide-react';
+import { Mail, Phone, MapPin, Linkedin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -24,9 +24,7 @@ export const Footer = () => {
           {/* Brand */}
           <div className="space-y-4">
             <Link to="/" className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#ADFF44]">
-                <span className="text-lg font-bold text-black">K</span>
-              </div>
+              <img src="/logo.png" alt="Koutuhal Logo" className="h-14 w-auto object-contain" />
               <span className="text-xl font-display font-bold text-white">Koutuhal</span>
             </Link>
             <p className="text-sm leading-relaxed text-slate-400">
@@ -85,12 +83,6 @@ export const Footer = () => {
               <div className="flex gap-3">
                 <a href="https://in.linkedin.com/company/koutuhal-ai" target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900 transition-colors hover:bg-[#ADFF44] hover:text-black">
                   <Linkedin className="h-4 w-4" />
-                </a>
-                <a href="#" className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900 transition-colors hover:bg-[#ADFF44] hover:text-black">
-                  <Twitter className="h-4 w-4" />
-                </a>
-                <a href="#" className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 transition-colors hover:bg-slate-700">
-                  <Instagram className="h-4 w-4" />
                 </a>
               </div>
             </div>

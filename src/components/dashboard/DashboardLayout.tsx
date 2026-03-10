@@ -11,6 +11,7 @@ import {
   Building2, ClipboardList, Video, Award, BookOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ChatWidget } from "@/components/chat/ChatWidget";
 
 interface NavItem {
   label: string;
@@ -79,7 +80,8 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate("/auth");
+    navigate("/");
+    window.scrollTo(0, 0);
   };
 
   return (
@@ -93,8 +95,8 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       >
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center justify-between px-6 border-b border-sidebar-border">
-            <Link to="/dashboard" className="text-xl font-extrabold tracking-tight">
-              Talent<span className="text-sidebar-primary">Bridge</span>
+            <Link to="/dashboard" className="flex items-center gap-2">
+              <img src="/logo.png" alt="Koutuhal Logo" className="h-12 w-auto object-contain" />
             </Link>
             <Button variant="ghost" size="icon" className="lg:hidden text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setSidebarOpen(false)}>
               <X className="h-5 w-5" />
@@ -159,6 +161,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-foreground/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
+      <ChatWidget />
     </div>
   );
 };
