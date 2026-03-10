@@ -362,7 +362,7 @@ Output ONLY valid JSON (no markdown):
     
     try:
         completion = groq.chat.completions.create(
-            model=settings.LLM_MODEL if "llama" in settings.LLM_MODEL else "llama-3.1-8b-instant", # Default to fast model
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": "You output ONLY valid raw JSON. No markdown, no explanations. Valid JSON only."},
                 {"role": "user", "content": prompt}

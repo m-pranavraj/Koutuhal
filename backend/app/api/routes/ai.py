@@ -61,7 +61,7 @@ async def ai_chat(
         ]
         
         completion = groq_client.chat.completions.create(
-            model="llama3-70b-8192",
+            model="llama-3.1-8b-instant",
             messages=messages,
             temperature=0.7,
             max_tokens=600
@@ -90,7 +90,7 @@ async def ai_tailor(
         ]
         
         completion = groq_client.chat.completions.create(
-            model="llama3-70b-8192",
+            model="llama-3.1-8b-instant",
             messages=messages,
             temperature=0.5,
             max_tokens=4000
