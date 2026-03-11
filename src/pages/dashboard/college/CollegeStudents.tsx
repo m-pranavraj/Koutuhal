@@ -20,12 +20,7 @@ const CollegeStudents = () => {
   const fetchData = async () => {
     const { data: college } = await supabase.from("college_profiles").select("id, college_name").eq("user_id", user!.id).single();
     if (!college) { setLoading(false); return; }
-    // Get students who listed this college name
-    const { data } = await supabase
-      .from("student_profiles")
-      .select("*, profiles:user_id(full_name, email)")
-      .eq("college_name", college.college_name);
-    if (data) setStudents(data);
+
     setLoading(false);
   };
 

@@ -22,6 +22,7 @@ const BrowseJobs = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [appliedJobIds, setAppliedJobIds] = useState<string[]>([]);
   const { user } = useAuth();
   const { toast } = useToast();
   const pagination = usePagination({ pageSize: 20 });
@@ -51,22 +52,34 @@ const BrowseJobs = () => {
       setJobs(data);
       pagination.setTotalCount(count ?? 0);
     }
+
+    if (user) {
+      const { data: sp } = await supabase.from("student_profiles").select("id").eq("user_id", user.id).maybeSingle();
+      if (sp) {
+        const { data: apps } = await supabase.from("applications").select("job_id").eq("student_id", sp.id);
+        if (apps) setAppliedJobIds(apps.map((a) => a.job_id));
+      }
+    }
+
     setLoading(false);
   };
 
   const handleApply = async (jobId: string) => {
     if (!user) return;
-    const { data: sp } = await supabase.from("student_profiles").select("id").eq("user_id", user.id).maybeSingle();
-    const studentId = sp?.id;
-    if (!studentId) {
-      toast({ title: "Please complete your student profile in Settings first", variant: "destructive" });
+    const { data: sp } = await supabase.from("student_profiles").select("id, headline, degree, resume_url, skills, graduation_year, college_id").eq("user_id", user.id).maybeSingle();
+
+    if (!sp || !sp.headline || !sp.degree || !sp.resume_url || !sp.skills || !sp.graduation_year || !sp.college_id) {
+      toast({ title: "Please complete your profile (Headline, Skills, Degree, Graduation Year, College, Resume) in Settings.", variant: "destructive" });
       return;
     }
+
+    const studentId = sp.id;
     const { error } = await supabase.from("applications").insert({ job_id: jobId, student_id: studentId });
     if (error) {
       if (error.code === "23505") toast({ title: "You've already applied to this job", variant: "destructive" });
       else toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
+      setAppliedJobIds(prev => [...prev, jobId]);
       toast({ title: "Application submitted!" });
     }
   };
@@ -133,7 +146,11 @@ const BrowseJobs = () => {
                           </div>
                         )}
                       </div>
-                      <Button onClick={() => handleApply(job.id)} className="shrink-0 font-bold">Apply Now</Button>
+                      {appliedJobIds.includes(job.id) ? (
+                        <Button disabled className="shrink-0 font-bold bg-muted text-muted-foreground">Applied</Button>
+                      ) : (
+                        <Button onClick={() => handleApply(job.id)} className="shrink-0 font-bold">Apply Now</Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

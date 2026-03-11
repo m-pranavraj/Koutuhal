@@ -19,7 +19,7 @@ const PlacementTracking = () => {
     const { data: college } = await supabase.from("college_profiles").select("id, college_name").eq("user_id", user!.id).single();
     if (!college) { setLoading(false); return; }
 
-    const { data: students } = await supabase.from("student_profiles").select("id").eq("college_name", college.college_name);
+    const { data: students } = await supabase.from("student_profiles").select("id").eq("college_id", college.id);
     const studentIds = students?.map(s => s.id) || [];
 
     if (studentIds.length === 0) { setLoading(false); setStats({ students: 0, applications: 0, interviews: 0, offers: 0, companies: 0 }); return; }

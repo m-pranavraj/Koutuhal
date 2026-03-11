@@ -4,7 +4,9 @@ import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
-import { ClipboardList, Clock, CheckCircle } from "lucide-react";
+import { ClipboardList, Clock, CheckCircle, Play } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const StudentAssessments = () => {
   const { user } = useAuth();
@@ -17,8 +19,8 @@ const StudentAssessments = () => {
     const { data: sp } = await supabase.from("student_profiles").select("id").eq("user_id", user!.id).maybeSingle();
     if (!sp) { setLoading(false); return; }
     const { data } = await supabase
-      .from("assessment_submissions")
-      .select("*, assessments(title, assessment_type, time_limit_minutes, jobs(title, organization_profiles(company_name)))")
+      .from("assessment_assignments")
+      .select("*, assessments(*, jobs(title, organization_profiles(company_name)))")
       .eq("student_id", sp.id)
       .order("created_at", { ascending: false });
     if (data) setSubmissions(data);
@@ -54,12 +56,21 @@ const StudentAssessments = () => {
                       {sub.score !== null && <span>Score: {sub.score}</span>}
                     </div>
                   </div>
-                  <Badge variant={sub.status === "submitted" ? "default" : sub.status === "evaluated" ? "secondary" : "outline"}>
-                    <span className="flex items-center gap-1.5">
-                      {sub.status === "pending" ? <Clock className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
-                      <span className="capitalize">{sub.status}</span>
-                    </span>
-                  </Badge>
+                  <div className="flex flex-col items-end gap-2">
+                    <Badge variant={sub.status === "submitted" || sub.status === "completed" ? "default" : sub.status === "evaluated" ? "secondary" : "outline"}>
+                      <span className="flex items-center gap-1.5">
+                        {sub.status === "pending" ? <Clock className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                        <span className="capitalize">{sub.status}</span>
+                      </span>
+                    </Badge>
+                    {sub.status === "pending" && (
+                      <Button size="sm" asChild className="h-8">
+                        <Link to={`/dashboard/assessments/take/${sub.id}`}>
+                          <Play className="h-3.5 w-3.5 mr-1" /> Take
+                        </Link>
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>

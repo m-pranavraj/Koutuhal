@@ -50,7 +50,7 @@ const OrgApplications = () => {
     const jobIds = jobs.map((j) => j.id);
     const { data } = await supabase
       .from("applications")
-      .select("*, jobs(title), student_profiles(headline, user_id, college_name, degree, profiles:user_id(full_name, email))")
+      .select("*, jobs(title), student_profiles(headline, user_id, degree, resume_url, college_profiles(college_name), profiles:user_id(full_name, email))")
       .in("job_id", jobIds)
       .order("created_at", { ascending: false });
     if (data) setApplications(data);
@@ -118,8 +118,8 @@ const OrgApplications = () => {
                       <h3 className="font-semibold">{app.student_profiles?.profiles?.full_name || "Applicant"}</h3>
                       <p className="text-sm text-muted-foreground">{app.student_profiles?.profiles?.email}</p>
                       <p className="text-sm mt-1">Applied for: <span className="font-medium">{app.jobs?.title}</span></p>
-                      {app.student_profiles?.college_name && (
-                        <p className="text-xs text-muted-foreground mt-1">{app.student_profiles.college_name} Â· {app.student_profiles.degree}</p>
+                      {app.student_profiles?.college_profiles?.college_name && (
+                        <p className="text-xs text-muted-foreground mt-1">{app.student_profiles.college_profiles.college_name} • {app.student_profiles.degree}</p>
                       )}
                       <Badge className={`mt-2 ${stageColors[app.status] || "bg-muted text-muted-foreground"}`}>
                         {pipelineStages.find(s => s.value === app.status)?.label || app.status}
@@ -136,6 +136,13 @@ const OrgApplications = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                      {app.student_profiles?.resume_url && (
+                        <Button variant="outline" size="sm" className="w-44 h-9" asChild>
+                          <a href={app.student_profiles.resume_url} target="_blank" rel="noreferrer">
+                            View Resume
+                          </a>
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>

@@ -159,7 +159,7 @@ const AiTutorTeaser = () => {
                         className="text-5xl md:text-7xl lg:text-8xl font-black leading-none mb-6"
                     >
                         <span className="block text-white">Meet Your</span>
-                        <span className="block bg-gradient-to-r from-[#ADFF44] via-[#c8ff7a] to-[#ADFF44] bg-clip-text text-transparent">
+                        <span className="block text-green-900">
                             AI Tutor
                         </span>
                         <span className="block text-white text-4xl md:text-5xl lg:text-6xl mt-2 font-bold">
@@ -343,7 +343,7 @@ const AiTutorTeaser = () => {
                                 className="bg-neutral-900/60 border border-neutral-800 rounded-2xl p-6"
                             >
                                 <div className="flex gap-1 mb-4">
-                                    {[...Array(t.stars)].map((_, j) => <Star key={j} className="w-4 h-4 text-[#ADFF44] fill-[#ADFF44]" />)}
+                                    {[...Array(t.stars)].map((_, j) => <Star key={j} className="w-4 h-4 text-green-900 fill-green-900" />)}
                                 </div>
                                 <p className="text-neutral-300 text-sm leading-relaxed mb-4">"{t.text}"</p>
                                 <div>
@@ -416,7 +416,7 @@ const AiTutorTeaser = () => {
                                         >
                                             {submitting ? 'Joining...' : (
                                                 <span className="flex items-center justify-center gap-2">
-                                                    Join the Waitlist <ArrowRight className="w-4 h-4" />
+                                                    Join the Waitlist <ArrowRight className="w-4 h-4 text-black" />
                                                 </span>
                                             )}
                                         </Button>

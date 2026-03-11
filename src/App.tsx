@@ -54,6 +54,7 @@ import StudentOffers from "@/pages/dashboard/student/StudentOffers";
 import ResumeTailor from "@/pages/dashboard/student/ResumeTailor";
 import FindMentors from "@/pages/dashboard/student/FindMentors";
 import BookMentor from "@/pages/dashboard/student/BookMentor";
+import TakeAssessment from "@/pages/dashboard/student/TakeAssessment";
 
 // ─── DASHBOARD: Organization ──────────────────────────────────────────────────
 import PostJob from "@/pages/dashboard/organization/PostJob";
@@ -177,6 +178,7 @@ const App = () => (
                         <Route path="/resume-tailor" element={<DashRoute allowedRoles={["student"]}><ResumeTailor /></DashRoute>} />
                         <Route path="/applications" element={<DashRoute allowedRoles={["student", "organization"]}><ApplicationsRouter /></DashRoute>} />
                         <Route path="/assessments" element={<DashRoute allowedRoles={["student", "organization"]}><AssessmentsRouter /></DashRoute>} />
+                        <Route path="/assessments/take/:assignmentId" element={<DashRoute allowedRoles={["student"]}><TakeAssessment /></DashRoute>} />
                         <Route path="/interviews" element={<DashRoute allowedRoles={["student", "organization"]}><InterviewsRouter /></DashRoute>} />
                         <Route path="/offers" element={<DashRoute allowedRoles={["student", "organization"]}><OffersRouter /></DashRoute>} />
                         <Route path="/post-job" element={<DashRoute allowedRoles={["organization"]}><PostJob /></DashRoute>} />

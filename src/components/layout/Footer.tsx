@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 
 const quickLinks = [
   { name: 'About Us', href: '/about' },
-  { name: 'Courses', href: '/courses' },
+  { name: 'Courses', href: '/login' },
   { name: 'Instructors', href: '/#mentors' },
   { name: 'Success Stories', href: '/#reviews' },
   { name: 'Career Support', href: '/jobs' },

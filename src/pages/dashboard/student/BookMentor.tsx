@@ -83,14 +83,14 @@ const BookMentor = () => {
       // Get student profile
       const { data: sp } = await supabase
         .from("student_profiles")
-        .select("id")
+        .select("id, headline, degree, resume_url, skills, graduation_year, college_id")
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (!sp) {
+      if (!sp || !sp.headline || !sp.degree || !sp.resume_url || !sp.skills || !sp.graduation_year || !sp.college_id) {
         toast({
           title: "Complete your profile first",
-          description: "Go to Settings to fill in your student profile.",
+          description: "Please complete your profile (Headline, Skills, Degree, Graduation Year, College, Resume) in Settings.",
           variant: "destructive",
         });
         setBooking(false);

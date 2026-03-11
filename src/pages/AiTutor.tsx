@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Mic, Paperclip, Play, Pause, Maximize2, ChevronLeft, ChevronRight, MoreVertical, FileText, Sparkles, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -166,7 +167,15 @@ const AiTutor = () => {
                                         ? 'bg-gradient-to-br from-[#ADFF44] to-[#8BCC36] text-white rounded-tr-sm'
                                         : 'bg-neutral-900 dark:bg-slate-800 text-neutral-300 dark:text-slate-200 border border-gray-100 dark:border-slate-700 rounded-tl-sm'
                                         }`}>
-                                        <p className="leading-relaxed">{msg.text}</p>
+                                        {msg.role === 'user' ? (
+                                            <p className="leading-relaxed">{msg.text}</p>
+                                        ) : (
+                                            <div className="prose prose-sm dark:prose-invert max-w-none text-neutral-300 dark:text-slate-200 markdown-body">
+                                                <ReactMarkdown>
+                                                    {msg.text}
+                                                </ReactMarkdown>
+                                            </div>
+                                        )}
                                         <span className={`text-[10px] mt-1 block opacity-70 ${msg.role === 'user' ? 'text-[#ADFF44]/20' : 'text-gray-400 dark:text-neutral-500'}`}>
                                             {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>

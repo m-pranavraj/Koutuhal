@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { MessageCircle, X, Send, Bot, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
@@ -115,7 +116,15 @@ export function ChatWidget() {
                                             : 'bg-neutral-800 text-white rounded-tl-sm'
                                             }`}
                                     >
-                                        {msg.text}
+                                        {msg.sender === 'user' ? (
+                                            msg.text
+                                        ) : (
+                                            <div className="prose prose-sm dark:prose-invert max-w-none text-white overflow-hidden markdown-body">
+                                                <ReactMarkdown>
+                                                    {msg.text}
+                                                </ReactMarkdown>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))}
