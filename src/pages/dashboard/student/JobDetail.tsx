@@ -54,7 +54,7 @@ const JobDetail = () => {
     try {
       const { data, error } = await supabase
         .from("jobs")
-        .select("*, organization_profiles(company_name, logo_url, website_url, description)")
+        .select("*, organization_profiles(company_name, logo_url, website, description)")
         .eq("id", id)
         .single();
 
@@ -213,8 +213,8 @@ const JobDetail = () => {
                   <h1 className="text-3xl md:text-4xl font-black text-white leading-tight">{job.title}</h1>
                   <p className="text-lg font-bold text-white/50 flex items-center gap-2">
                     {job.organization_profiles?.company_name}
-                    {job.organization_profiles?.website_url && (
-                      <a href={job.organization_profiles.website_url} target="_blank" rel="noopener noreferrer">
+                    {job.organization_profiles?.website && (
+                      <a href={job.organization_profiles.website} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="h-3.5 w-3.5 text-primary hover:scale-110 transition-transform" />
                       </a>
                     )}
