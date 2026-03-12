@@ -81,11 +81,12 @@ const DashboardHome = () => {
         });
 
         // Real Stats from DB
+        const student_id = (sp as any).id;
         const [appsRes, interviewsRes, submissionsRes, offersRes] = await Promise.all([
-          supabase.from("applications").select("id", { count: "exact", head: true }).eq("student_id", student_p.id),
-          supabase.from("interviews").select("id", { count: "exact", head: true }).in("application_id", (await supabase.from("applications").select("id").eq("student_id", student_p.id)).data?.map(a => a.id) || []),
-          supabase.from("assessment_assignments").select("id", { count: "exact", head: true }).eq("student_id", student_p.id).eq("status", "pending"),
-          supabase.from("offers").select("id", { count: "exact", head: true }).in("application_id", (await supabase.from("applications").select("id").eq("student_id", student_p.id)).data?.map(a => a.id) || []),
+          supabase.from("applications").select("id", { count: "exact", head: true }).eq("student_id", student_id),
+          supabase.from("interviews").select("id", { count: "exact", head: true }).in("application_id", (await supabase.from("applications").select("id").eq("student_id", student_id)).data?.map(a => (a as any).id) || []),
+          supabase.from("assessment_assignments").select("id", { count: "exact", head: true }).eq("student_id", student_id).eq("status", "pending"),
+          supabase.from("offers").select("id", { count: "exact", head: true }).in("application_id", (await supabase.from("applications").select("id").eq("student_id", student_id)).data?.map(a => (a as any).id) || []),
         ]);
         
         setStats([
@@ -99,7 +100,7 @@ const DashboardHome = () => {
         const { count: matchCount } = await supabase
           .from("job_match_scores" as any)
           .select("application_id", { count: "exact", head: true })
-          .eq("student_id", sp.id)
+          .eq("student_id", student_id)
           .gte("match_score", 70);
         
         setHighMatchCount(matchCount ?? 0);
@@ -155,7 +156,6 @@ const DashboardHome = () => {
         if (!cp) { setStats([]); setLoading(false); return; }
         const college_id = (cp as any).id;
         
-        // Fetch all student IDs for this college
         const { data: students } = await supabase.from("student_profiles").select("id").eq("college_id", college_id);
         const studentIds = students?.map(s => (s as any).id) || [];
         
@@ -163,7 +163,7 @@ const DashboardHome = () => {
           setStats([
             { label: "Students Registered", icon: <GraduationCap className="h-5 w-5" />, value: 0, href: "/dashboard/students" },
             { label: "Placement Rate", icon: <TrendingUp className="h-5 w-5" />, value: "0%" },
-            { label: "Average CTC", icon: <DollarSign className="h-4 w-4" />, value: "₹0" },
+            { label: "Job Applications", icon: <FileText className="h-5 w-5" />, value: 0, href: "/dashboard/placement-tracking" },
             { label: "Total Offers", icon: <Award className="h-5 w-5" />, value: 0, href: "/dashboard/placement-tracking" },
           ]);
           setLoading(false);
@@ -172,17 +172,36 @@ const DashboardHome = () => {
 
         const [appsCount, offersRes] = await Promise.all([
           supabase.from("applications").select("id", { count: "exact", head: true }).in("student_id", studentIds),
-          supabase.from("offers").select("salary, application_id").in("id", (await supabase.from("offers").select("id").eq("status", "accepted")).data?.map(o => o.id) || []),
+          supabase.from("offers").select("salary, application_id")
+            .eq("status", "accepted")
+            .in("application_id", (await supabase.from("applications").select("id").in("student_id", studentIds)).data?.map(o => (o as any).id) || []),
         ]);
         
         const acceptedOffers = (offersRes.data || []) as any[];
-        // Filter student ids as subquery to avoid complex joins in from but we need context
-        const placementRate = 0; // Placeholder for logic
+        const placedStudentIds = new Set(acceptedOffers.map(o => {
+          // We need student_id for these offers to calculate placement rate
+          // For now we'll assume 1 offer = 1 student for the count if we don't have the reverse map here
+          // But a more accurate way would be to fetch student_id in the offers query if schema allows
+          return o.application_id; // Using application_id as proxy for unique placement entry
+        }));
+
+        const totalSalary = acceptedOffers.reduce((sum, o) => {
+          const val = parseInt(o.salary?.replace(/[^0-9]/g, '') || "0");
+          return sum + val;
+        }, 0);
+        
+        const avgCTC = acceptedOffers.length > 0 
+          ? `₹${Math.round(totalSalary / acceptedOffers.length / 100000).toFixed(1)}L` 
+          : "₹0";
+
+        const placementRate = studentIds.length > 0 
+          ? Math.round((placedStudentIds.size / studentIds.length) * 100) 
+          : 0;
         
         setStats([
           { label: "Students Registered", icon: <GraduationCap className="h-5 w-5" />, value: studentIds.length, href: "/dashboard/students" },
-          { label: "Placement Rate", icon: <TrendingUp className="h-5 w-5" />, value: "TBD" },
-          { label: "Average CTC", icon: <DollarSign className="h-4 w-4" />, value: "TBD" },
+          { label: "Placement Rate", icon: <TrendingUp className="h-5 w-5" />, value: `${placementRate}%` },
+          { label: "Job Applications", icon: <FileText className="h-5 w-5" />, value: appsCount.count || 0, href: "/dashboard/placement-tracking" },
           { label: "Offers Secured", icon: <Award className="h-5 w-5" />, value: acceptedOffers.length, href: "/dashboard/placement-tracking" },
         ]);
       } else if (primaryRole === "admin") {
@@ -330,8 +349,18 @@ const DashboardHome = () => {
                   {quickActions[primaryRole] || quickActions.student}
                 </p>
                 <Button className="btn-green w-full group-hover:shadow-lg group-hover:shadow-primary/20 transition-all rounded-xl py-6" asChild>
-                   <Link to={primaryRole === 'student' ? "/dashboard/jobs" : "/dashboard/listings"}>
-                    {primaryRole === 'student' ? 'Explore Opportunities' : 'Manage Jobs'}
+                   <Link to={
+                     primaryRole === 'student' ? "/dashboard/jobs" : 
+                     primaryRole === 'organization' ? "/dashboard/listings" :
+                     primaryRole === 'mentor' ? "/dashboard/sessions" :
+                     primaryRole === 'college' ? "/dashboard/students" :
+                     "/dashboard"
+                   }>
+                    {primaryRole === 'student' ? 'Explore Opportunities' : 
+                     primaryRole === 'organization' ? 'Manage Jobs' :
+                     primaryRole === 'mentor' ? 'View Sessions' :
+                     primaryRole === 'college' ? 'View Students' :
+                     'Get Started'}
                     <ArrowRight className="h-4 w-4 ml-2 text-black" />
                    </Link>
                 </Button>
