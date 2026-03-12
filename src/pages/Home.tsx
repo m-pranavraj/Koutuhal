@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 import {
   BookOpen,
   Users,
@@ -418,7 +419,7 @@ const Home = () => {
 
                 <Link to="/login">
                   <Button size="lg" className="h-14 px-10 bg-white/5 backdrop-blur-md text-white hover:bg-white/10 font-bold rounded-full text-base tracking-wide border border-white/10 hover:border-[#ADFF44]/30 transition-all">
-                    Explore For Free <ArrowRight className="ml-2 h-5 w-5" />
+                    Explore For Free <ArrowRight className="ml-2 h-5 w-5 text-black" />
                   </Button>
                 </Link>
               </motion.div>
@@ -490,7 +491,7 @@ const Home = () => {
 
                   <div className="mt-auto">
                     <Link to={item.link} className="inline-flex items-center justify-center w-full py-4 rounded-xl bg-[#ADFF44]/10 border border-[#ADFF44]/30 hover:bg-[#ADFF44]/20 hover:border-[#ADFF44]/60 transition-all text-sm font-bold text-[#ADFF44] group-hover:tracking-wider">
-                      View Programs <ChevronRight className="h-4 w-4 ml-2" />
+                      View Programs <ChevronRight className="h-4 w-4 ml-2 text-black" />
                     </Link>
                   </div>
                 </div>
@@ -769,7 +770,10 @@ const Home = () => {
                   <img
                     src={coach.image}
                     alt={coach.name}
-                    className="w-full h-full object-cover"
+                    className={cn(
+                      "w-full h-full object-cover transition-all duration-700",
+                      coach.name === "M Pranav Raj" && "object-top scale-[1.3]"
+                    )}
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                       e.currentTarget.nextElementSibling?.classList.remove('hidden');

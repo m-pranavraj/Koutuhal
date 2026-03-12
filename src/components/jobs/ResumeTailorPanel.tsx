@@ -387,7 +387,7 @@ const ResumeTailorPanel = ({ job, open, onClose, sharedResume, onResumeShared }:
                                         <span className={`${done ? 'text-[#ADFF44]' : active ? 'text-white' : 'text-neutral-600'} transition-colors`}>
                                             {done ? <CheckCircle className="w-3.5 h-3.5 inline mr-1" /> : `${i + 1}. `}{s.label}
                                         </span>
-                                        {i < arr.length - 1 && <ChevronRight className="w-3 h-3 text-neutral-700 absolute right-0" />}
+                                        {i < arr.length - 1 && <ChevronRight className="w-3 h-3 text-black absolute right-0" />}
                                     </div>
                                 );
                             })}
@@ -432,7 +432,6 @@ const ResumeTailorPanel = ({ job, open, onClose, sharedResume, onResumeShared }:
                                             value={jdText}
                                             onChange={(e) => setJdText(e.target.value)}
                                             className="min-h-[320px] font-mono text-sm bg-neutral-900 border-neutral-800 focus:ring-[#ADFF44]/40 text-neutral-200 rounded-xl resize-none"
-                                            placeholder="Paste or edit the job description here..."
                                         />
                                         <p className="text-xs text-neutral-600">Auto-filled from job card. Edit freely before tailoring.</p>
                                     </div>
@@ -476,7 +475,6 @@ const ResumeTailorPanel = ({ job, open, onClose, sharedResume, onResumeShared }:
                                         <div key={i} className="space-y-2">
                                             <Label className="text-sm font-semibold text-white">{gap.question}</Label>
                                             <Textarea
-                                                placeholder="Your answer..."
                                                 className="min-h-[80px] bg-neutral-900 border-neutral-800 focus:ring-[#ADFF44]/40 text-neutral-200 text-sm resize-none rounded-xl"
                                                 value={gapAnswers[gap.field] || ''}
                                                 onChange={(e) => setGapAnswers(prev => ({ ...prev, [gap.field]: e.target.value }))}

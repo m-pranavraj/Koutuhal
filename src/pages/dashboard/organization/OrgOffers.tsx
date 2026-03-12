@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -89,7 +89,7 @@ const OrgOffers = () => {
                 <div>
                   <Label>Candidate *</Label>
                   <Select value={form.application_id} onValueChange={v => setForm(p => ({ ...p, application_id: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select candidate" /></SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {applications.map(a => (
                         <SelectItem key={a.id} value={a.id}>
@@ -100,7 +100,7 @@ const OrgOffers = () => {
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><Label>Salary / Stipend</Label><Input value={form.salary} onChange={e => setForm(p => ({ ...p, salary: e.target.value }))} placeholder="â‚¹25,000/month" /></div>
+                  <div><Label>Salary / Stipend</Label><Input value={form.salary} onChange={e => setForm(p => ({ ...p, salary: e.target.value }))} /></div>
                   <div><Label>Start Date</Label><Input type="date" value={form.start_date} onChange={e => setForm(p => ({ ...p, start_date: e.target.value }))} /></div>
                 </div>
                 <div>

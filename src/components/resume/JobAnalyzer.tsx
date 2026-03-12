@@ -31,7 +31,6 @@ export const JobAnalyzer = ({ onAnalyze }: JobAnalyzerProps) => {
                 <Textarea
                     value={jd}
                     onChange={(e) => setJd(e.target.value)}
-                    placeholder="Paste the Job Description here..."
                     className="w-full h-full bg-black/50 border-neutral-800 rounded-xl p-4 text-neutral-300 resize-none focus:border-[#ADFF44] transition-all"
                 />
                 {jd && (

@@ -241,7 +241,7 @@ const CollegesProgram = () => {
                                 <h4 className="text-2xl font-bold text-white mb-4 group-hover:text-[#ADFF44] transition-colors">{project.title}</h4>
                                 <p className="text-neutral-400 text-sm leading-relaxed mb-8">{project.desc}</p>
                                 <div className="mt-auto pt-4 flex items-center gap-2 text-[#ADFF44] font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                                    View Demo <ChevronRight className="h-3 w-3" />
+                                    View Demo <ChevronRight className="h-3 w-3 text-black" />
                                 </div>
                             </div>
                         ))}

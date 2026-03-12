@@ -47,6 +47,7 @@ import SettingsPage from "@/pages/dashboard/SettingsPage";
 
 // ─── DASHBOARD: Student ───────────────────────────────────────────────────────
 import BrowseJobs from "@/pages/dashboard/student/BrowseJobs";
+import JobDetail from "@/pages/dashboard/student/JobDetail";
 import MyApplications from "@/pages/dashboard/student/MyApplications";
 import StudentAssessments from "@/pages/dashboard/student/StudentAssessments";
 import StudentInterviews from "@/pages/dashboard/student/StudentInterviews";
@@ -63,6 +64,7 @@ import OrgApplications from "@/pages/dashboard/organization/OrgApplications";
 import OrgAssessments from "@/pages/dashboard/organization/OrgAssessments";
 import OrgInterviews from "@/pages/dashboard/organization/OrgInterviews";
 import OrgOffers from "@/pages/dashboard/organization/OrgOffers";
+import OrgAnalytics from "@/pages/dashboard/organization/OrgAnalytics";
 
 // ─── DASHBOARD: College ───────────────────────────────────────────────────────
 import CollegeStudents from "@/pages/dashboard/college/CollegeStudents";
@@ -173,6 +175,7 @@ const App = () => (
                         <Route path="/" element={<DashRoute><DashboardHome /></DashRoute>} />
                         <Route path="/settings" element={<DashRoute><SettingsPage /></DashRoute>} />
                         <Route path="/jobs" element={<DashRoute allowedRoles={["student"]}><BrowseJobs /></DashRoute>} />
+                        <Route path="/jobs/:id" element={<DashRoute allowedRoles={["student"]}><JobDetail /></DashRoute>} />
                         <Route path="/mentors" element={<DashRoute allowedRoles={["student"]}><FindMentors /></DashRoute>} />
                         <Route path="/book-mentor" element={<DashRoute allowedRoles={["student"]}><BookMentor /></DashRoute>} />
                         <Route path="/resume-tailor" element={<DashRoute allowedRoles={["student"]}><ResumeTailor /></DashRoute>} />
@@ -183,6 +186,7 @@ const App = () => (
                         <Route path="/offers" element={<DashRoute allowedRoles={["student", "organization"]}><OffersRouter /></DashRoute>} />
                         <Route path="/post-job" element={<DashRoute allowedRoles={["organization"]}><PostJob /></DashRoute>} />
                         <Route path="/listings" element={<DashRoute allowedRoles={["organization"]}><MyListings /></DashRoute>} />
+                        <Route path="/analytics" element={<DashRoute allowedRoles={["organization"]}><OrgAnalytics /></DashRoute>} />
                         <Route path="/sessions" element={<DashRoute allowedRoles={["student", "mentor"]}><SessionsRouter /></DashRoute>} />
                         <Route path="/availability" element={<DashRoute allowedRoles={["mentor"]}><MentorAvailability /></DashRoute>} />
                         <Route path="/reviews" element={<DashRoute allowedRoles={["mentor"]}><MentorReviews /></DashRoute>} />

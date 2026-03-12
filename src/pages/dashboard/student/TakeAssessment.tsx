@@ -152,7 +152,6 @@ const TakeAssessment = () => {
                                             id={`q${q.id}-text`}
                                             value={answers[q.id] || ""}
                                             onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
-                                            placeholder="Type your answer here..."
                                             className="mt-1"
                                         />
                                     </div>

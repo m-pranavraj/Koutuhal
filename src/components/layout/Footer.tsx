@@ -97,7 +97,6 @@ export const Footer = () => {
             <div className="flex gap-2">
               <Input
                 type="email"
-                placeholder="Enter your email"
                 className="bg-neutral-900 border-neutral-800 text-white placeholder:text-neutral-600"
               />
               <Button className="bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-bold">

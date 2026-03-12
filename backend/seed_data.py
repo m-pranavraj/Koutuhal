@@ -22,7 +22,7 @@ async def seed_data():
         # Courses
         courses = [
             Course(
-                title="Full Stack Web Development 2024",
+                title="Full Stack Web Development 2025",
                 description="Become a full-stack developer with just one course. HTML, CSS, Javascript, Node, React, MongoDB, Web3 and DApps",
                 price=4999,
                 instructor="Dr. Angela Yu",

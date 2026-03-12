@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -128,7 +128,7 @@ const OrgAssessments = () => {
                   <div>
                     <Label>Job *</Label>
                     <Select value={form.job_id} onValueChange={(v) => setForm(p => ({ ...p, job_id: v }))}>
-                      <SelectTrigger><SelectValue placeholder="Select job" /></SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {jobs.map(j => <SelectItem key={j.id} value={j.id}>{j.title}</SelectItem>)}
                       </SelectContent>
@@ -176,7 +176,6 @@ const OrgAssessments = () => {
                                   <Input
                                     value={q.text}
                                     onChange={(e) => updateQuestion(q.id, "text", e.target.value)}
-                                    placeholder="Enter your question here..."
                                     required
                                   />
                                 </div>
@@ -198,7 +197,6 @@ const OrgAssessments = () => {
                                     <Input
                                       value={opt}
                                       onChange={(e) => updateQuestion(q.id, "option", e.target.value, oIndex)}
-                                      placeholder={`Option ${oIndex + 1}`}
                                       required
                                       className={q.correctOptionIndex === oIndex ? "border-green-500 bg-green-500/5" : ""}
                                     />

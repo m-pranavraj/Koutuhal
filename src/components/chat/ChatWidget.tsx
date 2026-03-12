@@ -147,7 +147,6 @@ export function ChatWidget() {
                                 <Input
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
-                                    placeholder="Ask anything..."
                                     className="bg-neutral-900 border-neutral-800 text-white focus-visible:ring-[#ADFF44]"
                                     disabled={isLoading}
                                 />

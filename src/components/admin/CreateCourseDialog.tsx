@@ -22,7 +22,7 @@ interface CourseFormData {
 }
 
 export function CreateCourseDialog({ onCourseCreated }: { onCourseCreated: () => void }) {
-    const { user, token } = useAuth();
+    const { user, backendToken } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const { register, handleSubmit, reset, setValue } = useForm<CourseFormData>();
@@ -37,7 +37,7 @@ export function CreateCourseDialog({ onCourseCreated }: { onCourseCreated: () =>
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${backendToken}`
                 },
                 body: JSON.stringify({
                     ...data,
@@ -86,13 +86,13 @@ export function CreateCourseDialog({ onCourseCreated }: { onCourseCreated: () =>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="title">Course Title</Label>
-                            <Input id="title" {...register('title', { required: true })} className="bg-neutral-800 border-neutral-700" placeholder="e.g. Master AI" />
+                            <Input id="title" {...register('title', { required: true })} className="bg-neutral-800 border-neutral-700" />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="category">Category</Label>
                             <Select onValueChange={(val) => setValue('category', val)}>
                                 <SelectTrigger className="bg-neutral-800 border-neutral-700">
-                                    <SelectValue placeholder="Select Category" />
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Bootcamp">Bootcamp</SelectItem>
@@ -106,30 +106,30 @@ export function CreateCourseDialog({ onCourseCreated }: { onCourseCreated: () =>
 
                     <div className="space-y-2">
                         <Label htmlFor="description">Description</Label>
-                        <Textarea id="description" {...register('description', { required: true })} className="bg-neutral-800 border-neutral-700 min-h-[100px]" placeholder="Detailed description..." />
+                        <Textarea id="description" {...register('description', { required: true })} className="bg-neutral-800 border-neutral-700 min-h-[100px]" />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="price">Price (₹)</Label>
-                            <Input id="price" type="number" {...register('price', { required: true })} className="bg-neutral-800 border-neutral-700" placeholder="4999" />
+                            <Input id="price" type="number" {...register('price', { required: true })} className="bg-neutral-800 border-neutral-700" />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="duration">Duration</Label>
-                            <Input id="duration" {...register('duration', { required: true })} className="bg-neutral-800 border-neutral-700" placeholder="e.g. 8 Weeks" />
+                            <Input id="duration" {...register('duration', { required: true })} className="bg-neutral-800 border-neutral-700" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="instructor">Instructor Name</Label>
-                            <Input id="instructor" {...register('instructor', { required: true })} className="bg-neutral-800 border-neutral-700" placeholder="e.g. Jane Doe" />
+                            <Input id="instructor" {...register('instructor', { required: true })} className="bg-neutral-800 border-neutral-700" />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="level">Level</Label>
                             <Select onValueChange={(val) => setValue('level', val)}>
                                 <SelectTrigger className="bg-neutral-800 border-neutral-700">
-                                    <SelectValue placeholder="Select Level" />
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Beginner">Beginner</SelectItem>
@@ -142,7 +142,7 @@ export function CreateCourseDialog({ onCourseCreated }: { onCourseCreated: () =>
 
                     <div className="space-y-2">
                         <Label htmlFor="image_url">Image URL</Label>
-                        <Input id="image_url" {...register('image_url')} className="bg-neutral-800 border-neutral-700" placeholder="https://..." />
+                        <Input id="image_url" {...register('image_url')} className="bg-neutral-800 border-neutral-700" />
                     </div>
 
                     <div className="pt-4 flex justify-end gap-2">

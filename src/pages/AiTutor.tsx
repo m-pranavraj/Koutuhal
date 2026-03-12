@@ -191,7 +191,6 @@ const AiTutor = () => {
                             <Input
                                 value={inputText}
                                 onChange={(e) => setInputText(e.target.value)}
-                                placeholder="Ask anything about the video..."
                                 className="pr-24 pl-4 py-6 rounded-xl border-gray-200 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800/50 focus:bg-neutral-900 dark:focus:bg-black transition-all shadow-inner focus:shadow-[#ADFF44]/10 dark:focus:shadow-[#ADFF44]/10 focus:border-[#ADFF44]/30 dark:focus:border-[#ADFF44]/30 text-white dark:text-slate-100"
                             />
                             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">

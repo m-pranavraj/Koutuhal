@@ -286,7 +286,6 @@ const CareerReadiness = () => {
                                             <div className="space-y-2">
                                                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Full Name</label>
                                                 <Input
-                                                    placeholder="John Doe"
                                                     className="bg-black/50 border-white/10 focus:border-[#ADFF44] h-12 rounded-xl"
                                                     value={formData.name}
                                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -297,7 +296,6 @@ const CareerReadiness = () => {
                                                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Email Address</label>
                                                 <Input
                                                     type="email"
-                                                    placeholder="john@example.com"
                                                     className="bg-black/50 border-white/10 focus:border-[#ADFF44] h-12 rounded-xl"
                                                     value={formData.email}
                                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -311,7 +309,6 @@ const CareerReadiness = () => {
                                             <div className="space-y-3">
                                                 <div className="flex gap-2">
                                                     <Input
-                                                        placeholder="e.g. Senior Frontend Developer"
                                                         className="bg-black/50 border-white/10 focus:border-[#ADFF44] h-12 rounded-xl"
                                                         value={newRole}
                                                         onChange={(e) => setNewRole(e.target.value)}
@@ -326,7 +323,6 @@ const CareerReadiness = () => {
                                                     </Button>
                                                 </div>
                                                 <Textarea
-                                                    placeholder="Paste Job Description (Optional) - This helps AI give a more accurate match."
                                                     className="bg-black/50 border-white/10 focus:border-[#ADFF44] min-h-[100px] rounded-xl text-sm"
                                                     value={newJD}
                                                     onChange={(e) => setNewJD(e.target.value)}
@@ -395,7 +391,7 @@ const CareerReadiness = () => {
                                             ) : (
                                                 <div className="flex items-center gap-2">
                                                     <span>Proceed for Detailed Analysis</span>
-                                                    <ChevronRight size={20} />
+                                                    <ChevronRight size={20} className="text-black" />
                                                 </div>
                                             )}
                                         </Button>

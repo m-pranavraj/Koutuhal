@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { X, Linkedin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface TeamMember {
@@ -10,6 +10,7 @@ interface TeamMember {
     expertise: string[];
     quote?: string;
     isFounded?: boolean;
+    linkedin?: string;
 }
 
 interface TeamMemberModalProps {
@@ -42,11 +43,24 @@ export const TeamMemberModal = ({ member, isOpen, onClose }: TeamMemberModalProp
                         className="fixed inset-0 z-50 flex items-center justify-center p-4"
                     >
                         <div className="bg-neutral-950 border border-neutral-800 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-                            {/* Close Button */}
-                            <div className="sticky top-0 flex justify-end p-4 bg-neutral-950 border-b border-neutral-800">
+                            {/* Header Actions */}
+                            <div className="sticky top-0 flex items-center justify-between p-4 bg-neutral-950 border-b border-neutral-800 z-30">
+                                <div>
+                                    {member.linkedin && (
+                                        <a 
+                                            href={member.linkedin} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#ADFF44] hover:text-white transition-colors bg-[#ADFF44]/10 px-4 py-2 rounded-xl border border-[#ADFF44]/20 hover:border-[#ADFF44] hover:shadow-[0_0_15px_rgba(173,255,68,0.2)]"
+                                        >
+                                            <Linkedin className="w-4 h-4 fill-[#ADFF44]" />
+                                            LinkedIn
+                                        </a>
+                                    )}
+                                </div>
                                 <button
                                     onClick={onClose}
-                                    className="p-2 hover:bg-neutral-900 rounded-lg transition-colors"
+                                    className="p-2 hover:bg-neutral-900 rounded-lg transition-colors border border-transparent hover:border-white/10"
                                 >
                                     <X className="w-5 h-5 text-neutral-400" />
                                 </button>

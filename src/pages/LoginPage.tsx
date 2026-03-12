@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowRight, Loader2, Sparkles, Mail } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { getFriendlyErrorMessage } from '@/lib/error-handler';
 
 const LoginPage = () => {
     const { signIn, signInWithGoogle, loading } = useAuth();
@@ -28,7 +29,7 @@ const LoginPage = () => {
                 navigate(from, { replace: true });
             }
         } catch (err: any) {
-            setError(err.message || 'Login failed. Please try again.');
+            setError(getFriendlyErrorMessage(err));
         }
     };
 
@@ -64,7 +65,7 @@ const LoginPage = () => {
                 </div>
 
                 <div className="relative z-10 flex justify-between items-end text-neutral-500 text-sm">
-                    <p>© 2024 Koutuhal Pathways</p>
+                    <p>© 2025 Koutuhal Pathways</p>
                     <p>Privacy Policy</p>
                 </div>
             </div>
@@ -88,7 +89,6 @@ const LoginPage = () => {
                         <div className="space-y-2">
                             <Label className="text-white font-medium">Email</Label>
                             <Input
-                                placeholder="name@example.com"
                                 className="bg-neutral-900 border-neutral-800 text-white h-11"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -101,7 +101,6 @@ const LoginPage = () => {
                             </div>
                             <Input
                                 type="password"
-                                placeholder="••••••••"
                                 className="bg-neutral-900 border-neutral-800 text-white h-11"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}

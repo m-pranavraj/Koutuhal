@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
@@ -70,11 +70,11 @@ const PostJob = () => {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <Label htmlFor="title">Job Title *</Label>
-              <Input id="title" value={form.title} onChange={(e) => update("title", e.target.value)} placeholder="e.g. Frontend Developer Intern" required />
+              <Input id="title" value={form.title} onChange={(e) => update("title", e.target.value)} required />
             </div>
             <div>
               <Label htmlFor="description">Description *</Label>
-              <Textarea id="description" value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="Describe the role, responsibilities, and requirements..." rows={6} required />
+              <Textarea id="description" value={form.description} onChange={(e) => update("description", e.target.value)} rows={6} required />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -92,13 +92,13 @@ const PostJob = () => {
               </div>
               <div>
                 <Label htmlFor="category">Category</Label>
-                <Input id="category" value={form.category} onChange={(e) => update("category", e.target.value)} placeholder="e.g. Engineering" />
+                <Input id="category" value={form.category} onChange={(e) => update("category", e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="location">Location</Label>
-                <Input id="location" value={form.location} onChange={(e) => update("location", e.target.value)} placeholder="e.g. Mumbai, India" />
+                <Input id="location" value={form.location} onChange={(e) => update("location", e.target.value)} />
               </div>
               <div className="flex items-center gap-3 pt-6">
                 <Switch checked={form.is_remote} onCheckedChange={(v) => update("is_remote", v)} />
@@ -107,16 +107,16 @@ const PostJob = () => {
             </div>
             <div>
               <Label htmlFor="skills">Required Skills (comma-separated)</Label>
-              <Input id="skills" value={form.required_skills} onChange={(e) => update("required_skills", e.target.value)} placeholder="React, Python, SQL" />
+              <Input id="skills" value={form.required_skills} onChange={(e) => update("required_skills", e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="salaryMin">Min Stipend/Salary</Label>
-                <Input id="salaryMin" type="number" value={form.salary_min} onChange={(e) => update("salary_min", e.target.value)} placeholder="10000" />
+                <Input id="salaryMin" type="number" value={form.salary_min} onChange={(e) => update("salary_min", e.target.value)} />
               </div>
               <div>
                 <Label htmlFor="salaryMax">Max Stipend/Salary</Label>
-                <Input id="salaryMax" type="number" value={form.salary_max} onChange={(e) => update("salary_max", e.target.value)} placeholder="25000" />
+                <Input id="salaryMax" type="number" value={form.salary_max} onChange={(e) => update("salary_max", e.target.value)} />
               </div>
             </div>
             <div>
@@ -125,7 +125,7 @@ const PostJob = () => {
             </div>
             <div>
               <Label htmlFor="hiring_rounds">Hiring Rounds (comma-separated)</Label>
-              <Input id="hiring_rounds" value={form.hiring_rounds} onChange={(e) => update("hiring_rounds", e.target.value)} placeholder="Screening, Assessment, Interview, HR Round" />
+              <Input id="hiring_rounds" value={form.hiring_rounds} onChange={(e) => update("hiring_rounds", e.target.value)} />
             </div>
             <div className="flex items-center gap-3">
               <Switch checked={form.assessment_required} onCheckedChange={(v) => update("assessment_required", v)} />

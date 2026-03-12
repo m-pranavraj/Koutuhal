@@ -105,19 +105,19 @@ const ResumeForm = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Full Name</Label>
-                                    <Input value={resumeData.personal.fullName} onChange={(e) => updatePersonal('fullName', e.target.value)} placeholder="John Doe" />
+                                    <Input value={resumeData.personal.fullName} onChange={(e) => updatePersonal('fullName', e.target.value)} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Email</Label>
-                                    <Input value={resumeData.personal.email} onChange={(e) => updatePersonal('email', e.target.value)} placeholder="john@example.com" />
+                                    <Input value={resumeData.personal.email} onChange={(e) => updatePersonal('email', e.target.value)} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Phone</Label>
-                                    <Input value={resumeData.personal.phone} onChange={(e) => updatePersonal('phone', e.target.value)} placeholder="+1 234 567 890" />
+                                    <Input value={resumeData.personal.phone} onChange={(e) => updatePersonal('phone', e.target.value)} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>LinkedIn / Website</Label>
-                                    <Input value={resumeData.personal.linkedin} onChange={(e) => updatePersonal('linkedin', e.target.value)} placeholder="linkedin.com/in/johndoe" />
+                                    <Input value={resumeData.personal.linkedin} onChange={(e) => updatePersonal('linkedin', e.target.value)} />
                                 </div>
                                 <div className="col-span-1 md:col-span-2 space-y-2">
                                     <div className="flex justify-between items-center">
@@ -126,7 +126,7 @@ const ResumeForm = () => {
                                             <Sparkles className="w-3 h-3 mr-1" /> AI Write
                                         </Button>
                                     </div>
-                                    <Textarea value={resumeData.personal.bio} onChange={(e) => updatePersonal('bio', e.target.value)} placeholder="Briefly describe your professional background..." className="min-h-[100px]" />
+                                    <Textarea value={resumeData.personal.bio} onChange={(e) => updatePersonal('bio', e.target.value)} className="min-h-[100px]" />
                                 </div>
                             </div>
                         </section>
@@ -169,10 +169,10 @@ const ResumeForm = () => {
                                         <AccordionTrigger className="hover:no-underline"><span className="font-medium">{edu.degree || '(No Degree)'}</span></AccordionTrigger>
                                         <AccordionContent className="pt-4 space-y-4">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="space-y-2"><Label>Degree</Label><Input value={edu.degree} onChange={(e) => updateEducation(edu.id, 'degree', e.target.value)} placeholder="B.S. CS" /></div>
-                                                <div className="space-y-2"><Label>School</Label><Input value={edu.school} onChange={(e) => updateEducation(edu.id, 'school', e.target.value)} placeholder="Stanford" /></div>
-                                                <div className="space-y-2"><Label>Year</Label><Input value={edu.gradYear} onChange={(e) => updateEducation(edu.id, 'gradYear', e.target.value)} placeholder="2024" /></div>
-                                                <div className="space-y-2"><Label>Location</Label><Input value={edu.location} onChange={(e) => updateEducation(edu.id, 'location', e.target.value)} placeholder="CA, USA" /></div>
+                                                <div className="space-y-2"><Label>Degree</Label><Input value={edu.degree} onChange={(e) => updateEducation(edu.id, 'degree', e.target.value)} /></div>
+                                                <div className="space-y-2"><Label>School</Label><Input value={edu.school} onChange={(e) => updateEducation(edu.id, 'school', e.target.value)} /></div>
+                                                <div className="space-y-2"><Label>Year</Label><Input value={edu.gradYear} onChange={(e) => updateEducation(edu.id, 'gradYear', e.target.value)} /></div>
+                                                <div className="space-y-2"><Label>Location</Label><Input value={edu.location} onChange={(e) => updateEducation(edu.id, 'location', e.target.value)} /></div>
                                             </div>
                                             <Button variant="destructive" size="sm" onClick={() => removeEducation(edu.id)} className="w-full mt-2"><Trash2 className="w-4 h-4 mr-2" /> Remove</Button>
                                         </AccordionContent>
@@ -193,7 +193,7 @@ const ResumeForm = () => {
                             </div>
                             <div className="space-y-2">
                                 <Label>List your skills (comma separated)</Label>
-                                <Textarea value={resumeData.skills.join(', ')} onChange={(e) => updateSkills(e.target.value.split(',').map(s => s.trim()))} placeholder="React, TypeScript, Node.js, Python..." className="min-h-[150px]" />
+                                <Textarea value={resumeData.skills.join(', ')} onChange={(e) => updateSkills(e.target.value.split(',').map(s => s.trim()))} className="min-h-[150px]" />
                             </div>
                         </section>
                     </TabsContent>
@@ -211,8 +211,8 @@ const ResumeForm = () => {
                                         <AccordionTrigger className="hover:no-underline"><span className="font-medium">{proj.name || '(No Name)'}</span></AccordionTrigger>
                                         <AccordionContent className="pt-4 space-y-4">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="space-y-2"><Label>Name</Label><Input value={proj.name} onChange={(e) => updateProject(proj.id, 'name', e.target.value)} placeholder="Project Name" /></div>
-                                                <div className="space-y-2"><Label>Link</Label><Input value={proj.link} onChange={(e) => updateProject(proj.id, 'link', e.target.value)} placeholder="github.com/..." /></div>
+                                                <div className="space-y-2"><Label>Name</Label><Input value={proj.name} onChange={(e) => updateProject(proj.id, 'name', e.target.value)} /></div>
+                                                <div className="space-y-2"><Label>Link</Label><Input value={proj.link} onChange={(e) => updateProject(proj.id, 'link', e.target.value)} /></div>
                                             </div>
                                             <div className="space-y-2">
                                                 <div className="flex justify-between items-center">
@@ -221,7 +221,7 @@ const ResumeForm = () => {
                                                         <Sparkles className="w-3 h-3 mr-1" /> AI Enhance
                                                     </Button>
                                                 </div>
-                                                <Textarea value={proj.description} onChange={(e) => updateProject(proj.id, 'description', e.target.value)} placeholder="Description..." />
+                                                <Textarea value={proj.description} onChange={(e) => updateProject(proj.id, 'description', e.target.value)} />
                                             </div>
                                             <Button variant="destructive" size="sm" onClick={() => removeProject(proj.id)} className="w-full mt-2"><Trash2 className="w-4 h-4 mr-2" /> Remove</Button>
                                         </AccordionContent>
@@ -267,19 +267,19 @@ const SortableExperienceItem = ({ exp, updateExperience, removeExperience }: { e
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label>Role</Label>
-                            <Input value={exp.role} onChange={(e) => updateExperience(exp.id, 'role', e.target.value)} placeholder="Software Engineer" />
+                            <Input value={exp.role} onChange={(e) => updateExperience(exp.id, 'role', e.target.value)} />
                         </div>
                         <div className="space-y-2">
                             <Label>Company</Label>
-                            <Input value={exp.company} onChange={(e) => updateExperience(exp.id, 'company', e.target.value)} placeholder="Google" />
+                            <Input value={exp.company} onChange={(e) => updateExperience(exp.id, 'company', e.target.value)} />
                         </div>
                         <div className="space-y-2">
                             <Label>Start Date</Label>
-                            <Input value={exp.startDate} onChange={(e) => updateExperience(exp.id, 'startDate', e.target.value)} placeholder="Jan 2022" />
+                            <Input value={exp.startDate} onChange={(e) => updateExperience(exp.id, 'startDate', e.target.value)} />
                         </div>
                         <div className="space-y-2">
                             <Label>End Date</Label>
-                            <Input value={exp.endDate} onChange={(e) => updateExperience(exp.id, 'endDate', e.target.value)} placeholder="Present" />
+                            <Input value={exp.endDate} onChange={(e) => updateExperience(exp.id, 'endDate', e.target.value)} />
                         </div>
                     </div>
                     <div className="space-y-2">
@@ -292,7 +292,6 @@ const SortableExperienceItem = ({ exp, updateExperience, removeExperience }: { e
                         <Textarea
                             value={exp.description}
                             onChange={(e) => updateExperience(exp.id, 'description', e.target.value)}
-                            placeholder="• Developed X using Y..."
                             className="min-h-[120px]"
                         />
                     </div>

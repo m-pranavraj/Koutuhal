@@ -15,7 +15,8 @@ interface Mentor {
 }
 
 const SearchMentors = () => {
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
   const [mentors, setMentors] = useState<Mentor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -133,8 +134,7 @@ const SearchMentors = () => {
           </div>
           <div className="flex-1 w-full relative">
             <Input
-              className="border-none shadow-none focus-visible:ring-0 text-base font-medium placeholder:text-neutral-400 h-10"
-              placeholder="Search mentors..."
+              className="border-none shadow-none focus-visible:ring-0 text-base font-medium h-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -246,7 +246,6 @@ const SearchMentors = () => {
                   {dmMentorId === mentor.id && (
                     <div className="mb-3 space-y-2">
                       <Input
-                        placeholder="Type your message..."
                         value={dmMessage}
                         onChange={(e) => setDmMessage(e.target.value)}
                         className="bg-neutral-800 border-neutral-700 text-white text-sm"

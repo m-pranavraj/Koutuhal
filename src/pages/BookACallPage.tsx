@@ -78,7 +78,7 @@ const BookACallPage = () => {
                                     <input type="hidden" name="_subject" value="New Book a Call Request - Koutuhal.ai" />
                                     <input type="hidden" name="_template" value="table" />
                                     <input type="hidden" name="_captcha" value="false" />
-                                    <input type="hidden" name="_next" value="https://koutuhal.in/book-a-call?success=true" />
+                                    <input type="hidden" name="_next" value="https://koutuhal.in/" />
 
                                     <div className="grid md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
@@ -88,7 +88,6 @@ const BookACallPage = () => {
                                                 type="text"
                                                 required
                                                 className="w-full h-11 rounded-xl bg-neutral-950 border border-neutral-800 px-4 text-white focus:outline-none focus:border-[#ADFF44] transition-all"
-                                                placeholder="Jane"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -98,7 +97,6 @@ const BookACallPage = () => {
                                                 type="text"
                                                 required
                                                 className="w-full h-11 rounded-xl bg-neutral-950 border border-neutral-800 px-4 text-white focus:outline-none focus:border-[#ADFF44] transition-all"
-                                                placeholder="Doe"
                                             />
                                         </div>
                                     </div>
@@ -110,7 +108,6 @@ const BookACallPage = () => {
                                                 type="email"
                                                 required
                                                 className="w-full h-11 rounded-xl bg-neutral-950 border border-neutral-800 px-4 text-white focus:outline-none focus:border-[#ADFF44] transition-all"
-                                                placeholder="jane@example.com"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -120,7 +117,6 @@ const BookACallPage = () => {
                                                 type="tel"
                                                 required
                                                 className="w-full h-11 rounded-xl bg-neutral-950 border border-neutral-800 px-4 text-white focus:outline-none focus:border-[#ADFF44] transition-all"
-                                                placeholder="+91 98765 43210"
                                             />
                                         </div>
                                     </div>
@@ -147,7 +143,6 @@ const BookACallPage = () => {
                                             name="discussion_topic"
                                             required
                                             className="w-full h-24 rounded-xl bg-neutral-950 border border-neutral-800 p-4 text-white focus:outline-none focus:border-[#ADFF44] transition-all resize-none"
-                                            placeholder="e.g., Career readiness, AI courses, mentorship, etc."
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -156,11 +151,10 @@ const BookACallPage = () => {
                                             name="timezone"
                                             type="text"
                                             className="w-full h-11 rounded-xl bg-neutral-950 border border-neutral-800 px-4 text-white focus:outline-none focus:border-[#ADFF44] transition-all"
-                                            placeholder="e.g., IST (India), EST, PST"
                                         />
                                     </div>
                                     <Button type="submit" className="w-full h-12 bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-bold rounded-xl mt-2">
-                                        Schedule My Call <ArrowRight className="ml-2 w-4 h-4" />
+                                        Schedule My Call <ArrowRight className="ml-2 w-4 h-4 text-black" />
                                     </Button>
                                 </form>
                             )}

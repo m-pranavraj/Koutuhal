@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, ArrowRight, GraduationCap, User, Building2, Briefcase } from 'lucide-react';
+import { getFriendlyErrorMessage } from '@/lib/error-handler';
 
 const SignUpPage = () => {
     const { signUp, loading } = useAuth();
@@ -25,7 +26,7 @@ const SignUpPage = () => {
             await signUp(email, password, name, role as any);
             navigate('/dashboard', { replace: true });
         } catch (err: any) {
-            setError(err.message || 'Sign up failed. Please try again.');
+            setError(getFriendlyErrorMessage(err));
         }
     };
 
@@ -49,7 +50,7 @@ const SignUpPage = () => {
                 </div>
 
                 <div className="relative z-10 flex justify-between items-end text-neutral-500 text-sm">
-                    <p>© 2024 Koutuhal Pathways</p>
+                    <p>© 2025 Koutuhal Pathways</p>
                     <p>Privacy Policy</p>
                 </div>
             </div>
@@ -72,7 +73,6 @@ const SignUpPage = () => {
                         <div className="space-y-2">
                             <Label className="text-white font-medium">Full Name</Label>
                             <Input
-                                placeholder="John Doe"
                                 className="bg-neutral-900 border-neutral-800 text-white h-11"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
@@ -84,7 +84,6 @@ const SignUpPage = () => {
                             <Label className="text-white font-medium">Email</Label>
                             <Input
                                 type="email"
-                                placeholder="name@example.com"
                                 className="bg-neutral-900 border-neutral-800 text-white h-11"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -96,7 +95,6 @@ const SignUpPage = () => {
                             <Label className="text-white font-medium">Password</Label>
                             <Input
                                 type="password"
-                                placeholder="••••••••"
                                 className="bg-neutral-900 border-neutral-800 text-white h-11"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}

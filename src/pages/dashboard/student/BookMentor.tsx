@@ -1,5 +1,5 @@
-﻿import { useState, useEffect, useMemo } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,8 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
-import { motion } from "framer-motion";
-import { ArrowLeft, Clock, DollarSign, Star, Video } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  ArrowLeft, 
+  Clock, 
+  DollarSign, 
+  Star, 
+  Video, 
+  Calendar as CalendarIcon, 
+  User, 
+  Languages, 
+  CheckCircle2, 
+  AlertCircle,
+  Building2,
+  GraduationCap
+} from "lucide-react";
 import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -33,38 +46,40 @@ const BookMentor = () => {
   }, [mentorId]);
 
   const fetchMentorData = async () => {
-    const [mentorRes, availRes] = await Promise.all([
-      supabase
-        .from("mentor_profiles")
-        .select("*, profiles(full_name, avatar_url, bio)")
-        .eq("id", mentorId!)
-        .single(),
-      supabase
-        .from("mentor_availability")
-        .select("*")
-        .eq("mentor_id", mentorId!)
-        .eq("is_available", true)
-        .order("day_of_week"),
-    ]);
-    if (mentorRes.data) setMentor(mentorRes.data);
-    if (availRes.data) setAvailability(availRes.data);
-    setLoading(false);
+    try {
+      const [mentorRes, availRes] = await Promise.all([
+        supabase
+          .from("mentor_profiles")
+          .select("*, profiles(full_name, avatar_url, bio)")
+          .eq("id", mentorId!)
+          .single(),
+        supabase
+          .from("mentor_availability")
+          .select("*")
+          .eq("mentor_id", mentorId!)
+          .eq("is_available", true)
+          .order("day_of_week"),
+      ]);
+      if (mentorRes.data) setMentor(mentorRes.data);
+      if (availRes.data) setAvailability(availRes.data);
+    } catch (err) {
+      console.error("Fetch mentor error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Get available days of week from mentor availability
   const availableDaysOfWeek = useMemo(
     () => new Set(availability.map((a) => a.day_of_week)),
     [availability]
   );
 
-  // Filter calendar to only show days the mentor is available
   const isDateDisabled = (date: Date) => {
     if (date < new Date()) return true;
     if (date > addDays(new Date(), 60)) return true;
     return !availableDaysOfWeek.has(date.getDay());
   };
 
-  // Get slots for selected date
   const slotsForDate = useMemo(() => {
     if (!selectedDate) return [];
     return availability.filter((a) => a.day_of_week === selectedDate.getDay());
@@ -80,7 +95,6 @@ const BookMentor = () => {
     setBooking(true);
 
     try {
-      // Get student profile
       const { data: sp } = await supabase
         .from("student_profiles")
         .select("id, headline, degree, resume_url, skills, graduation_year, college_id")
@@ -89,8 +103,8 @@ const BookMentor = () => {
 
       if (!sp || !sp.headline || !sp.degree || !sp.resume_url || !sp.skills || !sp.graduation_year || !sp.college_id) {
         toast({
-          title: "Complete your profile first",
-          description: "Please complete your profile (Headline, Skills, Degree, Graduation Year, College, Resume) in Settings.",
+          title: "Profile Incomplete",
+          description: "Please complete your profile details in Settings before booking a session.",
           variant: "destructive",
         });
         setBooking(false);
@@ -115,8 +129,8 @@ const BookMentor = () => {
       if (error) throw error;
 
       toast({
-        title: "Session booked! ðŸŽ‰",
-        description: `Your session with ${mentor?.profiles?.full_name || "the mentor"} on ${format(selectedDate, "PPP")} has been requested. You'll be notified once confirmed.`,
+        title: "Booking Requested! 🎉",
+        description: `Your session with ${mentor?.profiles?.full_name} on ${format(selectedDate, "PPP")} has been registered.`,
       });
       navigate("/dashboard/sessions");
     } catch (err: any) {
@@ -126,77 +140,109 @@ const BookMentor = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center py-20 gap-4">
+      <div className="h-12 w-12 border-4 border-primary border-t-transparent animate-spin rounded-full" />
+      <p className="text-neutral-500 font-bold animate-pulse">Initializing Calendar...</p>
+    </div>
+  );
 
-  if (!mentor) {
-    return (
-      <div className="text-center py-20">
-        <p className="text-muted-foreground">Mentor not found.</p>
-        <Button variant="outline" className="mt-4" onClick={() => navigate("/dashboard/mentors")}>
-          Back to Mentors
-        </Button>
+  if (!mentor) return (
+    <div className="text-center py-20 px-4">
+      <div className="h-20 w-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+        <User className="h-10 w-10 text-red-500" />
       </div>
-    );
-  }
+      <h3 className="text-xl font-bold text-white mb-2">Mentor Not Found</h3>
+      <Button variant="outline" className="mt-4 border-white/10 rounded-xl" onClick={() => navigate("/dashboard/mentors")}>
+        Find Other Mentors
+      </Button>
+    </div>
+  );
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/mentors")} className="gap-1">
-        <ArrowLeft className="h-4 w-4" /> Back to Mentors
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700 pb-20">
+      <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard/mentors")} className="group text-neutral-400 hover:text-white rounded-full">
+        <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" /> 
+        Back to Mentors
       </Button>
 
-      {/* Mentor info header */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold">{mentor.profiles?.full_name || "Mentor"}</h1>
-                <p className="text-primary font-medium">{mentor.headline}</p>
-                <p className="text-sm text-muted-foreground mt-2">{mentor.profiles?.bio || "No bio available."}</p>
-                {mentor.expertise?.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    {mentor.expertise.map((e: string) => (
-                      <Badge key={e} variant="secondary" className="text-xs">{e}</Badge>
-                    ))}
-                  </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        {/* Left: Mentor Card */}
+        <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-8">
+          <Card className="glass-card border-white/5 shadow-premium overflow-hidden">
+            <div className="h-24 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent pt-6 px-6">
+               <Badge className="bg-primary/20 text-primary border-primary/20 text-[10px] font-black tracking-widest uppercase py-1 px-3 rounded-full">
+                  Verified Mentor
+               </Badge>
+            </div>
+            <CardContent className="p-8 -mt-12 text-center">
+              <div className="h-24 w-24 rounded-3xl bg-neutral-900 border-4 border-black shadow-xl flex items-center justify-center overflow-hidden mx-auto mb-4 group ring-1 ring-white/10">
+                {mentor.profiles?.avatar_url ? (
+                  <img src={mentor.profiles.avatar_url} alt={mentor.profiles?.full_name} className="h-full w-full object-cover transition-transform group-hover:scale-110" />
+                ) : (
+                  <User className="h-10 w-10 text-primary" />
                 )}
-                <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <DollarSign className="h-4 w-4" />
-                    {mentor.session_type === "free" ? "Free sessions" : `$${mentor.hourly_rate}/hr`}
-                  </span>
-                  {mentor.years_experience && (
-                    <span>{mentor.years_experience}+ years experience</span>
-                  )}
+              </div>
+              <h2 className="text-2xl font-black text-white">{mentor.profiles?.full_name}</h2>
+              <p className="text-primary text-sm font-bold mt-1">{mentor.headline}</p>
+              
+              <div className="mt-8 space-y-4 text-left">
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
+                   <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Clock className="h-5 w-5 text-primary" />
+                   </div>
+                   <div>
+                      <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">Experience</p>
+                      <p className="text-sm font-bold text-white">{mentor.years_experience}+ Years</p>
+                   </div>
+                </div>
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
+                   <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <DollarSign className="h-5 w-5 text-primary" />
+                   </div>
+                   <div>
+                      <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">Rate (Session)</p>
+                      <p className="text-sm font-bold text-white">{mentor.session_type === "free" ? "Complimentary" : `$${mentor.hourly_rate} / hour`}</p>
+                   </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Calendar */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Select a Date</CardTitle>
+              <div className="mt-8 pt-8 border-t border-white/5">
+                 <p className="text-xs text-neutral-500 leading-relaxed font-medium italic">
+                   "{mentor.profiles?.bio || "Expert mentorship to accelerate your professional growth."}"
+                 </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right: Booking Engine */}
+        <div className="lg:col-span-2 space-y-8">
+          <Card className="glass-card border-white/5 shadow-premium">
+            <CardHeader className="p-8 border-b border-white/5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
+                    <CalendarIcon className="h-6 w-6 text-primary" />
+                    Reservation Portal
+                  </CardTitle>
+                  <p className="text-neutral-500 text-sm mt-1 font-medium">Select your preferred date and time slot below.</p>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              {availability.length === 0 ? (
-                <p className="text-muted-foreground text-center py-6">
-                  This mentor hasn't set their availability yet.
-                </p>
-              ) : (
-                <>
-                  <Calendar
+            <CardContent className="p-0">
+              <div className="flex flex-col md:flex-row">
+                {/* Calendar Side */}
+                <div className="p-8 border-r border-white/5">
+                   <div className="mb-6 flex items-center justify-between">
+                      <h4 className="text-sm font-black text-white uppercase tracking-widest">Choose Date</h4>
+                      <div className="flex items-center gap-2">
+                         {[...availableDaysOfWeek].map(d => (
+                           <div key={d} className="h-1.5 w-1.5 rounded-full bg-primary" />
+                         ))}
+                      </div>
+                   </div>
+                   <Calendar
                     mode="single"
                     selected={selectedDate}
                     onSelect={(date) => {
@@ -204,77 +250,116 @@ const BookMentor = () => {
                       setSelectedSlot(null);
                     }}
                     disabled={isDateDisabled}
-                    className={cn("p-3 pointer-events-auto")}
+                    className={cn("p-1 pointer-events-auto bg-transparent")}
                   />
-                  <div className="mt-3 text-xs text-muted-foreground">
-                    Available on: {[...availableDaysOfWeek].map((d) => days[d]).join(", ")}
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
+                  <p className="mt-4 text-[10px] font-bold text-neutral-500 italic">
+                    * Showing availability for the next 60 days
+                  </p>
+                </div>
 
-        {/* Time slots + booking */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="text-lg">
-                {selectedDate ? `Slots for ${format(selectedDate, "EEE, MMM d")}` : "Pick a date first"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!selectedDate ? (
-                <p className="text-muted-foreground text-center py-6">Select a date to see available slots.</p>
-              ) : slotsForDate.length === 0 ? (
-                <p className="text-muted-foreground text-center py-6">No slots available for this date.</p>
-              ) : (
-                <>
-                  <div className="space-y-2">
-                    {slotsForDate.map((slot) => (
-                      <button
-                        key={slot.id}
-                        onClick={() => setSelectedSlot(slot)}
-                        className={cn(
-                          "w-full flex items-center justify-between rounded-lg border p-3 text-sm transition-colors",
-                          selectedSlot?.id === slot.id
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "hover:bg-muted"
-                        )}
-                      >
-                        <span className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          {slot.start_time} â€“ {slot.end_time}
-                        </span>
-                        {selectedSlot?.id === slot.id && <Badge>Selected</Badge>}
-                      </button>
-                    ))}
-                  </div>
+                {/* Slots Side */}
+                <div className="flex-1 p-8 bg-black/20">
+                   <div className="mb-6">
+                      <h4 className="text-sm font-black text-white uppercase tracking-widest">
+                        {selectedDate ? format(selectedDate, "MMMM d, yyyy") : "Pick a date"}
+                      </h4>
+                      <p className="text-[10px] text-neutral-500 mt-1 uppercase tracking-tighter">Available Time Slots</p>
+                   </div>
 
-                  {selectedSlot && (
-                    <div className="space-y-3 pt-4 border-t">
-                      <div className="rounded-lg bg-muted/50 p-3 space-y-1 text-sm">
-                        <p><strong>Date:</strong> {format(selectedDate, "PPP")}</p>
-                        <p><strong>Time:</strong> {selectedSlot.start_time} â€“ {selectedSlot.end_time}</p>
-                        <p><strong>Type:</strong> {mentor.session_type === "free" ? "Free" : `Paid â€” $${mentor.hourly_rate}`}</p>
-                        <p className="flex items-center gap-1 text-muted-foreground">
-                          <Video className="h-3.5 w-3.5" /> Meeting link will be generated automatically
-                        </p>
-                      </div>
-                      <Button onClick={handleBook} disabled={booking} className="w-full" size="lg">
-                        {booking ? "Booking..." : "Confirm Booking"}
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
+                   <AnimatePresence mode="wait">
+                     {!selectedDate ? (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-64 flex flex-col items-center justify-center text-center gap-4">
+                           <AlertCircle className="h-8 w-8 text-white/10" />
+                           <p className="text-xs text-white/30 font-bold uppercase tracking-widest">Please select a calendar date</p>
+                        </motion.div>
+                     ) : slotsForDate.length === 0 ? (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-64 flex flex-col items-center justify-center text-center gap-4">
+                           <XCircle className="h-8 w-8 text-white/10" />
+                           <p className="text-xs text-white/30 font-bold uppercase tracking-widest">No availability on this day</p>
+                        </motion.div>
+                     ) : (
+                        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="grid grid-cols-1 gap-3">
+                           {slotsForDate.map((slot) => (
+                             <button
+                               key={slot.id}
+                               onClick={() => setSelectedSlot(slot)}
+                               className={cn(
+                                 "group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-300",
+                                 selectedSlot?.id === slot.id 
+                                   ? "bg-primary border-primary text-black shadow-lg shadow-primary/20" 
+                                   : "bg-white/5 border-white/5 hover:border-primary/30 text-white"
+                               )}
+                             >
+                               <div className="flex items-center gap-4">
+                                  <div className={cn(
+                                    "h-10 w-10 rounded-xl flex items-center justify-center transition-colors",
+                                    selectedSlot?.id === slot.id ? "bg-black/10" : "bg-white/5"
+                                  )}>
+                                     <Clock className={cn("h-5 w-5", selectedSlot?.id === slot.id ? "text-white" : "text-primary")} />
+                                  </div>
+                                  <div className="text-left">
+                                     <p className="text-sm font-black">{slot.start_time} - {slot.end_time}</p>
+                                     <p className={cn("text-[10px] font-bold uppercase", selectedSlot?.id === slot.id ? "text-black/60" : "text-white/30")}>
+                                       60 min Session
+                                     </p>
+                                  </div>
+                               </div>
+                               {selectedSlot?.id === slot.id && (
+                                  <CheckCircle2 className="h-5 w-5 text-black" />
+                               )}
+                             </button>
+                           ))}
+                        </motion.div>
+                     )}
+                   </AnimatePresence>
+                </div>
+              </div>
             </CardContent>
+            
+            <AnimatePresence>
+              {selectedSlot && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }} 
+                  animate={{ height: "auto", opacity: 1 }} 
+                  exit={{ height: 0, opacity: 0 }}
+                  className="px-8 pb-8 pt-0"
+                >
+                  <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
+                     <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                           <Video className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                           <p className="text-xs font-black text-white uppercase tracking-widest">Confirmation Secure</p>
+                           <p className="text-[10px] text-neutral-500 font-medium">Auto-generated meeting link will be sent</p>
+                        </div>
+                     </div>
+                     <Button 
+                       onClick={handleBook} 
+                       disabled={booking} 
+                       className="btn-green h-14 px-12 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-primary/20 min-w-[240px]"
+                     >
+                        {booking ? <span className="flex items-center gap-2"><div className="h-4 w-4 border-2 border-black border-t-transparent animate-spin rounded-full" /> Finalizing...</span> : "Book My Session"}
+                     </Button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Card>
-        </motion.div>
+          
+          <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex items-start gap-4">
+             <AlertCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+             <div className="space-y-1">
+                <p className="text-sm font-bold text-white">Cancellation Policy</p>
+                <p className="text-xs text-neutral-500 font-medium leading-relaxed">
+                  Sessions can be rescheduled up to 24 hours before the start time. By booking, you agree to our terms of conduct during mentorship sessions.
+                </p>
+             </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
 export default BookMentor;
-

@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Brain, Users, Rocket, Target, TrendingUp } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { TeamMemberModal } from "@/components/about/TeamMemberModal";
@@ -14,6 +15,7 @@ interface TeamMember {
     expertise: string[];
     quote?: string;
     isFounded?: boolean;
+    linkedin?: string;
 }
 
 const TEAM_MEMBERS: TeamMember[] = [
@@ -26,6 +28,7 @@ const TEAM_MEMBERS: TeamMember[] = [
         bio: "A seasoned B2B SaaS leader with over 10 years of transformative experience in the US market. Milind brings exceptional expertise in enterprise software, AI-driven solutions, and commercial growth strategies. His journey combines world-class academic credentials from IIM Shillong and NIT Nagpur with proven leadership across innovative technology organizations like Simplilearn, Hivel.ai, and Skit.ai. At Koutuhal, he's driving the vision to democratize career acceleration through AI-powered learning and job matching.",
         expertise: ["Enterprise SaaS", "AI Strategy", "Commercial Growth", "Team Leadership", "B2B Sales"],
         quote: "We are leveraging a decade of enterprise software experience to create AI-powered solutions that transform how individuals accelerate their careers.",
+        linkedin: "https://in.linkedin.com/in/milind-kamble-96a16946",
     },
     {
         id: "founding-engineer",
@@ -195,7 +198,7 @@ const AboutPage = () => {
                                         <p className="text-neutral-400 text-sm">Companies Built/Grown</p>
                                     </div>
                                     <div className="flex items-start gap-3">
-                                        <span className="text-[#ADFF44] font-bold text-lg">$M</span>
+                                        <span className="text-[#ADFF44] font-bold text-lg">$12M</span>
                                         <p className="text-neutral-400 text-sm">In Revenue Generated</p>
                                     </div>
                                 </div>
@@ -222,7 +225,10 @@ const AboutPage = () => {
                                             <img
                                                 src={member.image}
                                                 alt={member.name}
-                                                className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-700"
+                                                className={cn(
+                                                    "w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-700",
+                                                    member.id === "founding-engineer" && "object-top scale-[1.3]"
+                                                )}
                                             />
                                         </div>
 

@@ -75,7 +75,7 @@ export const AvailabilitySheet = ({ open, onOpenChange }: AvailabilitySheetProps
                             <Label className="text-neutral-300">Start Time</Label>
                             <Select value={startTime} onValueChange={setStartTime}>
                                 <SelectTrigger className="bg-neutral-800 border-neutral-700 text-white">
-                                    <SelectValue placeholder="Start" />
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-neutral-800 border-neutral-700 text-white">
                                     {HOURS.map(h => (
@@ -88,7 +88,7 @@ export const AvailabilitySheet = ({ open, onOpenChange }: AvailabilitySheetProps
                             <Label className="text-neutral-300">End Time</Label>
                             <Select value={endTime} onValueChange={setEndTime}>
                                 <SelectTrigger className="bg-neutral-800 border-neutral-700 text-white">
-                                    <SelectValue placeholder="End" />
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-neutral-800 border-neutral-700 text-white">
                                     {HOURS.map(h => (

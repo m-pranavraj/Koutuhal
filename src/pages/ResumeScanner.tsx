@@ -102,7 +102,6 @@ const UploadForm = ({ file, jdText, isAnalyzing, error, onFileChange, onJdChange
                     <div className="space-y-3">
                         <Label className="text-base font-semibold text-neutral-300">1. Job Description</Label>
                         <Textarea
-                            placeholder="Paste the full job description here..."
                             className="min-h-[240px] font-mono text-sm bg-neutral-900 border-neutral-800 focus:ring-[#ADFF44]/50 resize-none rounded-xl p-4 text-neutral-200"
                             value={jdText}
                             onChange={(e) => onJdChange(e.target.value)}

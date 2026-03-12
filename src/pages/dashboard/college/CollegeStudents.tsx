@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,11 +45,11 @@ const CollegeStudents = () => {
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search students..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
         </div>
         {degrees.length > 0 && (
           <Select value={degreeFilter} onValueChange={setDegreeFilter}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Filter by degree" /></SelectTrigger>
+            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Degrees</SelectItem>
               {degrees.map(d => <SelectItem key={d} value={d!}>{d}</SelectItem>)}

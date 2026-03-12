@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -91,7 +91,7 @@ const OrgInterviews = () => {
                 <div>
                   <Label>Candidate *</Label>
                   <Select value={form.application_id} onValueChange={v => setForm(p => ({ ...p, application_id: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select candidate" /></SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {applications.map(a => (
                         <SelectItem key={a.id} value={a.id}>
@@ -103,9 +103,9 @@ const OrgInterviews = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div><Label>Date & Time *</Label><Input type="datetime-local" value={form.scheduled_at} onChange={e => setForm(p => ({ ...p, scheduled_at: e.target.value }))} required /></div>
-                  <div><Label>Interviewer</Label><Input value={form.interviewer_name} onChange={e => setForm(p => ({ ...p, interviewer_name: e.target.value }))} placeholder="Name" /></div>
+                  <div><Label>Interviewer</Label><Input value={form.interviewer_name} onChange={e => setForm(p => ({ ...p, interviewer_name: e.target.value }))} /></div>
                 </div>
-                <div><Label>Meeting Link</Label><Input value={form.meeting_link} onChange={e => setForm(p => ({ ...p, meeting_link: e.target.value }))} placeholder="https://meet.google.com/..." /></div>
+                <div><Label>Meeting Link</Label><Input value={form.meeting_link} onChange={e => setForm(p => ({ ...p, meeting_link: e.target.value }))} /></div>
                 <div className="flex gap-2">
                   <Button type="submit">Schedule</Button>
                   <Button type="button" variant="outline" onClick={() => setShowSchedule(false)}>Cancel</Button>

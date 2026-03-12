@@ -301,7 +301,6 @@ const ResumeTailor = () => {
               <Textarea
                 value={jd}
                 onChange={(e) => setJd(e.target.value)}
-                placeholder="Paste the job description here..."
                 rows={12}
                 className="resize-none"
               />
@@ -320,7 +319,6 @@ const ResumeTailor = () => {
               <Textarea
                 value={resumeText}
                 onChange={(e) => setResumeText(e.target.value)}
-                placeholder="Paste your resume content here..."
                 rows={12}
                 className="resize-none"
               />

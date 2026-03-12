@@ -177,7 +177,6 @@ IBM Full Stack Software Developer | IBM | November 2023`,
                       resumeText: e.target.value,
                     }))
                   }
-                  placeholder="Paste your resume content here..."
                   className="w-full h-48 bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-sm text-white placeholder-gray-500 focus:border-[#ADFF44] focus:outline-none"
                 />
               </div>
@@ -195,7 +194,6 @@ IBM Full Stack Software Developer | IBM | November 2023`,
                     jobDescription: e.target.value,
                   }))
                 }
-                placeholder="Paste the job description here..."
                 className="w-full h-48 bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-sm text-white placeholder-gray-500 focus:border-[#ADFF44] focus:outline-none"
               />
             </div>

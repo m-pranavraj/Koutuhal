@@ -1,4 +1,4 @@
-import { User, Target, Search, Briefcase, Gift, MessageSquare, TrendingUp, BookOpen, Star, ArrowRight, Zap, Trophy, Loader2, UserX, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { User, Target, Search, Briefcase, Gift, MessageSquare, TrendingUp, BookOpen, Star, ArrowRight, Zap, Trophy, Loader2, UserX, CheckCircle2, XCircle, Clock, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,7 @@ const StudentDashboard = ({ user, stats, token }: { user: any; stats: any; token
                 <FileText className="w-8 h-8 text-[#ADFF44] mb-4" />
                 <h3 className="text-xl font-bold text-white mb-2">Resume Scanner</h3>
                 <p className="text-neutral-400 text-sm">Analyze your resume ATS score</p>
-                <ArrowRight className="w-4 h-4 text-[#ADFF44] mt-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4 text-black mt-4 group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
             <Link to="/career-check" className="group">
@@ -58,7 +58,7 @@ const StudentDashboard = ({ user, stats, token }: { user: any; stats: any; token
                 <Target className="w-8 h-8 text-blue-400 mb-4" />
                 <h3 className="text-xl font-bold text-white mb-2">Career Check</h3>
                 <p className="text-neutral-400 text-sm">Analyze role fit & get recommendations</p>
-                <ArrowRight className="w-4 h-4 text-blue-400 mt-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4 text-black mt-4 group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
             <Link to="/search-experts" className="group">
@@ -66,7 +66,7 @@ const StudentDashboard = ({ user, stats, token }: { user: any; stats: any; token
                 <Users className="w-8 h-8 text-purple-400 mb-4" />
                 <h3 className="text-xl font-bold text-white mb-2">Find Mentors</h3>
                 <p className="text-neutral-400 text-sm">Get guidance 1:1 from experts</p>
-                <ArrowRight className="w-4 h-4 text-purple-400 mt-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4 text-black mt-4 group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
           </div>
@@ -614,7 +614,7 @@ const Dashboard = () => {
                   </p>
                   <Link to="/resume-builder">
                     <Button className="w-full h-12 bg-black text-white hover:bg-neutral-800 font-bold rounded-xl border-none shadow-xl">
-                      {totalResumes > 0 ? 'View Resumes' : 'Build Resume'} <ArrowRight className="w-4 h-4 ml-2" />
+                      {totalResumes > 0 ? 'View Resumes' : 'Build Resume'} <ArrowRight className="w-4 h-4 ml-2 text-black" />
                     </Button>
                   </Link>
                 </div>
@@ -677,7 +677,7 @@ const Dashboard = () => {
                         <h4 className="text-lg font-bold text-white group-hover:text-[#ADFF44] transition-colors">{item.label}</h4>
                         <p className="text-sm text-neutral-500 mt-1">{item.desc}</p>
                         <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-300">
-                          <ArrowRight className="w-5 h-5 text-white" />
+                          <ArrowRight className="w-5 h-5 text-black" />
                         </div>
                       </div>
                     </Link>

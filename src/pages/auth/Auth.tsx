@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Briefcase, GraduationCap, Building2, Star } from "lucide-react";
 import ForgotPasswordDialog from "@/components/ForgotPasswordDialog";
+import { getFriendlyErrorMessage } from "@/lib/error-handler";
 import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
@@ -51,7 +52,7 @@ const Auth = () => {
       toast({ title: "Welcome!", description: "Your account is ready." });
       navigate("/dashboard");
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: "Error", description: getFriendlyErrorMessage(err), variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -71,7 +72,7 @@ const Auth = () => {
         // Auth state change will trigger redirect via the Navigate above
       }
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: "Error", description: getFriendlyErrorMessage(err), variant: "destructive" });
       setSubmitting(false);
     }
   };
@@ -84,7 +85,7 @@ const Auth = () => {
       },
     });
     if (error) {
-      toast({ title: "Error", description: String(error), variant: "destructive" });
+      toast({ title: "Error", description: getFriendlyErrorMessage(error), variant: "destructive" });
     }
   };
 
@@ -174,7 +175,7 @@ const Auth = () => {
                       <motion.div key="signup-fields" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-4">
                         <div>
                           <Label htmlFor="fullName">Full Name</Label>
-                          <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" required />
+                          <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
                         </div>
                         <div>
                           <Label htmlFor="role">I am a...</Label>
@@ -194,11 +195,11 @@ const Auth = () => {
                   </AnimatePresence>
                   <div>
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
+                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                   </div>
                   <div>
                     <Label htmlFor="password">Password</Label>
-                    <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
+                    <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
                   </div>
                   <Button type="submit" className="w-full h-12 text-base font-bold" disabled={submitting}>
                     {submitting ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}

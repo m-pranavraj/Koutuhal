@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,9 +23,13 @@ const SettingsPage = () => {
   const [saving, setSaving] = useState(false);
 
   // Student
-  const [studentForm, setStudentForm] = useState({ headline: "", skills: "", linkedin_url: "", github_url: "", portfolio_url: "", college_name: "", degree: "", branch: "", graduation_year: "" });
+  const [studentForm, setStudentForm] = useState({ 
+    headline: "", skills: "", linkedin_url: "", github_url: "", portfolio_url: "", 
+    college_id: "", college_name: "", degree: "", branch: "", graduation_year: "" 
+  });
   const [education, setEducation] = useState<any[]>([]);
   const [experience, setExperience] = useState<any[]>([]);
+  const [colleges, setColleges] = useState<any[]>([]);
 
   // Org
   const [orgForm, setOrgForm] = useState({ company_name: "", industry: "", website: "", description: "", location: "", company_size: "" });
@@ -44,13 +48,17 @@ const SettingsPage = () => {
     const { data: p } = await supabase.from("profiles").select("*").eq("user_id", user!.id).maybeSingle();
     if (p) setProfileForm({ full_name: p.full_name || "", email: p.email || "", bio: p.bio || "", phone: p.phone || "", location: p.location || "" });
 
+    // Pre-fetch colleges for student mapping
+    const { data: cols } = await supabase.from("college_profiles").select("id, college_name").order("college_name");
+    if (cols) setColleges(cols);
+
     if (primaryRole === "student") {
       const { data: sp } = await supabase.from("student_profiles").select("*").eq("user_id", user!.id).maybeSingle();
       if (sp) {
         setStudentForm({
           headline: sp.headline || "", skills: sp.skills?.join(", ") || "",
           linkedin_url: sp.linkedin_url || "", github_url: sp.github_url || "", portfolio_url: sp.portfolio_url || "",
-          college_name: sp.college_name || "", degree: sp.degree || "", branch: sp.branch || "",
+          college_id: sp.college_id || "", college_name: sp.college_name || "", degree: sp.degree || "", branch: sp.branch || "",
           graduation_year: sp.graduation_year?.toString() || "",
         });
         setEducation(Array.isArray(sp.education) ? sp.education : []);
@@ -92,7 +100,7 @@ const SettingsPage = () => {
         await supabase.from("student_profiles").update({
           headline: studentForm.headline, skills: studentForm.skills ? studentForm.skills.split(",").map(s => s.trim()) : [],
           linkedin_url: studentForm.linkedin_url || null, github_url: studentForm.github_url || null, portfolio_url: studentForm.portfolio_url || null,
-          college_name: studentForm.college_name || null, degree: studentForm.degree || null, branch: studentForm.branch || null,
+          college_id: studentForm.college_id || null, college_name: studentForm.college_name || null, degree: studentForm.degree || null, branch: studentForm.branch || null,
           graduation_year: studentForm.graduation_year ? parseInt(studentForm.graduation_year) : null,
           education, experience,
         }).eq("user_id", user!.id);
@@ -218,16 +226,39 @@ const SettingsPage = () => {
               <Card className="border">
                 <CardHeader><CardTitle>Student Profile</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                  <div><Label>Headline</Label><Input value={studentForm.headline} onChange={(e) => setStudentForm(p => ({ ...p, headline: e.target.value }))} placeholder="e.g. B.Tech CSE Student" /></div>
+                  <div><Label>Headline</Label><Input value={studentForm.headline} onChange={(e) => setStudentForm(p => ({ ...p, headline: e.target.value }))} /></div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div><Label>College Name</Label><Input value={studentForm.college_name} onChange={(e) => setStudentForm(p => ({ ...p, college_name: e.target.value }))} placeholder="e.g. IIT Delhi" /></div>
-                    <div><Label>Degree</Label><Input value={studentForm.degree} onChange={(e) => setStudentForm(p => ({ ...p, degree: e.target.value }))} placeholder="e.g. B.Tech" /></div>
+                    <div>
+                      <Label>College / Institution</Label>
+                      <Select 
+                        value={studentForm.college_id} 
+                        onValueChange={(val) => {
+                          const col = colleges.find(c => c.id === val);
+                          setStudentForm(p => ({ ...p, college_id: val, college_name: col?.college_name || "" }));
+                        }}
+                      >
+                        <SelectTrigger className="bg-neutral-900 border-neutral-800">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {colleges.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.college_name}
+                            </SelectItem>
+                          ))}
+                          {colleges.length === 0 && (
+                            <SelectItem value="none" disabled>No colleges found</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div><Label>Degree</Label><Input value={studentForm.degree} onChange={(e) => setStudentForm(p => ({ ...p, degree: e.target.value }))} /></div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div><Label>Branch</Label><Input value={studentForm.branch} onChange={(e) => setStudentForm(p => ({ ...p, branch: e.target.value }))} placeholder="e.g. Computer Science" /></div>
-                    <div><Label>Graduation Year</Label><Input type="number" value={studentForm.graduation_year} onChange={(e) => setStudentForm(p => ({ ...p, graduation_year: e.target.value }))} placeholder="2026" /></div>
+                    <div><Label>Branch</Label><Input value={studentForm.branch} onChange={(e) => setStudentForm(p => ({ ...p, branch: e.target.value }))} /></div>
+                    <div><Label>Graduation Year</Label><Input type="number" value={studentForm.graduation_year} onChange={(e) => setStudentForm(p => ({ ...p, graduation_year: e.target.value }))} /></div>
                   </div>
-                  <div><Label>Skills (comma-separated)</Label><Input value={studentForm.skills} onChange={(e) => setStudentForm(p => ({ ...p, skills: e.target.value }))} placeholder="React, Python, ML" /></div>
+                  <div><Label>Skills (comma-separated)</Label><Input value={studentForm.skills} onChange={(e) => setStudentForm(p => ({ ...p, skills: e.target.value }))} /></div>
                   <div className="grid grid-cols-3 gap-4">
                     <div><Label>LinkedIn</Label><Input value={studentForm.linkedin_url} onChange={(e) => setStudentForm(p => ({ ...p, linkedin_url: e.target.value }))} /></div>
                     <div><Label>GitHub</Label><Input value={studentForm.github_url} onChange={(e) => setStudentForm(p => ({ ...p, github_url: e.target.value }))} /></div>
@@ -296,7 +327,7 @@ const SettingsPage = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div><Label>Location</Label><Input value={orgForm.location} onChange={(e) => setOrgForm(p => ({ ...p, location: e.target.value }))} /></div>
-                    <div><Label>Company Size</Label><Input value={orgForm.company_size} onChange={(e) => setOrgForm(p => ({ ...p, company_size: e.target.value }))} placeholder="e.g. 50-100" /></div>
+                    <div><Label>Company Size</Label><Input value={orgForm.company_size} onChange={(e) => setOrgForm(p => ({ ...p, company_size: e.target.value }))} /></div>
                   </div>
                   <div><Label>Description</Label><Textarea value={orgForm.description} onChange={(e) => setOrgForm(p => ({ ...p, description: e.target.value }))} rows={4} /></div>
                 </CardContent>
@@ -338,7 +369,6 @@ const SettingsPage = () => {
                     <Input
                       value={linkedinUrl}
                       onChange={(e) => setLinkedinUrl(e.target.value)}
-                      placeholder="https://linkedin.com/in/your-profile"
                       className="flex-1"
                     />
                     <Button onClick={importFromLinkedin} disabled={importingLinkedin}>
@@ -354,9 +384,9 @@ const SettingsPage = () => {
               <Card className="border">
                 <CardHeader><CardTitle>Mentor Profile</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                  <div><Label>Headline</Label><Input value={mentorForm.headline} onChange={(e) => setMentorForm(p => ({ ...p, headline: e.target.value }))} placeholder="e.g. Senior Engineer at Google" /></div>
-                  <div><Label>Expertise (comma-separated)</Label><Input value={mentorForm.expertise} onChange={(e) => setMentorForm(p => ({ ...p, expertise: e.target.value }))} placeholder="React, System Design, Career Coaching" /></div>
-                  <div><Label>Qualifications</Label><Textarea value={mentorForm.qualifications} onChange={(e) => setMentorForm(p => ({ ...p, qualifications: e.target.value }))} rows={3} placeholder="M.S. Computer Science, Stanford University" /></div>
+                  <div><Label>Headline</Label><Input value={mentorForm.headline} onChange={(e) => setMentorForm(p => ({ ...p, headline: e.target.value }))} /></div>
+                  <div><Label>Expertise (comma-separated)</Label><Input value={mentorForm.expertise} onChange={(e) => setMentorForm(p => ({ ...p, expertise: e.target.value }))} /></div>
+                  <div><Label>Qualifications</Label><Textarea value={mentorForm.qualifications} onChange={(e) => setMentorForm(p => ({ ...p, qualifications: e.target.value }))} rows={3} /></div>
                   <div className="grid grid-cols-2 gap-4">
                     <div><Label>Years of Experience</Label><Input type="number" value={mentorForm.years_experience} onChange={(e) => setMentorForm(p => ({ ...p, years_experience: e.target.value }))} /></div>
                     <div><Label>LinkedIn URL</Label><Input value={mentorForm.linkedin_url} onChange={(e) => setMentorForm(p => ({ ...p, linkedin_url: e.target.value }))} /></div>
@@ -379,7 +409,7 @@ const SettingsPage = () => {
                   </div>
                   {mentorForm.session_type === "paid" && (
                     <div className="grid grid-cols-2 gap-4">
-                      <div><Label>Hourly Rate</Label><Input type="number" value={mentorForm.hourly_rate} onChange={(e) => setMentorForm(p => ({ ...p, hourly_rate: e.target.value }))} placeholder="50" /></div>
+                      <div><Label>Hourly Rate</Label><Input type="number" value={mentorForm.hourly_rate} onChange={(e) => setMentorForm(p => ({ ...p, hourly_rate: e.target.value }))} /></div>
                       <div>
                         <Label>Currency</Label>
                         <Select value={mentorForm.currency} onValueChange={(v) => setMentorForm(p => ({ ...p, currency: v }))}>

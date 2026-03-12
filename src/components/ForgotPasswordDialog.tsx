@@ -55,7 +55,7 @@ const ForgotPasswordDialog = ({ open, onOpenChange }: ForgotPasswordDialogProps)
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="reset-email">Email</Label>
-              <Input id="reset-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
+              <Input id="reset-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? "Sending..." : "Send Reset Link"}

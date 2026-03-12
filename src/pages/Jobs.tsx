@@ -198,7 +198,7 @@ const JobsContent = () => {
           title: j.title,
           company: j.company,
           type: j.job_type || 'Full-time',
-          mode: j.location?.toLowerCase().includes('remote') ? 'Remote' : 'WFO',
+          mode: j.location?.toLowerCase().includes('remote') ? 'Remote' : 'WFO' as "Remote" | "WFO" | "WFH" | "Hybrid",
           location: j.location,
           experience: j.experience_level || 'Open',
           salary: j.salary_range || 'Competitive',
@@ -438,7 +438,6 @@ const JobsContent = () => {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
               <input
                 type="text"
-                placeholder="Search by title, company, skills (e.g. 'Python', 'Stripe', 'Remote')..."
                 className="w-full pl-12 pr-6 py-4 rounded-2xl bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-[#ADFF44]/30 text-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}

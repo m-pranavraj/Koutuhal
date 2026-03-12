@@ -862,6 +862,51 @@ export type Database = {
         }
         Returns: boolean
       }
+      recruiter_dashboard: {
+        Row: {
+          conversion_rate: number | null
+          org_id: string | null
+          total_applications: number | null
+          total_hired: number | null
+          total_interviews: number | null
+          total_jobs: number | null
+          total_offers: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      job_match_scores: {
+        Row: {
+          application_id: string | null
+          job_id: string | null
+          match_score: number | null
+          student_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applications_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_profiles_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Enums: {
       app_role: "admin" | "organization" | "student" | "mentor" | "college"

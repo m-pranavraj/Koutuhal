@@ -25,7 +25,7 @@ const PaginationControls = ({ page, totalPages, hasNext, hasPrev, onNext, onPrev
           <ChevronLeft className="h-4 w-4 mr-1" /> Previous
         </Button>
         <Button variant="outline" size="sm" onClick={onNext} disabled={!hasNext}>
-          Next <ChevronRight className="h-4 w-4 ml-1" />
+          Next <ChevronRight className="h-4 w-4 ml-1 text-black" />
         </Button>
       </div>
     </div>

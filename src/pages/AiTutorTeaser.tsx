@@ -284,8 +284,6 @@ const AiTutorTeaser = () => {
                     </motion.div>
 
                     <div className="relative">
-                        {/* Connecting line */}
-                        <div className="absolute left-6 md:left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-[#ADFF44]/50 via-[#ADFF44]/20 to-transparent hidden md:block" />
 
                         {[
                             { icon: BookOpen, step: '01', title: 'Upload Your Content', desc: 'Upload lecture videos, PDFs, slides or paste a YouTube link. Your AI tutor processes everything instantly.' },
@@ -343,7 +341,7 @@ const AiTutorTeaser = () => {
                                 className="bg-neutral-900/60 border border-neutral-800 rounded-2xl p-6"
                             >
                                 <div className="flex gap-1 mb-4">
-                                    {[...Array(t.stars)].map((_, j) => <Star key={j} className="w-4 h-4 text-[#ADFF44] fill-[#ADFF44]" />)}
+                                    {[...Array(t.stars)].map((_, j) => <Star key={j} className="w-4 h-4 text-[#ADFF44] fill-[#ADFF44] stroke-[#ADFF44]" />)}
                                 </div>
                                 <p className="text-neutral-300 text-sm leading-relaxed mb-4">"{t.text}"</p>
                                 <div>
@@ -397,7 +395,6 @@ const AiTutorTeaser = () => {
                                         <Input
                                             value={name}
                                             onChange={e => setName(e.target.value)}
-                                            placeholder="Your name"
                                             className="bg-neutral-800/50 border-neutral-700 text-white placeholder:text-neutral-500 focus:border-[#ADFF44]/50 h-12 rounded-xl"
                                             disabled={submitting}
                                         />
@@ -405,7 +402,6 @@ const AiTutorTeaser = () => {
                                             type="email"
                                             value={email}
                                             onChange={e => setEmail(e.target.value)}
-                                            placeholder="your@email.com"
                                             className="bg-neutral-800/50 border-neutral-700 text-white placeholder:text-neutral-500 focus:border-[#ADFF44]/50 h-12 rounded-xl"
                                             disabled={submitting}
                                         />
