@@ -45,7 +45,6 @@ import shireenImg from '@/assets/mentors/shireen.png.jpeg';
 import adityaImg from '@/assets/mentors/aditya.png.jpeg';
 // Importing Coach Images (Assuming Screenshots correspond to User upload)
 import pritamImg from '@/assets/mentors/Screenshot 2026-02-14 134010.png';
-const sumitraImg = "/mentors/sumitra.jpeg";
 const suchiImg = "/mentors/suchi.png";
 
 
@@ -273,11 +272,11 @@ const RotatingText = () => {
   }, []);
 
   return (
-    <div className="relative inline-flex h-[1.2em] items-center overflow-hidden px-4 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
+    <div className="relative inline-flex h-[1.2em] items-center overflow-hidden px-6 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
       <AnimatePresence mode="wait">
         <motion.span
           key={index}
-          className="bg-clip-text text-transparent bg-gradient-to-r from-[#ADFF44] to-[#44ff9e] font-black italic tracking-tight"
+          className="bg-clip-text text-transparent bg-gradient-to-r from-[#ADFF44] to-[#44ff9e] font-black italic pr-2"
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -15 }}
@@ -761,7 +760,7 @@ const Home = () => {
             {[
               { name: "Pritam", role: "AI Automation Expert", desc: "18+ years in AI Automation. Expert in developing intelligent systems.", tags: ["Enterprise AI", "Automation"], image: pritamImg },
               { name: "Suchi", role: "AI Coach", desc: "10+ years expertise in training students and professionals in AI/ML.", tags: ["Machine Learning", "Training"], image: suchiImg },
-              { name: "Sumitra P", role: "Automation Expert", desc: "Worked with 10+ Companies , and has experience in automation.", tags: ["Automation", "AI Agents"], image: sumitraImg },
+              { name: "M Pranav Raj", role: "Agentic AI Coach", desc: "Technical expertise driving innovation in web development, AI/ML, and Agentic AI systems.", tags: ["Agentic AI", "AI/ML"], image: "/team/profile pic.jpeg" },
             ].map((coach, i) => (
               <div key={i} className="bg-neutral-900 border border-neutral-800 p-8 rounded-3xl text-center hover:border-[#ADFF44]/50 transition-colors group relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#ADFF44]/5 rounded-full blur-2xl group-hover:bg-[#ADFF44]/10 transition-colors" />

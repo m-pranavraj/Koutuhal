@@ -37,7 +37,7 @@ const AiTutor = () => {
             <header className="bg-neutral-900 dark:bg-black border-b border-gray-100 dark:border-neutral-800 py-3 px-6 shadow-sm sticky top-0 z-10">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ADFF44] to-[#8BCC36] flex items-center justify-center text-white font-bold shadow-lg shadow-[#ADFF44]/20">
+                        <div className="w-10 h-10 rounded-full bg-[#ADFF44] flex items-center justify-center text-black font-bold shadow-lg shadow-[#ADFF44]/20">
                             <Sparkles className="w-5 h-5" />
                         </div>
                         <div>
@@ -49,7 +49,7 @@ const AiTutor = () => {
                         <Button variant="outline" className="rounded-full h-9 text-xs border-gray-200 dark:border-slate-700 dark:text-neutral-400 dark:hover:bg-slate-800">
                             <FileText className="w-3.5 h-3.5 mr-2" /> View Syllabus
                         </Button>
-                        <Button className="rounded-full h-9 text-xs bg-black dark:bg-slate-100 dark:text-white text-white hover:bg-[#9BE63D]">
+                        <Button className="rounded-full h-9 text-xs bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-bold">
                             Next Lesson <ChevronRight className="w-3.5 h-3.5 ml-1" />
                         </Button>
                     </div>
@@ -147,7 +147,7 @@ const AiTutor = () => {
                             </div>
                             <div>
                                 <h3 className="font-bold text-gray-900 dark:text-slate-100 text-sm">Ai Teaching Assistant</h3>
-                                <p className="text-[10px] text-[#ADFF44] dark:text-[#ADFF44] font-medium bg-[#ADFF44]/5 dark:bg-[#ADFF44]/10/30 px-1.5 rounded w-fit">Powered by Gemini 1.5</p>
+                                <p className="text-[10px] text-black dark:text-black font-bold bg-[#ADFF44] px-1.5 rounded w-fit">Powered by Gemini 1.5</p>
                             </div>
                         </div>
                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full dark:text-neutral-500"><MoreVertical className="w-4 h-4 text-gray-400" /></Button>
@@ -164,7 +164,7 @@ const AiTutor = () => {
                                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
                                     <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm ${msg.role === 'user'
-                                        ? 'bg-gradient-to-br from-[#ADFF44] to-[#8BCC36] text-white rounded-tr-sm'
+                                        ? 'bg-[#ADFF44] text-black rounded-tr-sm font-medium'
                                         : 'bg-neutral-900 dark:bg-slate-800 text-neutral-300 dark:text-slate-200 border border-gray-100 dark:border-slate-700 rounded-tl-sm'
                                         }`}>
                                         {msg.role === 'user' ? (
