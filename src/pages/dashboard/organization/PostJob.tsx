@@ -14,7 +14,7 @@ import { motion } from "framer-motion";
 import { Briefcase, MapPin, DollarSign, Calendar, Sparkles, CheckCircle2 } from "lucide-react";
 
 const PostJob = () => {
-  const { user } = useAuth();
+  const { user, orgProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
@@ -30,41 +30,46 @@ const PostJob = () => {
     setSubmitting(true);
     
     try {
-      const { data: org } = await supabase.from("organization_profiles").select("id").eq("user_id", user!.id).maybeSingle() as any;
-      if (!org) {
-
-        toast({ title: "Profile Incomplete", description: "Complete your organization profile first", variant: "destructive" });
+      if (!orgProfile) {
+        toast({ title: "Profile Incomplete", description: "Your organization profile is not fully loaded. Use the Settings page to ensure it's set up.", variant: "destructive" });
         setSubmitting(false);
         return;
       }
       
-      const { error } = await supabase.from("jobs").insert({
-        org_id: org.id,
+      console.log("Creating job for org:", orgProfile.id);
+      
+      const jobData = {
+        org_id: orgProfile.id,
         title: form.title,
         description: form.description,
         job_type: form.job_type as any,
         category: form.category || null,
         location: form.location || null,
         is_remote: form.is_remote,
-        required_skills: form.required_skills ? form.required_skills.split(",").map((s) => s.trim()) : null,
+        required_skills: form.required_skills ? form.required_skills.split(",").map((s) => s.trim()).filter(Boolean) : [],
         salary_min: form.salary_min ? parseFloat(form.salary_min) : null,
         salary_max: form.salary_max ? parseFloat(form.salary_max) : null,
         deadline: form.deadline || null,
-        hiring_rounds: form.hiring_rounds ? form.hiring_rounds.split(",").map(s => s.trim()) : [],
+        hiring_rounds: form.hiring_rounds ? form.hiring_rounds.split(",").map(s => s.trim()).filter(Boolean) : [],
         assessment_required: form.assessment_required,
         status: 'open' as any,
-      } as any);
+      };
+
+      const { data, error } = await (supabase.from("jobs") as any).insert(jobData).select().single();
 
       if (error) throw error;
       
+      console.log("Job created successfully:", data);
       toast({ title: "Success! ✨", description: "Your job listing is now live and visible to candidates." });
       navigate("/dashboard/listings");
     } catch (error: any) {
+      console.error("Posting Error:", error);
       toast({ title: "Posting Error", description: error.message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
   };
+
 
   const update = (key: string, value: any) => setForm((prev) => ({ ...prev, [key]: value }));
 

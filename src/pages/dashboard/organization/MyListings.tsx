@@ -16,27 +16,50 @@ const jobTypeLabels: Record<string, string> = {
 };
 
 const MyListings = () => {
-  const { user } = useAuth();
+  const { user, orgProfile } = useAuth();
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => { if (user) fetchJobs(); }, [user]);
+  useEffect(() => { 
+    if (orgProfile) fetchJobs(); 
+    else if (!loading) setLoading(false);
+  }, [user, orgProfile]);
+
 
   const fetchJobs = async () => {
-    const { data: org } = await supabase.from("organization_profiles").select("id").eq("user_id", user!.id).maybeSingle() as any;
-    if (!org) { setLoading(false); return; }
+    if (!orgProfile) {
+      console.warn("No organization profile available to fetch jobs.");
+      setLoading(false);
+      return;
+    }
 
-    
-    const { data } = await supabase
-      .from("jobs")
-      .select("*, applications(count)")
-      .eq("org_id", org.id)
-      .order("created_at", { ascending: false });
-    
-    if (data) setJobs(data as unknown as JobRow[]);
-    setLoading(false);
+    try {
+      setLoading(true);
+      console.log("Fetching jobs for orgProfile.id:", orgProfile.id);
+      
+      const { data, error } = await (supabase.from("jobs") as any)
+        .select("*, applications(id)")
+        .eq("org_id", orgProfile.id)
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      
+      if (data) {
+        setJobs(data.map((job: any) => ({
+          ...job,
+          applications: [{ count: job.applications?.length || 0 }]
+        })) as JobRow[]);
+      }
+    } catch (err: any) {
+      console.error("Fetch jobs error:", err);
+      toast({ title: "Fetch Error", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
+
+
 
   const deleteJob = async (id: string) => {
     if (!confirm("Are you sure you want to delete this listing? This action cannot be undone.")) return;

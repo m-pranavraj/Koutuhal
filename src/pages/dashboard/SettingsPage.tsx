@@ -118,21 +118,26 @@ const SettingsPage = () => {
 
       } else if (primaryRole === "organization") {
 
-        const { error: oError } = await (supabase.from("organization_profiles") as any).update({
+        const { error: oError } = await (supabase.from("organization_profiles") as any).upsert({
+          user_id: user!.id,
           company_name: orgForm.company_name, industry: orgForm.industry || null, website: orgForm.website || null,
           description: orgForm.description || null, location: orgForm.location || null, company_size: orgForm.company_size || null,
-        }).eq("user_id", user!.id);
+        }, { onConflict: 'user_id' });
         if (oError) throw oError;
 
+
       } else if (primaryRole === "college") {
-        const { error: cError } = await (supabase.from("college_profiles") as any).update({
+        const { error: cError } = await (supabase.from("college_profiles") as any).upsert({
+          user_id: user!.id,
           college_name: collegeForm.college_name, location: collegeForm.location || null, website: collegeForm.website || null,
           description: collegeForm.description || null, contact_email: collegeForm.contact_email || null, contact_phone: collegeForm.contact_phone || null,
-        }).eq("user_id", user!.id);
+        }, { onConflict: 'user_id' });
         if (cError) throw cError;
 
+
       } else if (primaryRole === "mentor") {
-        const { error: mError } = await (supabase.from("mentor_profiles") as any).update({
+        const { error: mError } = await (supabase.from("mentor_profiles") as any).upsert({
+          user_id: user!.id,
           headline: mentorForm.headline || null,
           expertise: mentorForm.expertise ? mentorForm.expertise.split(",").map(s => s.trim()).filter(Boolean) : [],
           qualifications: mentorForm.qualifications || null,
@@ -141,8 +146,9 @@ const SettingsPage = () => {
           hourly_rate: mentorForm.hourly_rate ? parseFloat(mentorForm.hourly_rate) : 0,
           currency: mentorForm.currency || "USD",
           linkedin_url: mentorForm.linkedin_url || null,
-        }).eq("user_id", user!.id);
+        }, { onConflict: 'user_id' });
         if (mError) throw mError;
+
 
       }
       
