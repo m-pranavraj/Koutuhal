@@ -19,9 +19,11 @@ import {
   Languages, 
   CheckCircle2, 
   AlertCircle,
+  XCircle,
   Building2,
   GraduationCap
 } from "lucide-react";
+
 import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +41,7 @@ const BookMentor = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
   const [booking, setBooking] = useState(false);
 
   useEffect(() => {
@@ -59,9 +62,11 @@ const BookMentor = () => {
           .eq("mentor_id", mentorId!)
           .eq("is_available", true)
           .order("day_of_week"),
-      ]);
-      if (mentorRes.data) setMentor(mentorRes.data);
-      if (availRes.data) setAvailability(availRes.data);
+      ]) as any[];
+
+      if (mentorRes.data) setMentor(mentorRes.data as any);
+      if (availRes.data) setAvailability(availRes.data as any[]);
+
     } catch (err) {
       console.error("Fetch mentor error:", err);
     } finally {
@@ -99,22 +104,24 @@ const BookMentor = () => {
         .from("student_profiles")
         .select("id, headline, degree, resume_url, skills, graduation_year, college_id")
         .eq("user_id", user.id)
-        .maybeSingle();
+        .maybeSingle() as any;
 
-      if (!sp || !sp.headline || !sp.degree || !sp.resume_url || !sp.skills || !sp.graduation_year || !sp.college_id) {
+
+      if (!sp || !sp.headline || !sp.degree || !sp.resume_url || !sp.skills) {
         toast({
           title: "Profile Incomplete",
-          description: "Please complete your profile details in Settings before booking a session.",
+          description: "Please complete your headline, degree, skills, and resume in Settings before booking a session.",
           variant: "destructive",
         });
         setBooking(false);
         return;
       }
 
+
       const meetingLink = generateMeetingLink();
       const sessionDate = format(selectedDate, "yyyy-MM-dd");
 
-      const { error } = await supabase.from("mentor_sessions").insert({
+      const { error } = await (supabase.from("mentor_sessions") as any).insert({
         mentor_id: mentorId!,
         student_id: sp.id,
         session_date: sessionDate,
@@ -125,6 +132,7 @@ const BookMentor = () => {
         amount: mentor?.session_type === "paid" ? mentor?.hourly_rate || 0 : 0,
         currency: mentor?.currency || "USD",
       });
+
 
       if (error) throw error;
 

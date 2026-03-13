@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ApplicationRow, OrganizationRow, StudentProfileRow } from "@/types/dashboard";
+
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -21,7 +23,7 @@ interface StatItem {
 }
 
 const DashboardHome = () => {
-  const { user, profile, roles } = useAuth();
+  const { user, profile, roles, studentProfile } = useAuth();
   const primaryRole = roles[0] || "student";
   const [stats, setStats] = useState<StatItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,18 +42,18 @@ const DashboardHome = () => {
 
   useEffect(() => {
     if (user) fetchStats();
-  }, [user, primaryRole]);
+  }, [user, primaryRole, studentProfile]);
 
   const fetchStats = async () => {
     try {
       if (primaryRole === "student") {
-        const { data: sp } = await supabase
+        const { data: sp, error: spError } = await supabase
           .from("student_profiles")
           .select("*, profiles:user_id(avatar_url, bio, full_name)")
           .eq("user_id", user!.id)
           .maybeSingle();
 
-        if (!sp) {
+        if (spError || !sp) {
           setStats([
             { label: "Applications Sent", icon: <FileText className="h-5 w-5" />, value: 0, href: "/dashboard/applications" },
             { label: "Upcoming Interviews", icon: <Calendar className="h-5 w-5" />, value: 0, href: "/dashboard/interviews" },
@@ -63,6 +65,7 @@ const DashboardHome = () => {
         }
 
         const student_p = sp as any;
+
         const skills = student_p.skills || [];
         setStudentSkills(skills);
 
@@ -84,10 +87,11 @@ const DashboardHome = () => {
         const student_id = (sp as any).id;
         const [appsRes, interviewsRes, submissionsRes, offersRes] = await Promise.all([
           supabase.from("applications").select("id", { count: "exact", head: true }).eq("student_id", student_id),
-          supabase.from("interviews").select("id", { count: "exact", head: true }).in("application_id", (await supabase.from("applications").select("id").eq("student_id", student_id)).data?.map(a => (a as any).id) || []),
+          supabase.from("interviews").select("id", { count: "exact", head: true }).in("application_id", (await supabase.from("applications").select("id").eq("student_id", student_id)).data?.map((a: any) => a.id) || []),
           supabase.from("assessment_assignments").select("id", { count: "exact", head: true }).eq("student_id", student_id).eq("status", "pending"),
-          supabase.from("offers").select("id", { count: "exact", head: true }).in("application_id", (await supabase.from("applications").select("id").eq("student_id", student_id)).data?.map(a => (a as any).id) || []),
+          supabase.from("offers").select("id", { count: "exact", head: true }).in("application_id", (await supabase.from("applications").select("id").eq("student_id", student_id)).data?.map((a: any) => a.id) || []),
         ]);
+
         
         setStats([
           { label: "Applications Sent", icon: <FileText className="h-5 w-5" />, value: appsRes.count ?? 0, href: "/dashboard/applications" },
@@ -111,7 +115,7 @@ const DashboardHome = () => {
           .from("recruiter_dashboard" as any)
           .select("*")
           .eq("user_id", user!.id)
-          .maybeSingle();
+          .maybeSingle() as any;
 
         if (analytics) {
           const stats_data = analytics as any;
@@ -134,7 +138,7 @@ const DashboardHome = () => {
           .from("mentor_profiles")
           .select("id")
           .eq("user_id", user!.id)
-          .maybeSingle();
+          .maybeSingle() as any;
         if (!mp) { setStats([]); setLoading(false); return; }
         const mentor_id = (mp as any).id;
         const [sessionsRes, reviewsRes] = await Promise.all([
@@ -152,12 +156,12 @@ const DashboardHome = () => {
           { label: "Average Rating", icon: <TrendingUp className="h-5 w-5" />, value: avgRating, href: "/dashboard/reviews" },
         ]);
       } else if (primaryRole === "college") {
-        const { data: cp } = await supabase.from("college_profiles").select("id").eq("user_id", user!.id).maybeSingle();
+        const { data: cp } = await supabase.from("college_profiles").select("id").eq("user_id", user!.id).maybeSingle() as any;
         if (!cp) { setStats([]); setLoading(false); return; }
         const college_id = (cp as any).id;
         
-        const { data: students } = await supabase.from("student_profiles").select("id").eq("college_id", college_id);
-        const studentIds = students?.map(s => (s as any).id) || [];
+        const { data: students } = await supabase.from("student_profiles").select("id").eq("college_id", college_id) as any;
+        const studentIds = (students || []).map((s: any) => s.id);
         
         if (studentIds.length === 0) {
           setStats([
@@ -170,30 +174,25 @@ const DashboardHome = () => {
           return;
         }
 
-        const [appsCount, offersRes] = await Promise.all([
+        const [appsCount, successfulAppsRes] = await Promise.all([
           supabase.from("applications").select("id", { count: "exact", head: true }).in("student_id", studentIds),
-          supabase.from("offers").select("salary, application_id")
-            .eq("status", "accepted")
-            .in("application_id", (await supabase.from("applications").select("id").in("student_id", studentIds)).data?.map(o => (o as any).id) || []),
+          supabase.from("applications").select("id, student_id")
+            .in("status", ["accepted", "selected"])
+            .in("student_id", studentIds)
         ]);
         
-        const acceptedOffers = (offersRes.data || []) as any[];
-        const placedStudentIds = new Set(acceptedOffers.map(o => {
-          // We need student_id for these offers to calculate placement rate
-          // For now we'll assume 1 offer = 1 student for the count if we don't have the reverse map here
-          // But a more accurate way would be to fetch student_id in the offers query if schema allows
-          return o.application_id; // Using application_id as proxy for unique placement entry
-        }));
+        const successfulApps = (successfulAppsRes.data || []) as any[];
+        const placedStudentIds = new Set(successfulApps.map(a => a.student_id));
+        
+        const { data: offersData } = await supabase.from("offers")
+          .select("salary")
+          .in("application_id", successfulApps.map(a => a.id));
 
-        const totalSalary = acceptedOffers.reduce((sum, o) => {
+        const totalSalary = (offersData || []).reduce((sum, o: any) => {
           const val = parseInt(o.salary?.replace(/[^0-9]/g, '') || "0");
           return sum + val;
         }, 0);
         
-        const avgCTC = acceptedOffers.length > 0 
-          ? `₹${Math.round(totalSalary / acceptedOffers.length / 100000).toFixed(1)}L` 
-          : "₹0";
-
         const placementRate = studentIds.length > 0 
           ? Math.round((placedStudentIds.size / studentIds.length) * 100) 
           : 0;
@@ -202,7 +201,7 @@ const DashboardHome = () => {
           { label: "Students Registered", icon: <GraduationCap className="h-5 w-5" />, value: studentIds.length, href: "/dashboard/students" },
           { label: "Placement Rate", icon: <TrendingUp className="h-5 w-5" />, value: `${placementRate}%` },
           { label: "Job Applications", icon: <FileText className="h-5 w-5" />, value: appsCount.count || 0, href: "/dashboard/placement-tracking" },
-          { label: "Offers Secured", icon: <Award className="h-5 w-5" />, value: acceptedOffers.length, href: "/dashboard/placement-tracking" },
+          { label: "Offers Secured", icon: <Award className="h-5 w-5" />, value: successfulApps.length, href: "/dashboard/placement-tracking" },
         ]);
       } else if (primaryRole === "admin") {
         const today = new Date().toISOString().split('T')[0];

@@ -13,6 +13,8 @@ import { usePagination } from "@/hooks/usePagination";
 import PaginationControls from "@/components/PaginationControls";
 import { motion } from "framer-motion";
 import { MapPin, Clock, DollarSign, Search, Briefcase, Building2 } from "lucide-react";
+import { JobRow } from "@/types/dashboard";
+
 
 const jobTypeLabels: Record<string, string> = {
   full_time: "Full Time", part_time: "Part Time", internship: "Internship",
@@ -20,7 +22,8 @@ const jobTypeLabels: Record<string, string> = {
 };
 
 const BrowseJobs = () => {
-  const [jobs, setJobs] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<JobRow[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -51,7 +54,7 @@ const BrowseJobs = () => {
     try {
       let currentStudentSkills = studentSkills;
       if (user && studentSkills.length === 0) {
-        const { data: sp } = await supabase.from("student_profiles").select("skills").eq("user_id", user.id).maybeSingle();
+        const { data: sp } = await supabase.from("student_profiles").select("skills").eq("user_id", user.id).maybeSingle() as any;
         if (sp?.skills) {
           setStudentSkills(sp.skills);
           currentStudentSkills = sp.skills;
@@ -80,21 +83,22 @@ const BrowseJobs = () => {
       const { data, count, error } = await query.range(pagination.range.from, pagination.range.to);
       
       if (!error && data) {
-        let finalJobs = data;
+        const jobsData = data as any[];
+        let finalJobs = jobsData;
         if (filterParam === "high-match" && currentStudentSkills.length > 0) {
-          finalJobs = data.filter(job => calculateMatch(job.required_skills) > 70);
+          finalJobs = jobsData.filter(job => calculateMatch(job.required_skills) > 70);
           pagination.setTotalCount(finalJobs.length);
         } else {
           pagination.setTotalCount(count ?? 0);
         }
-        setJobs(finalJobs);
+        setJobs(finalJobs as JobRow[]);
       }
 
       if (user && appliedJobIds.length === 0) {
-        const { data: sp } = await supabase.from("student_profiles").select("id").eq("user_id", user.id).maybeSingle();
+        const { data: sp } = await supabase.from("student_profiles").select("id").eq("user_id", user.id).maybeSingle() as any;
         if (sp) {
           const { data: apps } = await supabase.from("applications").select("job_id").eq("student_id", sp.id);
-          if (apps) setAppliedJobIds(apps.map((a) => a.job_id));
+          if (apps) setAppliedJobIds(apps.map((a: any) => a.job_id));
         }
       }
     } catch (err) {
@@ -106,9 +110,10 @@ const BrowseJobs = () => {
 
   const handleApply = async (jobId: string) => {
     if (!user) return;
-    const { data: sp } = await supabase.from("student_profiles").select("id, headline, degree, resume_url, skills, graduation_year, college_id").eq("user_id", user.id).maybeSingle();
+    const { data: sp } = await supabase.from("student_profiles").select("id, headline, degree, resume_url, skills, graduation_year, college_id").eq("user_id", user.id).maybeSingle() as any;
 
     if (!sp || !sp.headline || !sp.degree || !sp.resume_url || !sp.skills || !sp.graduation_year || !sp.college_id) {
+
       toast({ 
         title: "Profile Incomplete", 
         description: "Please complete your profile (Headline, Skills, Degree, Graduation Year, College, Resume) in Settings to apply.", 

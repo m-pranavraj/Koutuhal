@@ -12,6 +12,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Video, Plus, Calendar, User, Clock, Link as LinkIcon, CheckCircle, XCircle, X, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { InterviewRow, ApplicationRow } from "@/types/dashboard";
+
 
 const statusColors: Record<string, string> = {
   scheduled: "bg-primary/10 text-primary border-primary/20",
@@ -22,9 +24,10 @@ const statusColors: Record<string, string> = {
 
 const OrgInterviews = () => {
   const { user } = useAuth();
-  const [interviews, setInterviews] = useState<any[]>([]);
-  const [applications, setApplications] = useState<any[]>([]);
+  const [interviews, setInterviews] = useState<InterviewRow[]>([]);
+  const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [showSchedule, setShowSchedule] = useState(false);
   const { toast } = useToast();
   const [form, setForm] = useState({ application_id: "", scheduled_at: "", meeting_link: "", interviewer_name: "" });
@@ -34,24 +37,25 @@ const OrgInterviews = () => {
 
   const fetchData = async () => {
     try {
-      const { data: org } = await supabase.from("organization_profiles").select("id").eq("user_id", user!.id).maybeSingle();
+      const { data: org } = await supabase.from("organization_profiles").select("id").eq("user_id", user!.id).maybeSingle() as any;
       if (!org) { setLoading(false); return; }
-      const { data: jobs } = await supabase.from("jobs").select("id").eq("org_id", org.id);
+      const { data: jobs } = await supabase.from("jobs").select("id").eq("org_id", org.id) as any;
       if (!jobs?.length) { setLoading(false); return; }
-      const jobIds = jobs.map(j => j.id);
+      const jobIds = jobs.map((j: any) => j.id);
 
       const [interviewsRes, appsRes] = await Promise.all([
         supabase.from("interviews")
           .select("*, applications(jobs(title), student_profiles(profiles:user_id(full_name)))")
-          .in("application_id", (await supabase.from("applications").select("id").in("job_id", jobIds)).data?.map(a => a.id) || [])
-          .order("scheduled_at", { ascending: true }),
+          .in("application_id", (await supabase.from("applications").select("id").in("job_id", jobIds) as any).data?.map((a: any) => a.id) || [])
+          .order("scheduled_at", { ascending: true }) as any,
         supabase.from("applications")
           .select("id, status, jobs(title), student_profiles(profiles:user_id(full_name))")
           .in("job_id", jobIds)
-          .in("status", ["interview", "screening", "assessment", "shortlisted", "final_review"]),
+          .in("status", ["interview", "screening", "assessment", "shortlisted", "final_review"]) as any,
       ]);
-      if (interviewsRes.data) setInterviews(interviewsRes.data);
-      if (appsRes.data) setApplications(appsRes.data);
+      if (interviewsRes.data) setInterviews(interviewsRes.data as unknown as InterviewRow[]);
+      if (appsRes.data) setApplications(appsRes.data as unknown as ApplicationRow[]);
+
     } catch (err) {
       console.error(err);
     } finally {
@@ -63,12 +67,13 @@ const OrgInterviews = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("interviews").insert({
+      const { error } = await (supabase.from("interviews") as any).insert({
         application_id: form.application_id,
         scheduled_at: new Date(form.scheduled_at).toISOString(),
         meeting_link: form.meeting_link || null,
         interviewer_name: form.interviewer_name || null,
       });
+
       if (error) throw error;
       toast({ title: "Interview scheduled! âœ¨" });
       setShowSchedule(false);
@@ -82,10 +87,19 @@ const OrgInterviews = () => {
   };
 
   const updateStatus = async (id: string, status: string) => {
-    const { error } = await supabase.from("interviews").update({ status }).eq("id", id);
+    const { data: iv } = await supabase.from("interviews").select("application_id").eq("id", id).single() as any;
+    const { error } = await (supabase.from("interviews") as any).update({ status }).eq("id", id);
+
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
+      if (iv?.application_id) {
+        await supabase.from("application_activity").insert({
+          application_id: iv.application_id,
+          event_type: `Interview ${status}`,
+          event_description: `The scheduled interview has been marked as ${status}.`
+        } as any);
+      }
       toast({ title: `Interview ${status}` });
       fetchData();
     }

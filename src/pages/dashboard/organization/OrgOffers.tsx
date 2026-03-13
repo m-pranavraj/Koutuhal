@@ -12,12 +12,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Award, Plus, Upload, CheckCircle, FileText, IndianRupee, Calendar, X, Loader2, Download } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { OfferRow, ApplicationRow } from "@/types/dashboard";
+
 
 const OrgOffers = () => {
   const { user } = useAuth();
-  const [offers, setOffers] = useState<any[]>([]);
-  const [applications, setApplications] = useState<any[]>([]);
+  const [offers, setOffers] = useState<OfferRow[]>([]);
+  const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [showCreate, setShowCreate] = useState(false);
   const { toast } = useToast();
   const [form, setForm] = useState({ application_id: "", salary: "", start_date: "" });
@@ -28,13 +31,13 @@ const OrgOffers = () => {
 
   const fetchData = async () => {
     try {
-      const { data: org } = await supabase.from("organization_profiles").select("id").eq("user_id", user!.id).maybeSingle();
+      const { data: org } = await supabase.from("organization_profiles").select("id").eq("user_id", user!.id).maybeSingle() as any;
       if (!org) { setLoading(false); return; }
-      const { data: jobs } = await supabase.from("jobs").select("id").eq("org_id", org.id);
+      const { data: jobs } = await supabase.from("jobs").select("id").eq("org_id", org.id) as any;
       if (!jobs?.length) { setLoading(false); return; }
-      const jobIds = jobs.map(j => j.id);
-      const { data: apps } = await supabase.from("applications").select("id").in("job_id", jobIds);
-      const appIds = apps?.map(a => a.id) || [];
+      const jobIds = jobs.map((j: any) => j.id);
+      const { data: apps } = await supabase.from("applications").select("id").in("job_id", jobIds) as any;
+      const appIds = apps?.map((a: any) => a.id) || [];
 
       const [offersRes, selectedApps] = await Promise.all([
         supabase.from("offers")
@@ -46,8 +49,9 @@ const OrgOffers = () => {
           .in("job_id", jobIds)
           .in("status", ["selected", "accepted", "interview", "shortlisted"]),
       ]);
-      if (offersRes.data) setOffers(offersRes.data);
-      if (selectedApps.data) setApplications(selectedApps.data);
+      if (offersRes.data) setOffers(offersRes.data as unknown as OfferRow[]);
+      if (selectedApps.data) setApplications(selectedApps.data as unknown as ApplicationRow[]);
+
     } catch (err) {
       console.error(err);
     } finally {
@@ -67,14 +71,24 @@ const OrgOffers = () => {
         const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
         offer_letter_url = urlData.publicUrl;
       }
-      const { error } = await supabase.from("offers").insert({
+      const { error } = await (supabase.from("offers") as any).insert({
         application_id: form.application_id,
         salary: form.salary || null,
         start_date: form.start_date || null,
         offer_letter_url,
         status: 'issued'
       });
+
+      
       if (error) throw error;
+
+      // Log activity
+      await supabase.from("application_activity").insert({
+        application_id: form.application_id,
+        event_type: "Offer Issued",
+        event_description: `A formal offer has been issued with a salary of ${form.salary || 'negotiable'}.`
+      } as any);
+
       toast({ title: "Offer issued! ✨" });
       setShowCreate(false);
       setForm({ application_id: "", salary: "", start_date: "" });

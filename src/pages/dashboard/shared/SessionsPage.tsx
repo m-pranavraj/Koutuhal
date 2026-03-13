@@ -34,16 +34,15 @@ const SessionsPage = ({ role }: SessionsPageProps) => {
 
   const fetchSessions = async () => {
     try {
-      const profileTable = role === "student" ? "student_profiles" : "mentor_profiles";
-      const { data: profile } = await supabase.from(profileTable).select("id").eq("user_id", user!.id).maybeSingle();
+      const column = role === "student" ? "student_id" : "mentor_id";
+      const { data: profile } = await supabase.from(profileTable).select("id").eq("user_id", user!.id).maybeSingle() as any;
       if (!profile) { setLoading(false); return; }
 
-      const column = role === "student" ? "student_id" : "mentor_id";
       const select = role === "student"
-        ? "*, mentor_profiles(headline, profiles(full_name))"
-        : "*, student_profiles(headline, profiles(full_name))";
+        ? "*, mentor_profiles(headline, profiles:user_id(full_name))"
+        : "*, student_profiles(headline, profiles:user_id(full_name))";
 
-      const { data } = await supabase.from("mentor_sessions").select(select).eq(column, profile.id).order("session_date", { ascending: false });
+      const { data } = await supabase.from("mentor_sessions").select(select).eq(column, profile.id).order("session_date", { ascending: false }) as any;
       if (data) setSessions(data);
     } catch (err) {
       console.error(err);
@@ -68,11 +67,11 @@ const SessionsPage = ({ role }: SessionsPageProps) => {
       }
     }
 
-    const { error } = await supabase.from("mentor_sessions").update(updates).eq("id", sessionId);
+    const { error } = await supabase.from("mentor_sessions").update(updates).eq("id", sessionId) as any;
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: `Session ${status}! âœ¨` });
+      toast({ title: `Session ${status}! ✨` });
       fetchSessions();
     }
     setUpdatingId(null);

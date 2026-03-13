@@ -8,6 +8,8 @@ import { BarChart3, GraduationCap, Award, Briefcase, Users, TrendingUp, DollarSi
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ApplicationRow } from "@/types/dashboard";
+
 
 const PlacementTracking = () => {
   const { user } = useAuth();
@@ -19,7 +21,8 @@ const PlacementTracking = () => {
     companies: 0,
     placedStudents: 0
   });
-  const [applications, setApplications] = useState<any[]>([]);
+  const [applications, setApplications] = useState<ApplicationRow[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
@@ -54,18 +57,20 @@ const PlacementTracking = () => {
         .in("student_id", studentIds)
         .order("created_at", { ascending: false });
 
-      const appIds = apps?.map(a => a.id) || [];
+      const appIds = (apps as any[])?.map(a => a.id) || [];
       const [interviewsRes, offersRes] = await Promise.all([
-        appIds.length > 0 ? supabase.from("interviews").select("id", { count: "exact", head: true }).in("application_id", appIds) : { count: 0 },
-        appIds.length > 0 ? supabase.from("offers").select("id, status, application_id").in("application_id", appIds) : { data: [], count: 0 },
+        appIds.length > 0 ? supabase.from("interviews").select("id", { count: "exact", head: true }).in("application_id", appIds) as any : { count: 0 },
+        appIds.length > 0 ? supabase.from("offers").select("id, status, application_id").in("application_id", appIds) as any : { data: [], count: 0 },
       ]);
 
-      const placedStudentIds = new Set(
-        (offersRes.data as any[] || [])
+      const placedStudentIds = new Set([
+        ...(offersRes.data as any[] || [])
           .filter(o => o.status === 'accepted')
-          .map(o => (apps as any[])?.find(a => (a as any).id === o.application_id)?.student_id)
-          .filter(Boolean)
-      );
+          .map(o => (apps as any[])?.find(a => (a as any).id === o.application_id)?.student_id),
+        ...(apps as any[])
+          .filter(a => a.status === 'selected' || a.status === 'accepted')
+          .map(a => a.student_id)
+      ].filter(Boolean));
 
       const uniqueCompanies = new Set((apps as any[])?.map(a => a.jobs?.organization_profiles?.company_name).filter(Boolean));
 
@@ -77,8 +82,9 @@ const PlacementTracking = () => {
         companies: uniqueCompanies.size,
         placedStudents: placedStudentIds.size
       });
-      if (apps) setApplications(apps);
+      if (apps) setApplications(apps as unknown as ApplicationRow[]);
     } catch (err) {
+
       console.error(err);
     } finally {
       setLoading(false);

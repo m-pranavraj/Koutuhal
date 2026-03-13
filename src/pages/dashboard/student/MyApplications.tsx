@@ -247,9 +247,9 @@ const MyApplications = () => {
                                       "text-sm font-bold",
                                       idx === 0 ? "text-white" : "text-white/40"
                                     )}>
-                                      {activity.title}
+                                      {activity.event_type}
                                     </p>
-                                    {activity.notes && <p className="text-xs text-white/30 mt-1">{activity.notes}</p>}
+                                    {activity.event_description && <p className="text-xs text-white/30 mt-1">{activity.event_description}</p>}
                                   </div>
                                   <span className="text-[10px] font-medium text-white/20 mt-1">
                                     {new Date(activity.created_at).toLocaleDateString()}

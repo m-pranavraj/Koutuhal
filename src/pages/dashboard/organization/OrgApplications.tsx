@@ -34,6 +34,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ApplicationRow } from "@/types/dashboard";
+
 
 const pipelineStages = [
   { id: "pending", label: "Applied", icon: Clock, color: "text-blue-500", bg: "bg-blue-500/10" },
@@ -44,9 +46,10 @@ const pipelineStages = [
 ];
 
 interface CandidateCardProps {
-  app: any;
-  onClick: (app: any) => void;
+  app: ApplicationRow;
+  onClick: (app: ApplicationRow) => void;
 }
+
 
 const SortableCandidateCard = ({ app, onClick }: CandidateCardProps) => {
   const {
@@ -117,10 +120,11 @@ const SortableCandidateCard = ({ app, onClick }: CandidateCardProps) => {
 
 const OrgApplications = () => {
   const { user } = useAuth();
-  const [applications, setApplications] = useState<any[]>([]);
+  const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedApp, setSelectedApp] = useState<any>(null);
+  const [selectedApp, setSelectedApp] = useState<ApplicationRow | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+
   const { toast } = useToast();
 
   const sensors = useSensors(
@@ -141,25 +145,39 @@ const OrgApplications = () => {
     const jobs = jobs_p as any[];
     
     const jobIds = jobs.map((j) => (j as any).id);
-    const { data } = await supabase
-      .from("applications")
-      .select("*, jobs(title), job_match_scores(match_score), student_profiles(headline, skills, user_id, degree, resume_url, college_profiles(college_name), profiles:user_id(full_name, email, avatar_url))")
-      .in("job_id", jobIds)
-      .order("created_at", { ascending: false });
+      const { data } = await supabase
+        .from("applications")
+        .select("*, jobs(title), job_match_scores(match_score), student_profiles(headline, skills, user_id, degree, resume_url, college_profiles(college_name), profiles:user_id(full_name, email, avatar_url))")
+        .in("job_id", jobIds)
+        .order("created_at", { ascending: false });
     
-    if (data) setApplications(data);
-    setLoading(false);
-  };
+      if (data) setApplications(data as unknown as ApplicationRow[]);
+      setLoading(false);
+    };
+
 
   const updateStatus = async (appId: string, status: string) => {
-    const { error } = await supabase.from("applications").update({ status: status as any } as any).eq("id", appId);
+    const stage = pipelineStages.find(s => s.id === status);
+    const { error } = await (supabase.from("applications") as any).update({ status: status as any }).eq("id", appId);
+
+
+
+    
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
       fetchApplications(); // Revert on error
     } else {
-      toast({ title: "Status Updated", description: `Candidate moved to ${pipelineStages.find(s => s.id === status)?.label || status}` });
+      // Log activity
+      await supabase.from("application_activity").insert({
+        application_id: appId,
+        event_type: `Status: ${stage?.label || status}`,
+        event_description: `Candidate moved to ${stage?.label || status} stage.`
+      } as any);
+
+      toast({ title: "Status Updated", description: `Candidate moved to ${stage?.label || status}` });
     }
   };
+
 
   const handleDragStart = (event: any) => {
     setActiveId(event.active.id);
@@ -177,12 +195,13 @@ const OrgApplications = () => {
     if (activeApp && pipelineStages.some(s => s.id === overId)) {
       if (activeApp.status !== overId) {
         const newApps = applications.map(a => 
-          a.id === active.id ? { ...a, status: overId } : a
+          a.id === active.id ? { ...a, status: overId as any } : a
         );
         setApplications(newApps);
         updateStatus(active.id, overId);
       }
     }
+
   };
 
   if (loading) return (

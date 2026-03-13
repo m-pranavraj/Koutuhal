@@ -34,20 +34,19 @@ const jobTypeLabels: Record<string, string> = {
 const JobDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, studentProfile } = useAuth();
   const { toast } = useToast();
   
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [applied, setApplied] = useState(false);
-  const [studentProfile, setStudentProfile] = useState<any>(null);
   const [matchScore, setMatchScore] = useState(0);
 
   useEffect(() => {
     if (id) {
       fetchJobDetails();
     }
-  }, [id, user]);
+  }, [id, user, studentProfile]);
 
   const fetchJobDetails = async () => {
     setLoading(true);
@@ -56,39 +55,28 @@ const JobDetail = () => {
         .from("jobs")
         .select("*, organization_profiles(company_name, logo_url, website, description)")
         .eq("id", id)
-        .single();
+        .single() as any;
 
       if (error) throw error;
       setJob(data);
 
-      if (user) {
-        // Get student profile for match scoring and application check
-        const { data: sp } = await supabase
-          .from("student_profiles")
-          .select("*")
-          .eq("user_id", user.id)
-          .maybeSingle();
+      if (user && studentProfile) {
+        // Check if already applied
+        const { data: app } = await supabase
+          .from("applications")
+          .select("id")
+          .eq("job_id", id)
+          .eq("student_id", studentProfile.id)
+          .maybeSingle() as any;
         
-        setStudentProfile(sp);
+        if (app) setApplied(true);
 
-        if (sp) {
-          // Check if already applied
-          const { data: app } = await supabase
-            .from("applications")
-            .select("id")
-            .eq("job_id", id)
-            .eq("student_id", sp.id)
-            .maybeSingle();
-          
-          if (app) setApplied(true);
-
-          // Calculate Match Score
-          if (data.required_skills && sp.skills) {
-            const matching = data.required_skills.filter((skill: string) => 
-              sp.skills.some((s: string) => s.toLowerCase().includes(skill.toLowerCase()) || skill.toLowerCase().includes(s.toLowerCase()))
-            );
-            setMatchScore(Math.round((matching.length / data.required_skills.length) * 100));
-          }
+        // Calculate Match Score
+        if (data.required_skills && studentProfile.skills) {
+          const matching = data.required_skills.filter((skill: string) => 
+            studentProfile.skills.some((s: string) => s.toLowerCase().includes(skill.toLowerCase()) || skill.toLowerCase().includes(s.toLowerCase()))
+          );
+          setMatchScore(Math.round((matching.length / data.required_skills.length) * 100));
         }
       }
     } catch (err) {
@@ -115,7 +103,7 @@ const JobDetail = () => {
     try {
       const { error } = await supabase
         .from("applications")
-        .insert({ job_id: id, student_id: studentProfile.id });
+        .insert({ job_id: id, student_id: (studentProfile as any).id } as any);
 
       if (error) throw error;
       

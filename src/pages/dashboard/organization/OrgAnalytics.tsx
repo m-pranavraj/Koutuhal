@@ -21,9 +21,10 @@ const OrgAnalytics = () => {
     activeListings: 0,
     hiredCount: 0,
   });
-  const [pipelineData, setPipelineData] = useState<any[]>([]);
-  const [timeData, setTimeData] = useState<any[]>([]);
-  const [skillsData, setSkillsData] = useState<any[]>([]);
+  const [pipelineData, setPipelineData] = useState<{ name: string; count: number }[]>([]);
+  const [timeData, setTimeData] = useState<{ date: string; fullDate: string; count: number }[]>([]);
+  const [skillsData, setSkillsData] = useState<{ name: string; count: number }[]>([]);
+
 
   useEffect(() => { if (user) fetchAnalytics(); }, [user]);
 
@@ -40,10 +41,11 @@ const OrgAnalytics = () => {
       setStats({
         totalJobs: stats_data.total_jobs || 0,
         totalApplications: stats_data.total_applications || 0,
-        activeListings: stats_data.total_jobs || 0, // Simplifying to total for now
+        activeListings: stats_data.total_jobs || 0,
         hiredCount: stats_data.total_hired || 0,
       });
     }
+
 
     // Fetch pipeline and skills data (keep existing logic for now as it's already using real tables, 
     // but ensure it uses the org_id correctly from the view or fetch it again)

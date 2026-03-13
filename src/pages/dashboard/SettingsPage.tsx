@@ -14,7 +14,7 @@ import { motion } from "framer-motion";
 import { User, Briefcase, GraduationCap, Building2, Upload, Plus, Trash2, Linkedin, Loader2, Star } from "lucide-react";
 
 const SettingsPage = () => {
-  const { user, roles, profile } = useAuth();
+  const { user, roles, profile, refreshProfile } = useAuth();
   const { toast } = useToast();
   const primaryRole = roles[0] || "student";
 
@@ -45,15 +45,15 @@ const SettingsPage = () => {
   useEffect(() => { if (user) loadData(); }, [user]);
 
   const loadData = async () => {
-    const { data: p } = await supabase.from("profiles").select("*").eq("user_id", user!.id).maybeSingle();
+    const { data: p } = await supabase.from("profiles").select("*").eq("user_id", user!.id).maybeSingle() as any;
     if (p) setProfileForm({ full_name: p.full_name || "", email: p.email || "", bio: p.bio || "", phone: p.phone || "", location: p.location || "" });
 
     // Pre-fetch colleges for student mapping
-    const { data: cols } = await supabase.from("college_profiles").select("id, college_name").order("college_name");
+    const { data: cols } = await supabase.from("college_profiles").select("id, college_name").order("college_name") as any;
     if (cols) setColleges(cols);
 
     if (primaryRole === "student") {
-      const { data: sp } = await supabase.from("student_profiles").select("*").eq("user_id", user!.id).maybeSingle();
+      const { data: sp } = await supabase.from("student_profiles").select("*").eq("user_id", user!.id).maybeSingle() as any;
       if (sp) {
         setStudentForm({
           headline: sp.headline || "", skills: sp.skills?.join(", ") || "",
@@ -65,13 +65,13 @@ const SettingsPage = () => {
         setExperience(Array.isArray(sp.experience) ? sp.experience : []);
       }
     } else if (primaryRole === "organization") {
-      const { data: op } = await supabase.from("organization_profiles").select("*").eq("user_id", user!.id).maybeSingle();
+      const { data: op } = await supabase.from("organization_profiles").select("*").eq("user_id", user!.id).maybeSingle() as any;
       if (op) setOrgForm({ company_name: op.company_name || "", industry: op.industry || "", website: op.website || "", description: op.description || "", location: op.location || "", company_size: op.company_size || "" });
     } else if (primaryRole === "college") {
-      const { data: cp } = await supabase.from("college_profiles").select("*").eq("user_id", user!.id).maybeSingle();
+      const { data: cp } = await supabase.from("college_profiles").select("*").eq("user_id", user!.id).maybeSingle() as any;
       if (cp) setCollegeForm({ college_name: cp.college_name || "", location: cp.location || "", website: cp.website || "", description: cp.description || "", contact_email: cp.contact_email || "", contact_phone: cp.contact_phone || "" });
     } else if (primaryRole === "mentor") {
-      const { data: mp } = await supabase.from("mentor_profiles").select("*").eq("user_id", user!.id).maybeSingle();
+      const { data: mp } = await supabase.from("mentor_profiles").select("*").eq("user_id", user!.id).maybeSingle() as any;
       if (mp) {
         setMentorForm({
           headline: mp.headline || "", expertise: mp.expertise?.join(", ") || "",
@@ -94,30 +94,47 @@ const SettingsPage = () => {
         const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
         avatar_url = urlData.publicUrl;
       }
-      await supabase.from("profiles").update({ ...profileForm, avatar_url }).eq("user_id", user!.id);
+      const { error: pError } = await (supabase.from("profiles") as any).update({ ...profileForm, avatar_url }).eq("user_id", user!.id);
+      if (pError) throw pError;
+
 
       if (primaryRole === "student") {
-        await supabase.from("student_profiles").update({
-          headline: studentForm.headline, skills: studentForm.skills ? studentForm.skills.split(",").map(s => s.trim()) : [],
-          linkedin_url: studentForm.linkedin_url || null, github_url: studentForm.github_url || null, portfolio_url: studentForm.portfolio_url || null,
-          college_id: studentForm.college_id || null, college_name: studentForm.college_name || null, degree: studentForm.degree || null, branch: studentForm.branch || null,
+        const { error: sError } = await (supabase.from("student_profiles") as any).upsert({
+          user_id: user!.id,
+          headline: studentForm.headline || null, 
+          skills: studentForm.skills ? studentForm.skills.split(",").map(s => s.trim()).filter(Boolean) : [],
+          linkedin_url: studentForm.linkedin_url || null, 
+          github_url: studentForm.github_url || null, 
+          portfolio_url: studentForm.portfolio_url || null,
+          college_id: studentForm.college_id || null, 
+          college_name: studentForm.college_name || null, 
+          degree: studentForm.degree || null, 
+          branch: studentForm.branch || null,
           graduation_year: studentForm.graduation_year ? parseInt(studentForm.graduation_year) : null,
-          education, experience,
-        }).eq("user_id", user!.id);
+          education, 
+          experience,
+        }, { onConflict: 'user_id' });
+        if (sError) throw sError;
+
       } else if (primaryRole === "organization") {
-        await supabase.from("organization_profiles").update({
+
+        const { error: oError } = await (supabase.from("organization_profiles") as any).update({
           company_name: orgForm.company_name, industry: orgForm.industry || null, website: orgForm.website || null,
           description: orgForm.description || null, location: orgForm.location || null, company_size: orgForm.company_size || null,
         }).eq("user_id", user!.id);
+        if (oError) throw oError;
+
       } else if (primaryRole === "college") {
-        await supabase.from("college_profiles").update({
+        const { error: cError } = await (supabase.from("college_profiles") as any).update({
           college_name: collegeForm.college_name, location: collegeForm.location || null, website: collegeForm.website || null,
           description: collegeForm.description || null, contact_email: collegeForm.contact_email || null, contact_phone: collegeForm.contact_phone || null,
         }).eq("user_id", user!.id);
+        if (cError) throw cError;
+
       } else if (primaryRole === "mentor") {
-        await supabase.from("mentor_profiles").update({
+        const { error: mError } = await (supabase.from("mentor_profiles") as any).update({
           headline: mentorForm.headline || null,
-          expertise: mentorForm.expertise ? mentorForm.expertise.split(",").map(s => s.trim()) : [],
+          expertise: mentorForm.expertise ? mentorForm.expertise.split(",").map(s => s.trim()).filter(Boolean) : [],
           qualifications: mentorForm.qualifications || null,
           years_experience: mentorForm.years_experience ? parseInt(mentorForm.years_experience) : null,
           session_type: mentorForm.session_type as any,
@@ -125,12 +142,17 @@ const SettingsPage = () => {
           currency: mentorForm.currency || "USD",
           linkedin_url: mentorForm.linkedin_url || null,
         }).eq("user_id", user!.id);
+        if (mError) throw mError;
+
       }
-      toast({ title: "Profile saved!" });
+      
+      await refreshProfile();
+      toast({ title: "Profile saved successfully!" });
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: "Error saving profile", description: err.message, variant: "destructive" });
     } finally { setSaving(false); }
   };
+
 
   const addEducation = () => setEducation([...education, { institution: "", degree: "", field: "", year: "" }]);
   const addExperience = () => setExperience([...experience, { company: "", role: "", duration: "", description: "" }]);
