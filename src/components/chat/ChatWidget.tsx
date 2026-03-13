@@ -13,7 +13,7 @@ interface Message {
 }
 
 export function ChatWidget() {
-    const { user, roles } = useAuth();
+    const { user, primaryRole } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([
         { id: '1', text: `Hi there! I'm your AI assistant. How can I help you today?`, sender: 'ai' }
@@ -39,7 +39,7 @@ export function ChatWidget() {
         setIsLoading(true);
 
         try {
-            const role = roles[0] || 'student';
+            const role = primaryRole || 'student';
             const response = await fetch('/api/v1/ai/chat', {
                 method: 'POST',
                 headers: {
@@ -91,7 +91,7 @@ export function ChatWidget() {
                                 <div>
                                     <h3 className="font-bold text-white text-sm">Koutuhal AI</h3>
                                     <p className="text-[10px] text-[#ADFF44] uppercase tracking-wider">
-                                        {roles[0] || 'student'} Assistant
+                                        {primaryRole || 'student'} Assistant
                                     </p>
                                 </div>
                             </div>

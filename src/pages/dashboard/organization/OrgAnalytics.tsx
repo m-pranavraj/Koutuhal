@@ -28,27 +28,25 @@ const OrgAnalytics = () => {
 
   useEffect(() => { if (user) fetchAnalytics(); }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`org-analytics:${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "applications" }, () => fetchAnalytics())
+      .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, () => fetchAnalytics())
+      .on("postgres_changes", { event: "*", schema: "public", table: "interviews" }, () => fetchAnalytics())
+      .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () => fetchAnalytics())
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [user]);
+
   const fetchAnalytics = async () => {
     setLoading(true);
-    const { data: analytics } = await supabase
-      .from("recruiter_dashboard" as any)
-      .select("*")
-      .eq("user_id", user!.id)
-      .maybeSingle();
-
-    if (analytics) {
-      const stats_data = analytics as any;
-      setStats({
-        totalJobs: stats_data.total_jobs || 0,
-        totalApplications: stats_data.total_applications || 0,
-        activeListings: stats_data.total_jobs || 0,
-        hiredCount: stats_data.total_hired || 0,
-      });
-    }
-
-
-    // Fetch pipeline and skills data (keep existing logic for now as it's already using real tables, 
-    // but ensure it uses the org_id correctly from the view or fetch it again)
+    // Fetch pipeline and skills data directly from live tables.
     const { data: org_p } = await supabase.from("organization_profiles").select("id").eq("user_id", user!.id).maybeSingle();
     const org_id = (org_p as any)?.id;
     
@@ -62,19 +60,84 @@ const OrgAnalytics = () => {
 
       if (appsRes.data) {
         const apps = appsRes.data as any[];
-        // Pipeline Distribution
-        const stages = ["pending", "assessment", "interview", "selected", "rejected"];
-        const stageLabels: Record<string, string> = {
-          pending: "Applied",
-          assessment: "Assessment",
-          interview: "Interview",
-          selected: "Offer",
-          rejected: "Rejected"
+        const appIds = apps.map((a) => a.id);
+        const offersRes = appIds.length > 0
+          ? await supabase.from("offers").select("application_id, status").in("application_id", appIds)
+          : { data: [] as any[] };
+        const activityRes = appIds.length > 0
+          ? await supabase
+              .from("application_activity")
+              .select("application_id, event_type")
+              .in("application_id", appIds)
+              .eq("event_type", "Offer Accepted")
+          : { data: [] as any[] };
+        const offers = (offersRes.data || []) as any[];
+        const acceptedByActivityAppIds = new Set(
+          ((activityRes as any).data || []).map((r: any) => r.application_id)
+        );
+
+        const acceptedOfferAppIds = new Set(
+          offers.filter((o) => o.status === "accepted").map((o) => o.application_id)
+        );
+        const activeOfferAppIds = new Set(
+          offers.filter((o) => o.status !== "accepted" && o.status !== "rejected").map((o) => o.application_id)
+        );
+
+        const stageCounters = {
+          applied: 0,
+          assessment: 0,
+          interview: 0,
+          offer: 0,
+          rejected: 0,
+          hired: 0,
         };
-        const pipeline = stages.map(s => ({
-          name: stageLabels[s],
-          count: apps.filter(a => a.status === s).length
-        }));
+
+        apps.forEach((a) => {
+          const status = (a.status || "").toLowerCase();
+
+          if (acceptedOfferAppIds.has(a.id) || acceptedByActivityAppIds.has(a.id) || status === "accepted") {
+            stageCounters.hired += 1;
+            return;
+          }
+
+          if (activeOfferAppIds.has(a.id) || status === "selected" || status === "offer") {
+            stageCounters.offer += 1;
+            return;
+          }
+
+          if (status === "interview") {
+            stageCounters.interview += 1;
+            return;
+          }
+
+          if (status === "assessment") {
+            stageCounters.assessment += 1;
+            return;
+          }
+
+          if (status === "rejected") {
+            stageCounters.rejected += 1;
+            return;
+          }
+
+          stageCounters.applied += 1;
+        });
+
+        setStats({
+          totalJobs: (jobsRes.data || []).length,
+          totalApplications: apps.length,
+          activeListings: (jobsRes.data || []).length,
+          hiredCount: stageCounters.hired,
+        });
+
+        const pipeline = [
+          { name: "Applied", count: stageCounters.applied },
+          { name: "Assessment", count: stageCounters.assessment },
+          { name: "Interview", count: stageCounters.interview },
+          { name: "Offer", count: stageCounters.offer },
+          { name: "Hired", count: stageCounters.hired },
+          { name: "Rejected", count: stageCounters.rejected },
+        ];
         setPipelineData(pipeline);
 
         // Apps over time (last 7 days)
@@ -111,6 +174,16 @@ const OrgAnalytics = () => {
           .slice(0, 5);
         setSkillsData(topSkills);
       }
+    } else {
+      setStats({
+        totalJobs: 0,
+        totalApplications: 0,
+        activeListings: 0,
+        hiredCount: 0,
+      });
+      setPipelineData([]);
+      setTimeData([]);
+      setSkillsData([]);
     }
 
     setLoading(false);

@@ -15,6 +15,13 @@ const statusColors: Record<string, string> = {
   cancelled: "bg-red-500/10 text-red-500 border-red-500/20",
   rescheduled: "bg-amber-500/10 text-amber-500 border-amber-500/20",
 };
+const normalizeMeetingLink = (link?: string | null) => {
+  if (!link) return null;
+  const trimmed = link.trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+};
 
 const StudentInterviews = () => {
   const { user } = useAuth();
@@ -112,7 +119,7 @@ const StudentInterviews = () => {
 
                   {iv.meeting_link && iv.status === "scheduled" && (
                     <Button asChild className="btn-green rounded-xl h-11 px-6 font-bold shadow-lg shadow-primary/10 group">
-                      <a href={iv.meeting_link} target="_blank" rel="noopener noreferrer">
+                      <a href={normalizeMeetingLink(iv.meeting_link) || "#"} target="_blank" rel="noopener noreferrer">
                         Join Meeting <ExternalLink className="h-4 w-4 ml-2 group-hover:rotate-45 transition-transform text-black" />
                       </a>
                     </Button>

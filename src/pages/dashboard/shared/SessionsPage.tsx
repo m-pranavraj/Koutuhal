@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Calendar, Clock, Video, ExternalLink, User, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Calendar, Clock, Video, User, CheckCircle, XCircle, Loader2, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -30,30 +30,136 @@ const SessionsPage = ({ role }: SessionsPageProps) => {
 
   useEffect(() => {
     if (user) fetchSessions();
-  }, [user]);
+  }, [user, role]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`sessions:${role}:${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "mentor_sessions" }, () => fetchSessions())
+      .on("postgres_changes", { event: "*", schema: "public", table: "mentor_profiles" }, () => fetchSessions())
+      .on("postgres_changes", { event: "*", schema: "public", table: "student_profiles" }, () => fetchSessions())
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => fetchSessions())
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [user, role]);
 
   const fetchSessions = async () => {
     try {
       const column = role === "student" ? "student_id" : "mentor_id";
+      const profileTable = role === "student" ? "student_profiles" : "mentor_profiles";
       const { data: profile } = await supabase.from(profileTable).select("id").eq("user_id", user!.id).maybeSingle() as any;
       if (!profile) { setLoading(false); return; }
 
-      const select = role === "student"
-        ? "*, mentor_profiles(headline, profiles:user_id(full_name))"
-        : "*, student_profiles(headline, profiles:user_id(full_name))";
+      const { data: rawSessions, error: sessionsError } = await supabase
+        .from("mentor_sessions")
+        .select("*")
+        .eq(column, profile.id)
+        .order("session_date", { ascending: false }) as any;
 
-      const { data } = await supabase.from("mentor_sessions").select(select).eq(column, profile.id).order("session_date", { ascending: false }) as any;
-      if (data) setSessions(data);
+      if (sessionsError) throw sessionsError;
+
+      const rows = rawSessions || [];
+      if (rows.length === 0) {
+        setSessions([]);
+        return;
+      }
+
+      const counterpartIds = Array.from(new Set(
+        rows.map((s: any) => role === "student" ? s.mentor_id : s.student_id).filter(Boolean)
+      ));
+
+      const counterpartTable = role === "student" ? "mentor_profiles" : "student_profiles";
+      const { data: counterpartRows, error: counterpartError } = await supabase
+        .from(counterpartTable)
+        .select("id, user_id, headline")
+        .in("id", counterpartIds as string[]) as any;
+
+      if (counterpartError) throw counterpartError;
+
+      const counterpartMap = new Map((counterpartRows || []).map((r: any) => [r.id, r]));
+      const counterpartUserIds = Array.from(new Set((counterpartRows || []).map((r: any) => r.user_id).filter(Boolean)));
+
+      let baseProfileMap = new Map<string, any>();
+      if (counterpartUserIds.length > 0) {
+        const { data: baseProfiles, error: baseProfilesError } = await supabase
+          .from("profiles")
+          .select("user_id, full_name")
+          .in("user_id", counterpartUserIds as string[]) as any;
+
+        if (baseProfilesError) throw baseProfilesError;
+        baseProfileMap = new Map((baseProfiles || []).map((p: any) => [p.user_id, p]));
+      }
+
+      const hydrated = rows.map((s: any) => {
+        const counterpartId = role === "student" ? s.mentor_id : s.student_id;
+        const counterpart = counterpartMap.get(counterpartId);
+        const baseProfile = counterpart?.user_id ? baseProfileMap.get(counterpart.user_id) : null;
+
+        if (role === "student") {
+          return {
+            ...s,
+            mentor_profiles: {
+              headline: counterpart?.headline,
+              profiles: { full_name: baseProfile?.full_name || null },
+            },
+          };
+        }
+
+        return {
+          ...s,
+          student_profiles: {
+            headline: counterpart?.headline,
+            profiles: { full_name: baseProfile?.full_name || null },
+          },
+        };
+      });
+
+      setSessions(hydrated);
     } catch (err) {
       console.error(err);
+      toast({ title: "Could not load sessions", description: "Please refresh and try again.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   const generateMeetingLink = () => {
-    const roomId = crypto.randomUUID().slice(0, 8);
-    return `https://meet.jit.si/Koutuhal-${roomId}`;
+    const seed = `${Date.now().toString(36)}${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
+    return `https://vdo.ninja/?room=koutuhal-${seed}`;
+  };
+
+  const getJoinCallUrl = (session: any) => {
+    const existing = String(session?.meeting_link || "").trim();
+    // Fallback for legacy providers to avoid moderator locks and ads.
+    if (
+      !existing ||
+      existing.includes("meet.jit.si") ||
+      existing.includes("talky.io")
+    ) {
+      return `https://vdo.ninja/?room=koutuhal-session-${session.id}`;
+    }
+    return existing;
+  };
+
+  const refreshMeetingLink = async (sessionId: string) => {
+    setUpdatingId(sessionId);
+    const { error } = await supabase
+      .from("mentor_sessions")
+      .update({ meeting_link: generateMeetingLink() })
+      .eq("id", sessionId) as any;
+
+    if (error) {
+      toast({ title: "Could not refresh link", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Meeting link refreshed" });
+      fetchSessions();
+    }
+    setUpdatingId(null);
   };
 
   const updateStatus = async (sessionId: string, status: string) => {
@@ -61,10 +167,8 @@ const SessionsPage = ({ role }: SessionsPageProps) => {
     const updates: any = { status: status as any };
 
     if (status === "confirmed") {
-      const session = sessions.find((s) => s.id === sessionId);
-      if (!session?.meeting_link) {
-        updates.meeting_link = generateMeetingLink();
-      }
+      // Always rotate a fresh room when mentor approves to avoid stale/locked rooms.
+      updates.meeting_link = generateMeetingLink();
     }
 
     const { error } = await supabase.from("mentor_sessions").update(updates).eq("id", sessionId) as any;
@@ -146,9 +250,9 @@ const SessionsPage = ({ role }: SessionsPageProps) => {
                     </div>
 
                     <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
-                      {s.meeting_link && s.status === "confirmed" && (
+                      {s.status === "confirmed" && (
                         <Button asChild className="btn-green rounded-xl h-11 px-6 font-bold text-black flex-1 md:flex-none">
-                          <a href={s.meeting_link} target="_blank" rel="noopener noreferrer">
+                          <a href={getJoinCallUrl(s)} target="_blank" rel="noopener noreferrer">
                              <Video className="h-4 w-4 mr-2" /> Join Call
                           </a>
                         </Button>
@@ -166,10 +270,15 @@ const SessionsPage = ({ role }: SessionsPageProps) => {
                       )}
 
                       {role === "mentor" && s.status === "confirmed" && (
-                        <Button disabled={updatingId === s.id} onClick={() => updateStatus(s.id, "completed")} variant="outline" className="border-white/10 hover:border-primary/50 text-white rounded-xl h-11 px-6 font-bold tracking-widest text-[10px] uppercase">
-                           {updatingId === s.id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                           Complete
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button disabled={updatingId === s.id} onClick={() => refreshMeetingLink(s.id)} size="icon" variant="outline" className="border-white/10 hover:bg-primary/10 hover:text-primary rounded-xl h-11 w-11 transition-all">
+                            {updatingId === s.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                          </Button>
+                          <Button disabled={updatingId === s.id} onClick={() => updateStatus(s.id, "completed")} variant="outline" className="border-white/10 hover:border-primary/50 text-white rounded-xl h-11 px-6 font-bold tracking-widest text-[10px] uppercase">
+                             {updatingId === s.id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                             Complete
+                          </Button>
+                        </div>
                       )}
 
                       {role === "student" && s.status === "pending" && (

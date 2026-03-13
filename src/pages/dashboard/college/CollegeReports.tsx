@@ -10,6 +10,7 @@ const CollegeReports = () => {
   const { user } = useAuth();
   const [report, setReport] = useState({
     totalStudents: 0, totalApplications: 0, totalOffers: 0, offerRate: "0%",
+    averageCtc: 0,
     topCompanies: [] as { name: string; count: number }[],
     statusBreakdown: [] as { status: string; count: number; percentage: number }[],
   });
@@ -33,9 +34,9 @@ const CollegeReports = () => {
         .in("student_id", studentIds);
 
       const appIds = (apps as any[])?.map(a => a.id) || [];
-      const { count: offersCount } = appIds.length > 0
-        ? await supabase.from("offers").select("id", { count: "exact", head: true }).in("application_id", appIds)
-        : { count: 0 };
+      const { data: offersData, count: offersCount } = appIds.length > 0
+        ? await supabase.from("offers").select("id, status, salary", { count: "exact" }).in("application_id", appIds)
+        : { data: [], count: 0 };
 
       // Status breakdown
       const statusMap: Record<string, number> = {};
@@ -59,11 +60,19 @@ const CollegeReports = () => {
         .slice(0, 10)
         .map(([name, count]) => ({ name, count }));
 
+      const acceptedOffers = (offersData || []).filter((o: any) => o.status === "accepted");
+      const totalAcceptedSalary = acceptedOffers.reduce((sum: number, o: any) => {
+        const val = parseInt((o.salary || "").toString().replace(/[^0-9]/g, "") || "0", 10);
+        return sum + val;
+      }, 0);
+      const averageCtc = acceptedOffers.length > 0 ? Math.round(totalAcceptedSalary / acceptedOffers.length) : 0;
+
       setReport({
         totalStudents: studentIds.length,
         totalApplications: totalApps,
         totalOffers: offersCount || 0,
         offerRate: studentIds.length > 0 ? `${((offersCount || 0) / studentIds.length * 100).toFixed(1)}%` : "0%",
+        averageCtc,
         topCompanies,
         statusBreakdown,
       });
@@ -108,11 +117,12 @@ const CollegeReports = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-4">
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-5">
         {[
           { label: "Talent Pool", value: report.totalStudents, icon: <GraduationCap className="h-5 w-5" />, color: "text-blue-500" },
           { label: "Application Volume", value: report.totalApplications, icon: <BookOpen className="h-5 w-5" />, color: "text-purple-500" },
           { label: "Offers Secured", value: report.totalOffers, icon: <Award className="h-5 w-5" />, color: "text-emerald-500" },
+          { label: "Average CTC", value: report.averageCtc > 0 ? `INR ${report.averageCtc.toLocaleString()}` : "N/A", icon: <Briefcase className="h-5 w-5" />, color: "text-cyan-500" },
           { label: "Success Rate", value: report.offerRate, icon: <TrendingUp className="h-5 w-5" />, color: "text-primary" },
         ].map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }}>
@@ -187,7 +197,11 @@ const CollegeReports = () => {
                       <motion.div 
                         initial={{ width: 0 }} 
                         animate={{ width: `${item.percentage}%` }}
-                        className="h-full bg-purple-500/40 rounded-full group-hover/item:bg-purple-500 transition-all"
+                        className={
+                          item.status === "accepted"
+                            ? "h-full bg-primary/40 rounded-full group-hover/item:bg-primary transition-all"
+                            : "h-full bg-purple-500/40 rounded-full group-hover/item:bg-purple-500 transition-all"
+                        }
                       />
                     </div>
                   </div>

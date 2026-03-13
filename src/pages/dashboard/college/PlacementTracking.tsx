@@ -19,7 +19,8 @@ const PlacementTracking = () => {
     interviews: 0, 
     offers: 0, 
     companies: 0,
-    placedStudents: 0
+    placedStudents: 0,
+    averageCtc: 0,
   });
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
 
@@ -28,21 +29,76 @@ const PlacementTracking = () => {
 
   useEffect(() => { if (user) fetchData(); }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`college-placement:${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "student_profiles" }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "applications" }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "interviews" }, () => fetchData())
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [user]);
+
   const fetchData = async () => {
     try {
-      const { data: college } = await supabase.from("college_profiles").select("id").eq("user_id", user!.id).maybeSingle();
+      const { data: college } = await supabase
+        .from("college_profiles")
+        .select("id, college_name")
+        .eq("user_id", user!.id)
+        .maybeSingle();
       if (!college) { setLoading(false); return; }
 
       const college_id = (college as any).id;
 
-      const { data: students } = await supabase
+      const { data: idMatchedStudents } = await supabase
         .from("student_profiles")
-        .select("*, profiles:user_id(full_name, email, avatar_url)")
+        .select("id, user_id, degree, branch, graduation_year, skills, college_id, college_name, created_at")
         .eq("college_id", college_id)
         .order("created_at", { ascending: false });
-      const studentIds = students?.map(s => (s as any).id) || [];
+
+      let students = idMatchedStudents || [];
+      if (students.length === 0 && (college as any).college_name) {
+        const { data: nameMatchedStudents } = await supabase
+          .from("student_profiles")
+          .select("id, user_id, degree, branch, graduation_year, skills, college_id, college_name, created_at")
+          .ilike("college_name", (college as any).college_name)
+          .order("created_at", { ascending: false });
+        students = nameMatchedStudents || [];
+      }
+
+      const uniqueById = new Map<string, any>();
+      students.forEach((s: any) => uniqueById.set(s.id, s));
+      students = Array.from(uniqueById.values());
+
+      const studentProfilesById = students.reduce((acc: Record<string, any>, s: any) => {
+        acc[s.id] = s;
+        return acc;
+      }, {});
+
+      const studentUserIds = students.map((s: any) => s.user_id).filter(Boolean);
+      let profileByUserId: Record<string, any> = {};
+      if (studentUserIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name, avatar_url")
+          .in("user_id", studentUserIds);
+        profileByUserId = (profiles || []).reduce((acc: Record<string, any>, p: any) => {
+          acc[p.user_id] = p;
+          return acc;
+        }, {});
+      }
+
+      const studentIds = students.map(s => (s as any).id) || [];
 
       if (studentIds.length === 0) { 
+        setStats({ students: 0, applications: 0, interviews: 0, offers: 0, companies: 0, placedStudents: 0, averageCtc: 0 });
+        setApplications([]);
         setLoading(false); 
         return; 
       }
@@ -51,38 +107,56 @@ const PlacementTracking = () => {
         .from("applications")
         .select(`
           *, 
-          jobs(title, location, organization_profiles(company_name, logo_url)), 
-          student_profiles(profiles:user_id(full_name, avatar_url))
+          jobs(title, location, organization_profiles(company_name, logo_url))
         `)
         .in("student_id", studentIds)
         .order("created_at", { ascending: false });
 
-      const appIds = (apps as any[])?.map(a => a.id) || [];
+      const enrichedApps = (apps || []).map((a: any) => {
+        const sp = studentProfilesById[a.student_id];
+        const profile = sp ? profileByUserId[sp.user_id] || null : null;
+        return {
+          ...a,
+          student_profiles: {
+            ...(sp || {}),
+            profiles: profile,
+          },
+        };
+      });
+
+      const appIds = (enrichedApps as any[])?.map(a => a.id) || [];
       const [interviewsRes, offersRes] = await Promise.all([
         appIds.length > 0 ? supabase.from("interviews").select("id", { count: "exact", head: true }).in("application_id", appIds) as any : { count: 0 },
-        appIds.length > 0 ? supabase.from("offers").select("id, status, application_id").in("application_id", appIds) as any : { data: [], count: 0 },
+        appIds.length > 0 ? supabase.from("offers").select("id, status, application_id, salary").in("application_id", appIds) as any : { data: [], count: 0 },
       ]);
 
       const placedStudentIds = new Set([
         ...(offersRes.data as any[] || [])
           .filter(o => o.status === 'accepted')
-          .map(o => (apps as any[])?.find(a => (a as any).id === o.application_id)?.student_id),
-        ...(apps as any[])
+          .map(o => (enrichedApps as any[])?.find(a => (a as any).id === o.application_id)?.student_id),
+        ...(enrichedApps as any[])
           .filter(a => a.status === 'selected' || a.status === 'accepted')
           .map(a => a.student_id)
       ].filter(Boolean));
 
-      const uniqueCompanies = new Set((apps as any[])?.map(a => a.jobs?.organization_profiles?.company_name).filter(Boolean));
+      const uniqueCompanies = new Set((enrichedApps as any[])?.map(a => a.jobs?.organization_profiles?.company_name).filter(Boolean));
+      const acceptedOffers = ((offersRes.data as any[]) || []).filter(o => o.status === "accepted");
+      const totalAcceptedSalary = acceptedOffers.reduce((sum, o) => {
+        const val = parseInt((o.salary || "").toString().replace(/[^0-9]/g, "") || "0", 10);
+        return sum + val;
+      }, 0);
+      const averageCtc = acceptedOffers.length > 0 ? Math.round(totalAcceptedSalary / acceptedOffers.length) : 0;
 
       setStats({
         students: studentIds.length,
-        applications: apps?.length || 0,
+        applications: enrichedApps?.length || 0,
         interviews: (interviewsRes as any).count || 0,
         offers: (offersRes as any).count || 0,
         companies: uniqueCompanies.size,
-        placedStudents: placedStudentIds.size
+        placedStudents: placedStudentIds.size,
+        averageCtc,
       });
-      if (apps) setApplications(apps as unknown as ApplicationRow[]);
+      if (enrichedApps) setApplications(enrichedApps as unknown as ApplicationRow[]);
     } catch (err) {
 
       console.error(err);
@@ -117,7 +191,8 @@ const PlacementTracking = () => {
     { label: "Applications", value: stats.applications, icon: <BarChart3 className="h-5 w-5" />, color: "text-purple-500" },
     { label: "Interviews", value: stats.interviews, icon: <Clock className="h-5 w-5" />, color: "text-amber-500" },
     { label: "Placement Rate", value: `${placementRate}%`, icon: <TrendingUp className="h-5 w-5" />, color: "text-primary" },
-    { label: "Partnered Cos", value: stats.companies, icon: <Briefcase className="h-5 w-5" />, color: "text-emerald-500" },
+    { label: "Average CTC", value: stats.averageCtc > 0 ? `INR ${stats.averageCtc.toLocaleString()}` : "N/A", icon: <DollarSign className="h-5 w-5" />, color: "text-emerald-500" },
+    { label: "Partnered Cos", value: stats.companies, icon: <Briefcase className="h-5 w-5" />, color: "text-cyan-500" },
   ];
 
   const statusLabels: Record<string, string> = {
@@ -133,7 +208,7 @@ const PlacementTracking = () => {
         <p className="text-neutral-500 mt-2 font-medium">Real-time tracking of institutional hiring performance.</p>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-5">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-3 xl:grid-cols-6">
         {statCards.map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
             <Card className="glass-card border-white/5 shadow-premium group hover:border-primary/20 transition-all">

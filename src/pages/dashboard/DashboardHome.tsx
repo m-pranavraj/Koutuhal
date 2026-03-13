@@ -23,37 +23,79 @@ interface StatItem {
 }
 
 const DashboardHome = () => {
-  const { user, profile, roles, studentProfile } = useAuth();
-  const primaryRole = roles[0] || "student";
+  const { user, profile, primaryRole: authPrimaryRole, studentProfile } = useAuth();
+  const primaryRole = authPrimaryRole || "student";
   const [stats, setStats] = useState<StatItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [profileStrength, setProfileStrength] = useState({
-    percentage: 0,
-    items: [
-      { id: 'headline', label: 'Set a professional headline', completed: false, icon: <FileText className="h-4 w-4" /> },
-      { id: 'skills', label: 'Add at least 3 skills', completed: false, icon: <Award className="h-4 w-4" /> },
-      { id: 'education', label: 'Add your education details', completed: false, icon: <GraduationCap className="h-4 w-4" /> },
-      { id: 'bio', label: 'Write a short bio', completed: false, icon: <Users className="h-4 w-4" /> },
-      { id: 'resume', label: 'Upload your resume', completed: false, icon: <Download className="h-4 w-4" /> },
-    ]
-  });
-  const [studentSkills, setStudentSkills] = useState<string[]>([]);
-  const [highMatchCount, setHighMatchCount] = useState(0);
 
   useEffect(() => {
     if (user) fetchStats();
   }, [user, primaryRole, studentProfile]);
+
+  // Refetch stats when page becomes visible (e.g., returning from settings)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user && primaryRole === "student") {
+        fetchStats();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [user, primaryRole]);
+
+  // Subscribe to real-time changes on student_profiles
+  useEffect(() => {
+    if (primaryRole !== "student" || !user) return;
+
+    const channel = supabase
+      .channel(`student_profiles:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'student_profiles',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [user, primaryRole]);
+
+  // Keep organization stats live when hiring pipeline data changes.
+  useEffect(() => {
+    if (primaryRole !== "organization" || !user) return;
+
+    const channel = supabase
+      .channel(`org-dashboard:${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "applications" }, () => fetchStats())
+      .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, () => fetchStats())
+      .on("postgres_changes", { event: "*", schema: "public", table: "interviews" }, () => fetchStats())
+      .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () => fetchStats())
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [user, primaryRole]);
 
   const fetchStats = async () => {
     try {
       if (primaryRole === "student") {
         const { data: sp, error: spError } = await supabase
           .from("student_profiles")
-          .select("*, profiles:user_id(avatar_url, bio, full_name)")
+          .select("id, user_id")
           .eq("user_id", user!.id)
           .maybeSingle();
 
         if (spError || !sp) {
+          console.error("Student profile fetch error:", spError);
           setStats([
             { label: "Applications Sent", icon: <FileText className="h-5 w-5" />, value: 0, href: "/dashboard/applications" },
             { label: "Upcoming Interviews", icon: <Calendar className="h-5 w-5" />, value: 0, href: "/dashboard/interviews" },
@@ -64,75 +106,145 @@ const DashboardHome = () => {
           return;
         }
 
-        const student_p = sp as any;
-
-        const skills = student_p.skills || [];
-        setStudentSkills(skills);
-
-        // Calculate Profile Strength (Dynamic)
-        const strengthItems = [
-          { id: 'headline', label: 'Set a professional headline', completed: !!student_p.headline, icon: <FileText className="h-4 w-4" /> },
-          { id: 'skills', label: 'Add at least 3 skills', completed: skills.length >= 3, icon: <Award className="h-4 w-4" /> },
-          { id: 'education', label: 'Add your education details', completed: !!student_p.degree || (Array.isArray(student_p.education) && student_p.education.length > 0), icon: <GraduationCap className="h-4 w-4" /> },
-          { id: 'bio', label: 'Write a short bio', completed: (student_p.profiles?.bio?.length || 0) > 20, icon: <Users className="h-4 w-4" /> },
-          { id: 'resume', label: 'Upload your resume', completed: !!student_p.resume_url, icon: <Download className="h-4 w-4" /> },
-        ];
-        const completedCount = strengthItems.filter(i => i.completed).length;
-        setProfileStrength({
-          percentage: Math.round((completedCount / strengthItems.length) * 100),
-          items: strengthItems
-        });
-
         // Real Stats from DB
-        const student_id = (sp as any).id;
-        const [appsRes, interviewsRes, submissionsRes, offersRes] = await Promise.all([
-          supabase.from("applications").select("id", { count: "exact", head: true }).eq("student_id", student_id),
-          supabase.from("interviews").select("id", { count: "exact", head: true }).in("application_id", (await supabase.from("applications").select("id").eq("student_id", student_id)).data?.map((a: any) => a.id) || []),
-          supabase.from("assessment_assignments").select("id", { count: "exact", head: true }).eq("student_id", student_id).eq("status", "pending"),
-          supabase.from("offers").select("id", { count: "exact", head: true }).in("application_id", (await supabase.from("applications").select("id").eq("student_id", student_id)).data?.map((a: any) => a.id) || []),
-        ]);
-
+        const student_id = sp.id;
+        console.log("=== Dashboard Stats Debug ===");
+        console.log("Student ID:", student_id);
         
-        setStats([
-          { label: "Applications Sent", icon: <FileText className="h-5 w-5" />, value: appsRes.count ?? 0, href: "/dashboard/applications" },
-          { label: "Upcoming Interviews", icon: <Calendar className="h-5 w-5" />, value: interviewsRes.count ?? 0, href: "/dashboard/interviews" },
-          { label: "Assessments Pending", icon: <ClipboardList className="h-5 w-5" />, value: submissionsRes.count ?? 0, href: "/dashboard/assessments" },
-          { label: "Offers Received", icon: <Award className="h-5 w-5" />, value: offersRes.count ?? 0, href: "/dashboard/offers" },
-        ]);
+        try {
+          // Fetch all applications
+          const { data: appsData, error: appsError } = await supabase
+            .from("applications")
+            .select("id")
+            .eq("student_id", student_id);
 
-        // Dynamic High Match Count (Uses job_match_scores view)
-        const { count: matchCount } = await supabase
-          .from("job_match_scores" as any)
-          .select("application_id", { count: "exact", head: true })
-          .eq("student_id", student_id)
-          .gte("match_score", 70);
+          console.log("Applications fetch error:", appsError);
+          console.log("Applications data:", appsData);
+
+          if (appsError) {
+            throw new Error(`Failed to fetch applications: ${appsError.message}`);
+          }
+
+          const appIds = appsData?.map((a: any) => a.id) || [];
+          const applicationCount = appsData?.length || 0;
+          console.log("Application count:", applicationCount, "IDs:", appIds);
+
+          // Fetch related counts in parallel
+          const [interviewsRes, offersRes, assignmentsRes, assessmentSubmissionsRes] = await Promise.all([
+            appIds.length > 0 
+              ? supabase.from("interviews").select("id", { count: "exact", head: true }).in("application_id", appIds)
+              : Promise.resolve({ count: 0 }),
+            appIds.length > 0 
+              ? supabase.from("offers").select("id", { count: "exact", head: true }).in("application_id", appIds)
+              : Promise.resolve({ count: 0 }),
+            supabase
+              .from("assessment_assignments")
+              .select("id, assessment_id, assessments(max_attempts)")
+              .eq("student_id", student_id),
+            supabase
+              .from("assessment_submissions")
+              .select("assessment_id")
+              .eq("student_id", student_id),
+          ]);
+
+          const attemptsByAssessmentId: Record<string, number> = {};
+          (assessmentSubmissionsRes.data || []).forEach((s: any) => {
+            const key = s.assessment_id;
+            attemptsByAssessmentId[key] = (attemptsByAssessmentId[key] || 0) + 1;
+          });
+
+          const pendingAssessmentCount = (assignmentsRes.data || []).reduce((count: number, a: any) => {
+            const maxAttempts = a.assessments?.max_attempts ?? 1;
+            const usedAttempts = attemptsByAssessmentId[a.assessment_id] || 0;
+            return usedAttempts < maxAttempts ? count + 1 : count;
+          }, 0);
+
+          setStats([
+            { label: "Applications Sent", icon: <FileText className="h-5 w-5" />, value: applicationCount, href: "/dashboard/applications" },
+            { label: "Upcoming Interviews", icon: <Calendar className="h-5 w-5" />, value: interviewsRes.count ?? 0, href: "/dashboard/interviews" },
+            { label: "Assessments Pending", icon: <ClipboardList className="h-5 w-5" />, value: pendingAssessmentCount, href: "/dashboard/assessments" },
+            { label: "Offers Received", icon: <Award className="h-5 w-5" />, value: offersRes.count ?? 0, href: "/dashboard/offers" },
+          ]);
+        } catch (err) {
+          console.error("Stats fetch error:", err);
+          setStats([
+            { label: "Applications Sent", icon: <FileText className="h-5 w-5" />, value: 0, href: "/dashboard/applications" },
+            { label: "Upcoming Interviews", icon: <Calendar className="h-5 w-5" />, value: 0, href: "/dashboard/interviews" },
+            { label: "Assessments Pending", icon: <ClipboardList className="h-5 w-5" />, value: 0, href: "/dashboard/assessments" },
+            { label: "Offers Received", icon: <Award className="h-5 w-5" />, value: 0, href: "/dashboard/offers" },
+          ]);
+        }
+
+        setLoading(false);
         
-        setHighMatchCount(matchCount ?? 0);
+
 
       } else if (primaryRole === "organization") {
-        // Use the new recruiter_dashboard view
-        const { data: analytics } = await supabase
-          .from("recruiter_dashboard" as any)
-          .select("*")
+        const { data: orgProfile } = await supabase
+          .from("organization_profiles")
+          .select("id")
           .eq("user_id", user!.id)
-          .maybeSingle() as any;
+          .maybeSingle();
 
-        if (analytics) {
-          const stats_data = analytics as any;
-          setStats([
-            { label: "Active Listings", icon: <Briefcase className="h-5 w-5" />, value: stats_data.total_jobs || 0, href: "/dashboard/listings" },
-            { label: "Total Applications", icon: <FileText className="h-5 w-5" />, value: stats_data.total_applications || 0, href: "/dashboard/applications" },
-            { label: "Interviews Scheduled", icon: <Calendar className="h-5 w-5" />, value: stats_data.total_interviews || 0, href: "/dashboard/interviews" },
-            { label: "Offers Accepted", icon: <Award className="h-5 w-5" />, value: stats_data.total_hired || 0, href: "/dashboard/offers" },
-          ]);
-        } else {
+        const orgId = (orgProfile as any)?.id;
+
+        if (!orgId) {
           setStats([
             { label: "Active Listings", icon: <Briefcase className="h-5 w-5" />, value: 0, href: "/dashboard/listings" },
             { label: "Total Applications", icon: <FileText className="h-5 w-5" />, value: 0, href: "/dashboard/applications" },
             { label: "Interviews Scheduled", icon: <Calendar className="h-5 w-5" />, value: 0, href: "/dashboard/interviews" },
-            { label: "Offers Issued", icon: <Award className="h-5 w-5" />, value: 0, href: "/dashboard/offers" },
+            { label: "Offers Accepted", icon: <Award className="h-5 w-5" />, value: 0, href: "/dashboard/offers" },
           ]);
+          setLoading(false);
+          return;
         }
+
+        const [jobsRes, appsRes] = await Promise.all([
+          supabase.from("jobs").select("id, status").eq("org_id", orgId),
+          supabase.from("applications").select("id, status, job_id, jobs!inner(org_id)").eq("jobs.org_id", orgId),
+        ]);
+
+        const jobs = (jobsRes.data || []) as any[];
+        const apps = (appsRes.data || []) as any[];
+        const appIds = apps.map((a: any) => a.id);
+
+        const offersRes = appIds.length > 0
+          ? await supabase.from("offers").select("application_id, status").in("application_id", appIds)
+          : { data: [] as any[] };
+
+        const offers = (offersRes.data || []) as any[];
+        const activityRes = appIds.length > 0
+          ? await supabase
+              .from("application_activity")
+              .select("application_id, event_type")
+              .in("application_id", appIds)
+              .eq("event_type", "Offer Accepted")
+          : { data: [] as any[] };
+
+        const acceptedByActivityAppIds = new Set(
+          ((activityRes as any).data || []).map((r: any) => r.application_id)
+        );
+        const acceptedOfferAppIds = new Set(
+          offers.filter((o) => o.status === "accepted").map((o) => o.application_id)
+        );
+        const activeOfferAppIds = new Set(
+          offers.filter((o) => o.status !== "accepted" && o.status !== "rejected").map((o) => o.application_id)
+        );
+
+        const hiredCount = apps.filter((a: any) =>
+          acceptedOfferAppIds.has(a.id) || acceptedByActivityAppIds.has(a.id) || a.status === "accepted"
+        ).length;
+        const interviewCount = apps.filter((a: any) => {
+          if (acceptedOfferAppIds.has(a.id) || acceptedByActivityAppIds.has(a.id) || activeOfferAppIds.has(a.id)) return false;
+          return a.status === "interview";
+        }).length;
+
+        setStats([
+          { label: "Active Listings", icon: <Briefcase className="h-5 w-5" />, value: jobs.length, href: "/dashboard/listings" },
+          { label: "Total Applications", icon: <FileText className="h-5 w-5" />, value: apps.length, href: "/dashboard/applications" },
+          { label: "Interviews Scheduled", icon: <Calendar className="h-5 w-5" />, value: interviewCount, href: "/dashboard/interviews" },
+          { label: "Offers Accepted", icon: <Award className="h-5 w-5" />, value: hiredCount, href: "/dashboard/offers" },
+        ]);
       } else if (primaryRole === "mentor") {
         const { data: mp } = await supabase
           .from("mentor_profiles")
@@ -142,10 +254,19 @@ const DashboardHome = () => {
         if (!mp) { setStats([]); setLoading(false); return; }
         const mentor_id = (mp as any).id;
         const [sessionsRes, reviewsRes] = await Promise.all([
-          supabase.from("mentor_sessions").select("id, status").eq("mentor_id", mentor_id),
+          supabase.from("mentor_sessions").select("id, status, session_date").eq("mentor_id", mentor_id),
           supabase.from("reviews").select("rating").eq("mentor_id", mentor_id),
         ]);
-        const upcoming = sessionsRes.data?.filter(s => (s as any).status === "confirmed").length ?? 0;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const upcoming = sessionsRes.data?.filter((s: any) => {
+          const status = (s.status || "").toLowerCase();
+          if (status !== "pending" && status !== "confirmed") return false;
+          if (!s.session_date) return false;
+          const sessionDate = new Date(`${s.session_date}T00:00:00`);
+          return sessionDate >= today;
+        }).length ?? 0;
         const total = sessionsRes.data?.length ?? 0;
         const avgRating = reviewsRes.data?.length
           ? (reviewsRes.data.reduce((s, r) => s + (r as any).rating, 0) / reviewsRes.data.length).toFixed(1)
@@ -192,6 +313,7 @@ const DashboardHome = () => {
           const val = parseInt(o.salary?.replace(/[^0-9]/g, '') || "0");
           return sum + val;
         }, 0);
+        const averageCtc = (offersData?.length || 0) > 0 ? Math.round(totalSalary / (offersData?.length || 1)) : 0;
         
         const placementRate = studentIds.length > 0 
           ? Math.round((placedStudentIds.size / studentIds.length) * 100) 
@@ -200,7 +322,7 @@ const DashboardHome = () => {
         setStats([
           { label: "Students Registered", icon: <GraduationCap className="h-5 w-5" />, value: studentIds.length, href: "/dashboard/students" },
           { label: "Placement Rate", icon: <TrendingUp className="h-5 w-5" />, value: `${placementRate}%` },
-          { label: "Job Applications", icon: <FileText className="h-5 w-5" />, value: appsCount.count || 0, href: "/dashboard/placement-tracking" },
+          { label: "Average CTC", icon: <DollarSign className="h-5 w-5" />, value: averageCtc > 0 ? `INR ${averageCtc.toLocaleString()}` : "N/A", href: "/dashboard/placement-tracking" },
           { label: "Offers Secured", icon: <Award className="h-5 w-5" />, value: successfulApps.length, href: "/dashboard/placement-tracking" },
         ]);
       } else if (primaryRole === "admin") {
@@ -237,17 +359,10 @@ const DashboardHome = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-          <h1 className="text-4xl font-black text-white tracking-tight">Welcome back, {profile?.full_name?.split(" ")[0] || "User"}!</h1>
-          <p className="text-neutral-500 mt-2 font-medium">Keep track of your performance and upcoming tasks.</p>
-        </motion.div>
-        {primaryRole === "student" && profileStrength.percentage < 100 && (
-          <Badge className="bg-primary/10 text-primary border-primary/20 px-4 py-1.5 rounded-full text-xs font-bold animate-pulse">
-            Complete your profile to unlock more jobs
-          </Badge>
-        )}
-      </div>
+      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+        <h1 className="text-4xl font-black text-white tracking-tight">Welcome back, {profile?.full_name?.split(" ")[0] || "User"}!</h1>
+        <p className="text-neutral-500 mt-2 font-medium">Keep track of your performance and upcoming tasks.</p>
+      </motion.div>
 
       {loading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -280,60 +395,9 @@ const DashboardHome = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Profile Strength Checklist */}
-        {primaryRole === "student" && (
-          <Card className="lg:col-span-1 glass-card border-white/5 shadow-premium overflow-hidden">
-            <CardHeader className="bg-white/[0.02] border-b border-white/5">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-bold text-white tracking-tight">Profile Strength</CardTitle>
-                <span className="text-2xl font-black text-primary">{profileStrength.percentage}%</span>
-              </div>
-              <div className="w-full bg-white/5 h-2 rounded-full mt-4 overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }} 
-                  animate={{ width: `${profileStrength.percentage}%` }}
-                  transition={{ duration: 1, ease: "easeOut" }}
-                  className="bg-primary h-full shadow-[0_0_10px_rgba(173,255,68,0.5)]" 
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {profileStrength.items.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between group">
-                    <div className="flex items-center gap-3">
-                      <div className={cn(
-                        "h-8 w-8 rounded-xl flex items-center justify-center transition-all",
-                        item.completed ? "bg-primary/20 text-primary" : "bg-white/5 text-neutral-500 group-hover:bg-white/10"
-                      )}>
-                        {item.icon}
-                      </div>
-                      <span className={cn(
-                        "text-sm font-bold transition-all",
-                        item.completed ? "text-white/40 line-through decoration-primary/50" : "text-white group-hover:text-primary"
-                      )}>
-                        {item.label}
-                      </span>
-                    </div>
-                    {item.completed ? (
-                       <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center">
-                          <Check className="h-3 w-3 text-primary" />
-                       </div>
-                    ) : (
-                      <Link to="/dashboard/settings">
-                        <ArrowRight className="h-4 w-4 text-black group-hover:text-primary transition-colors" />
-                      </Link>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
+      <div>
         {/* Quick Actions / Activity Callout */}
-        <Card className={cn("glass-card border-white/5 shadow-premium", primaryRole === "student" ? "lg:col-span-2" : "lg:col-span-3")}>
+        <Card className="glass-card border-white/5 shadow-premium">
           <CardHeader>
             <CardTitle className="text-xl font-bold text-white tracking-tight">Quick Actions</CardTitle>
           </CardHeader>
@@ -362,30 +426,6 @@ const DashboardHome = () => {
                      'Get Started'}
                     <ArrowRight className="h-4 w-4 ml-2 text-black" />
                    </Link>
-                </Button>
-               </div>
-               
-               <div className="p-6 rounded-3xl bg-primary/5 border border-primary/10 hover:border-primary/30 transition-all group relative overflow-hidden">
-                <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                  <Star className="h-32 w-32 text-primary" />
-                </div>
-                <h4 className="font-bold text-white mb-2 flex items-center gap-2">
-                  <Award className="h-4 w-4 text-primary" />
-                  AI Coach Insights
-                </h4>
-                <p className="text-sm text-neutral-400 mb-6 leading-relaxed">
-                  {highMatchCount > 0 
-                    ? `Our AI Coach has analyzed your profile and matched you with ${highMatchCount} potential high-match roles.`
-                    : "Complete your profile skills to get personalized job recommendations from our AI Coach."}
-                </p>
-                <Button 
-                  asChild
-                  variant="outline" 
-                  className="w-full border-white/10 hover:bg-white/5 text-white rounded-xl py-6 group-hover:border-primary/50 transition-colors"
-                >
-                  <Link to="/dashboard/jobs?filter=high-match">
-                    View Recommendations
-                  </Link>
                 </Button>
                </div>
             </div>

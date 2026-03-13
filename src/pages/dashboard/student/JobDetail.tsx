@@ -90,31 +90,23 @@ const JobDetail = () => {
   const handleApply = async () => {
     if (!user || !studentProfile) return;
     
-    // Check profile completion (matches BrowseJobs logic)
-    if (!studentProfile.headline || !studentProfile.degree || !studentProfile.resume_url || !studentProfile.skills || !studentProfile.graduation_year || !studentProfile.college_id) {
-      toast({ 
-        title: "Profile Incomplete", 
-        description: "Please complete your profile in Settings to apply.", 
-        variant: "destructive" 
-      });
-      return;
-    }
-
     try {
       const { error } = await supabase
         .from("applications")
         .insert({ job_id: id, student_id: (studentProfile as any).id } as any);
 
-      if (error) throw error;
-      
-      setApplied(true);
-      toast({ title: "Success!", description: "Application submitted successfully." });
-    } catch (err: any) {
-      if (err.code === "23505") {
-        toast({ title: "Already Applied", description: "You've already applied for this role.", variant: "destructive" });
+      if (error) {
+        if (error.code === "23505") {
+          toast({ title: "Already Applied", description: "You've already applied for this role.", variant: "destructive" });
+        } else {
+          throw error;
+        }
       } else {
-        toast({ title: "Error", description: err.message, variant: "destructive" });
+        setApplied(true);
+        toast({ title: "Success! ✓", description: "Application submitted successfully." });
       }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to submit application.", variant: "destructive" });
     }
   };
 

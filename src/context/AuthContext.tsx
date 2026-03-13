@@ -12,6 +12,18 @@ type MentorProfile = Database['public']['Tables']['mentor_profiles']['Row'];
 type OrgProfile = Database['public']['Tables']['organization_profiles']['Row'];
 type CollegeProfile = Database['public']['Tables']['college_profiles']['Row'];
 
+const ROLE_PRIORITY: AppRole[] = ['admin', 'organization', 'college', 'mentor', 'student'];
+
+const sortRolesByPriority = (inputRoles: AppRole[]): AppRole[] => {
+    const uniqueRoles = Array.from(new Set(inputRoles));
+    return uniqueRoles.sort((a, b) => ROLE_PRIORITY.indexOf(a) - ROLE_PRIORITY.indexOf(b));
+};
+
+const resolvePrimaryRole = (inputRoles: AppRole[]): AppRole | null => {
+    const [highestPriorityRole] = sortRolesByPriority(inputRoles);
+    return highestPriorityRole ?? null;
+};
+
 // ─── Context shape ────────────────────────────────────────────────────────────
 interface AuthContextType {
     user: User | null;
@@ -92,7 +104,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
         ]);
 
-        const userRoles: AppRole[] = rolesRes.error ? [] : (rolesRes.data ?? []).map((r) => r.role.toLowerCase() as AppRole);
+        const fetchedRoles: AppRole[] = rolesRes.error ? [] : (rolesRes.data ?? []).map((r) => r.role.toLowerCase() as AppRole);
+        const userRoles = sortRolesByPriority(fetchedRoles);
         setRoles(userRoles);
         setProfile(profileRes.error ? null : profileRes.data);
 
@@ -230,7 +243,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const hasRole = (role: AppRole) => roles.includes(role);
-    const primaryRole = roles[0] ?? null;
+    const primaryRole = resolvePrimaryRole(roles);
 
     return (
         <AuthContext.Provider value={{

@@ -14,9 +14,9 @@ import { motion } from "framer-motion";
 import { User, Briefcase, GraduationCap, Building2, Upload, Plus, Trash2, Linkedin, Loader2, Star } from "lucide-react";
 
 const SettingsPage = () => {
-  const { user, roles, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, primaryRole: authPrimaryRole } = useAuth();
   const { toast } = useToast();
-  const primaryRole = roles[0] || "student";
+  const primaryRole = authPrimaryRole || "student";
 
   const [profileForm, setProfileForm] = useState({ full_name: "", email: "", bio: "", phone: "", location: "" });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -24,9 +24,11 @@ const SettingsPage = () => {
 
   // Student
   const [studentForm, setStudentForm] = useState({ 
-    headline: "", skills: "", linkedin_url: "", github_url: "", portfolio_url: "", 
+    headline: "", skills: "", linkedin_url: "", github_url: "", portfolio_url: "", resume_url: "",
     college_id: "", college_name: "", degree: "", branch: "", graduation_year: "" 
   });
+  const [educationFile, setEducationFile] = useState<File | null>(null);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [education, setEducation] = useState<any[]>([]);
   const [experience, setExperience] = useState<any[]>([]);
   const [colleges, setColleges] = useState<any[]>([]);
@@ -57,7 +59,7 @@ const SettingsPage = () => {
       if (sp) {
         setStudentForm({
           headline: sp.headline || "", skills: sp.skills?.join(", ") || "",
-          linkedin_url: sp.linkedin_url || "", github_url: sp.github_url || "", portfolio_url: sp.portfolio_url || "",
+          linkedin_url: sp.linkedin_url || "", github_url: sp.github_url || "", portfolio_url: sp.portfolio_url || "", resume_url: sp.resume_url || "",
           college_id: sp.college_id || "", college_name: sp.college_name || "", degree: sp.degree || "", branch: sp.branch || "",
           graduation_year: sp.graduation_year?.toString() || "",
         });
@@ -99,6 +101,26 @@ const SettingsPage = () => {
 
 
       if (primaryRole === "student") {
+        let resumeUrl = studentForm.resume_url;
+        
+        // Upload resume file if provided
+        if (resumeFile) {
+          const fileExt = resumeFile.name.split('.').pop();
+          const fileName = `${user!.id}-resume-${Date.now()}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage
+            .from("resumes")
+            .upload(fileName, resumeFile, { upsert: false });
+          
+          if (uploadError) throw uploadError;
+          
+          const { data: { publicUrl } } = supabase.storage
+            .from("resumes")
+            .getPublicUrl(fileName);
+          
+          resumeUrl = publicUrl;
+          setResumeFile(null);
+        }
+        
         const { error: sError } = await (supabase.from("student_profiles") as any).upsert({
           user_id: user!.id,
           headline: studentForm.headline || null, 
@@ -106,6 +128,7 @@ const SettingsPage = () => {
           linkedin_url: studentForm.linkedin_url || null, 
           github_url: studentForm.github_url || null, 
           portfolio_url: studentForm.portfolio_url || null,
+          resume_url: resumeUrl || null,
           college_id: studentForm.college_id || null, 
           college_name: studentForm.college_name || null, 
           degree: studentForm.degree || null, 
@@ -291,6 +314,30 @@ const SettingsPage = () => {
                     <div><Label>LinkedIn</Label><Input value={studentForm.linkedin_url} onChange={(e) => setStudentForm(p => ({ ...p, linkedin_url: e.target.value }))} /></div>
                     <div><Label>GitHub</Label><Input value={studentForm.github_url} onChange={(e) => setStudentForm(p => ({ ...p, github_url: e.target.value }))} /></div>
                     <div><Label>Portfolio</Label><Input value={studentForm.portfolio_url} onChange={(e) => setStudentForm(p => ({ ...p, portfolio_url: e.target.value }))} /></div>
+                  </div>
+                  <div className="border-t pt-4">
+                    <Label className="font-semibold">Resume</Label>
+                    <p className="text-xs text-muted-foreground mb-3">Upload your resume (PDF) or provide a direct URL</p>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-sm">Resume URL</Label>
+                        <Input 
+                          placeholder="https://example.com/resume.pdf" 
+                          value={studentForm.resume_url} 
+                          onChange={(e) => setStudentForm(p => ({ ...p, resume_url: e.target.value }))} 
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm">Or Upload PDF</Label>
+                        <input 
+                          type="file" 
+                          accept=".pdf" 
+                          onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+                          className="w-full text-sm text-neutral-500 file:mr-2 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-neutral-800 file:text-white hover:file:bg-neutral-700"
+                        />
+                        {resumeFile && <p className="text-xs text-green-600 mt-1">Selected: {resumeFile.name}</p>}
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

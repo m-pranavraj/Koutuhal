@@ -24,6 +24,8 @@ const TakeAssessment = () => {
     const [answers, setAnswers] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
     const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
+    const [attemptsUsed, setAttemptsUsed] = useState(0);
+    const [maxAttempts, setMaxAttempts] = useState(1);
 
     useEffect(() => {
         if (user && assignmentId) {
@@ -35,7 +37,7 @@ const TakeAssessment = () => {
         try {
             const { data, error } = await supabase
                 .from("assessment_assignments")
-                .select("*, assessments(*, jobs(title, organization_profiles(company_name)))")
+              .select("*, assessments(*, jobs(title, organization_profiles(company_name)))")
                 .eq("id", assignmentId)
                 .single();
 
@@ -45,8 +47,19 @@ const TakeAssessment = () => {
                 return;
             }
 
-            if (data.status !== "pending") {
-                toast({ title: "Assessment already completed" });
+            const maxAllowed = data.assessments?.max_attempts ?? 1;
+            const { count } = await supabase
+              .from("assessment_submissions")
+              .select("id", { count: "exact", head: true })
+              .eq("assessment_id", data.assessment_id)
+              .eq("student_id", data.student_id);
+
+            const used = count || 0;
+            setAttemptsUsed(used);
+            setMaxAttempts(maxAllowed);
+
+            if (used >= maxAllowed) {
+                toast({ title: "Attempt limit reached", description: `You have used all ${maxAllowed} attempt(s).` });
                 navigate("/dashboard/assessments");
                 return;
             }
@@ -64,6 +77,8 @@ const TakeAssessment = () => {
         try {
             let score = 0;
             const questions = assignment.assessments.questions || [];
+            const attemptNumber = attemptsUsed + 1;
+            const maxAllowed = assignment.assessments?.max_attempts ?? 1;
             if (assignment.assessments.assessment_type === "mcq") {
                 questions.forEach((q: any) => {
                     if (answers[q.id] === q.correct_answer) {
@@ -73,24 +88,35 @@ const TakeAssessment = () => {
                 score = questions.length > 0 ? Math.round((score / questions.length) * 100) : 100;
             }
 
-            const { error: assignError } = await supabase
-                .from("assessment_assignments")
-                .update({ status: "completed" })
-                .eq("id", assignmentId);
-
-            if (assignError) throw assignError;
-
             const { error: subError } = await supabase.from("assessment_submissions").insert({
                 assessment_id: assignment.assessment_id,
                 student_id: assignment.student_id,
                 answers: answers as any,
                 score: score,
-                status: "submitted"
+                status: "submitted",
+                attempt_number: attemptNumber,
+                submitted_at: new Date().toISOString(),
             });
 
             if (subError) throw subError;
 
-            toast({ title: "Assessment submitted successfully!", description: "High five! Your results are being processed." });
+            // Mark assignment completed when max attempts reached.
+            const shouldComplete = attemptNumber >= maxAllowed;
+            const { error: assignError } = await supabase
+                .from("assessment_assignments")
+                .update({ status: shouldComplete ? "completed" : "pending" })
+                .eq("id", assignmentId);
+
+            if (assignError) {
+              console.warn("Could not update assignment status:", assignError.message);
+            }
+
+            toast({
+              title: "Assessment submitted successfully!",
+              description: shouldComplete
+                ? "You have used all attempts. Results are saved."
+                : `Attempt ${attemptNumber}/${maxAllowed} submitted. You can retry.`
+            });
             navigate("/dashboard/assessments");
         } catch (error: any) {
             toast({ title: "Submission failed", description: error.message, variant: "destructive" });
@@ -130,6 +156,9 @@ const TakeAssessment = () => {
                 <div className="text-[10px] font-black uppercase tracking-widest text-white/30">
                    Progress: {Math.round(progress)}%
                 </div>
+                 <div className="text-[10px] font-black uppercase tracking-widest text-white/40">
+                   Attempts: {attemptsUsed}/{maxAttempts}
+                 </div>
               </div>
             </div>
 

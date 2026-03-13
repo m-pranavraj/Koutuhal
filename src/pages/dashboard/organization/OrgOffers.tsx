@@ -14,6 +14,36 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { OfferRow, ApplicationRow } from "@/types/dashboard";
 
+const getCandidateName = (application: ApplicationRow | null | undefined) => {
+  return application?.student_profiles?.full_name || application?.student_profiles?.profiles?.full_name || "Applicant";
+};
+
+const parseStorageRef = (value?: string | null): { bucket: string; path: string } | null => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return { bucket: "attachments", path: trimmed };
+  }
+
+  try {
+    const url = new URL(trimmed);
+    const marker = "/storage/v1/object/";
+    const idx = url.pathname.indexOf(marker);
+    if (idx === -1) return null;
+    const tail = url.pathname.slice(idx + marker.length);
+    const parts = tail.split("/").filter(Boolean);
+    if (parts.length < 2) return null;
+    const offset = ["public", "sign", "authenticated"].includes(parts[0]) ? 1 : 0;
+    const bucket = parts[offset];
+    const path = parts.slice(offset + 1).join("/");
+    if (!bucket || !path) return null;
+    return { bucket, path };
+  } catch {
+    return null;
+  }
+};
 
 const OrgOffers = () => {
   const { user } = useAuth();
@@ -26,8 +56,23 @@ const OrgOffers = () => {
   const [form, setForm] = useState({ application_id: "", salary: "", start_date: "" });
   const [offerFile, setOfferFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [acceptedAppIds, setAcceptedAppIds] = useState<Set<string>>(new Set());
 
   useEffect(() => { if (user) fetchData(); }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`org-offers:${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "applications" }, () => fetchData())
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [user]);
 
   const fetchData = async () => {
     try {
@@ -39,18 +84,33 @@ const OrgOffers = () => {
       const { data: apps } = await supabase.from("applications").select("id").in("job_id", jobIds) as any;
       const appIds = apps?.map((a: any) => a.id) || [];
 
-      const [offersRes, selectedApps] = await Promise.all([
+      const [offersRes, selectedApps, activityRes] = await Promise.all([
         supabase.from("offers")
-          .select("*, applications(jobs(title), student_profiles(profiles:user_id(full_name)))")
+          .select("*, applications(status, jobs(title), student_profiles(full_name))")
           .in("application_id", appIds)
           .order("created_at", { ascending: false }),
         supabase.from("applications")
-          .select("id, jobs(title), student_profiles(profiles:user_id(full_name))")
+          .select("id, status, jobs(title), student_profiles(full_name)")
           .in("job_id", jobIds)
           .in("status", ["selected", "accepted", "interview", "shortlisted"]),
+        appIds.length > 0
+          ? supabase
+              .from("application_activity")
+              .select("application_id, event_type")
+              .in("application_id", appIds)
+              .eq("event_type", "Offer Accepted")
+          : Promise.resolve({ data: [] as any[] }),
       ]);
       if (offersRes.data) setOffers(offersRes.data as unknown as OfferRow[]);
       if (selectedApps.data) setApplications(selectedApps.data as unknown as ApplicationRow[]);
+
+      const acceptedFromActivity = new Set<string>(
+        ((activityRes as any).data || []).map((r: any) => r.application_id)
+      );
+      const acceptedFromApplication = new Set<string>(
+        (selectedApps.data || []).filter((a: any) => a.status === "accepted").map((a: any) => a.id)
+      );
+      setAcceptedAppIds(new Set<string>([...acceptedFromActivity, ...acceptedFromApplication]));
 
     } catch (err) {
       console.error(err);
@@ -68,26 +128,19 @@ const OrgOffers = () => {
         const path = `offers/${form.application_id}/${offerFile.name}`;
         const { error: upErr } = await supabase.storage.from("attachments").upload(path, offerFile, { upsert: true });
         if (upErr) throw upErr;
-        const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
-        offer_letter_url = urlData.publicUrl;
+        offer_letter_url = path;
       }
-      const { error } = await (supabase.from("offers") as any).insert({
-        application_id: form.application_id,
-        salary: form.salary || null,
-        start_date: form.start_date || null,
-        offer_letter_url,
-        status: 'issued'
+      const { data: rpcResult, error } = await (supabase as any).rpc("org_issue_offer", {
+        p_application_id: form.application_id,
+        p_salary: form.salary || null,
+        p_start_date: form.start_date || null,
+        p_offer_letter_url: offer_letter_url,
       });
 
-      
       if (error) throw error;
-
-      // Log activity
-      await supabase.from("application_activity").insert({
-        application_id: form.application_id,
-        event_type: "Offer Issued",
-        event_description: `A formal offer has been issued with a salary of ${form.salary || 'negotiable'}.`
-      } as any);
+      if (!rpcResult?.ok) {
+        throw new Error(rpcResult?.reason || "Offer creation failed.");
+      }
 
       toast({ title: "Offer issued! ✨" });
       setShowCreate(false);
@@ -99,6 +152,21 @@ const OrgOffers = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const openOfferLetter = async (offerLetterUrl: string) => {
+    const storageRef = parseStorageRef(offerLetterUrl);
+    if (!storageRef) {
+      window.open(offerLetterUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    const { data, error } = await supabase.storage.from(storageRef.bucket).createSignedUrl(storageRef.path, 3600);
+    if (error || !data?.signedUrl) {
+      toast({ title: "Error", description: error?.message || "Unable to open offer letter.", variant: "destructive" });
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
 
   if (loading) return (
@@ -138,7 +206,7 @@ const OrgOffers = () => {
                     <SelectContent>
                       {applications.map(a => (
                         <SelectItem key={a.id} value={a.id}>
-                          {a.student_profiles?.profiles?.full_name || "Applicant"} &ndash; {a.jobs?.title}
+                          {getCandidateName(a)} &ndash; {a.jobs?.title}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -193,6 +261,13 @@ const OrgOffers = () => {
           </Card>
         ) : (
           offers.map((offer, i) => (
+            (() => {
+              const effectiveStatus =
+                offer.status === "accepted" || acceptedAppIds.has(offer.application_id)
+                  ? "accepted"
+                  : offer.status;
+
+              return (
             <motion.div key={offer.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <Card className="glass-card border-white/5 shadow-premium group hover:border-primary/30 transition-all duration-300">
                 <CardContent className="p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -202,7 +277,7 @@ const OrgOffers = () => {
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-white mb-1 group-hover:text-primary transition-colors">
-                        {offer.applications?.student_profiles?.profiles?.full_name || "Candidate"}
+                        {getCandidateName(offer.applications) || "Candidate"}
                       </h3>
                       <p className="text-sm font-bold text-white/40 mb-3 uppercase tracking-wider">
                         {offer.applications?.jobs?.title}
@@ -222,27 +297,27 @@ const OrgOffers = () => {
                         )}
                         <Badge variant="outline" className={cn(
                           "px-2 py-0.5 rounded-md border",
-                          offer.status === "accepted" ? "bg-green-500/10 text-green-500 border-green-500/20" : 
-                          offer.status === "issued" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
+                          effectiveStatus === "accepted" ? "bg-green-500/10 text-green-500 border-green-500/20" : 
+                          effectiveStatus === "issued" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
                           "bg-neutral-500/10 text-neutral-400 border-neutral-500/20"
                         )}>
-                          {offer.status}
+                          {effectiveStatus}
                         </Badge>
                       </div>
                     </div>
                   </div>
 
                   {offer.offer_letter_url && (
-                    <Button variant="outline" asChild className="border-white/10 hover:bg-white/5 text-white rounded-xl h-11 px-6 transition-all group w-full md:w-auto">
-                      <a href={offer.offer_letter_url} target="_blank" rel="noopener noreferrer">
-                         <Download className="h-4 w-4 mr-2 group-hover:translate-y-0.5 transition-transform" /> 
-                         View Letter
-                      </a>
+                    <Button variant="outline" onClick={() => openOfferLetter(offer.offer_letter_url)} className="border-white/10 hover:bg-white/5 text-white rounded-xl h-11 px-6 transition-all group w-full md:w-auto">
+                       <Download className="h-4 w-4 mr-2 group-hover:translate-y-0.5 transition-transform" /> 
+                       View Letter
                     </Button>
                   )}
                 </CardContent>
               </Card>
             </motion.div>
+              );
+            })()
           ))
         )}
       </div>

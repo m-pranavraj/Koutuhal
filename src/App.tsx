@@ -68,6 +68,7 @@ import OrgAnalytics from "@/pages/dashboard/organization/OrgAnalytics";
 
 // ─── DASHBOARD: College ───────────────────────────────────────────────────────
 import CollegeStudents from "@/pages/dashboard/college/CollegeStudents";
+import CollegeStudentProfile from "@/pages/dashboard/college/CollegeStudentProfile";
 import PlacementTracking from "@/pages/dashboard/college/PlacementTracking";
 import CollegeReports from "@/pages/dashboard/college/CollegeReports";
 
@@ -178,6 +179,7 @@ const App = () => (
                         <Route path="/jobs/:id" element={<DashRoute allowedRoles={["student"]}><JobDetail /></DashRoute>} />
                         <Route path="/mentors" element={<DashRoute allowedRoles={["student"]}><FindMentors /></DashRoute>} />
                         <Route path="/book-mentor" element={<DashRoute allowedRoles={["student"]}><BookMentor /></DashRoute>} />
+                        <Route path="/book-mentor/:mentorId" element={<DashRoute allowedRoles={["student"]}><BookMentor /></DashRoute>} />
                         <Route path="/resume-tailor" element={<DashRoute allowedRoles={["student"]}><ResumeTailor /></DashRoute>} />
                         <Route path="/applications" element={<DashRoute allowedRoles={["student", "organization"]}><ApplicationsRouter /></DashRoute>} />
                         <Route path="/assessments" element={<DashRoute allowedRoles={["student", "organization"]}><AssessmentsRouter /></DashRoute>} />
@@ -191,6 +193,7 @@ const App = () => (
                         <Route path="/availability" element={<DashRoute allowedRoles={["mentor"]}><MentorAvailability /></DashRoute>} />
                         <Route path="/reviews" element={<DashRoute allowedRoles={["mentor"]}><MentorReviews /></DashRoute>} />
                         <Route path="/students" element={<DashRoute allowedRoles={["college"]}><CollegeStudents /></DashRoute>} />
+                        <Route path="/students/:studentId" element={<DashRoute allowedRoles={["college"]}><CollegeStudentProfile /></DashRoute>} />
                         <Route path="/placement-tracking" element={<DashRoute allowedRoles={["college"]}><PlacementTracking /></DashRoute>} />
                         <Route path="/reports" element={<DashRoute allowedRoles={["college"]}><CollegeReports /></DashRoute>} />
                         <Route path="/admin/users" element={<DashRoute allowedRoles={["admin"]}><AdminUsers /></DashRoute>} />

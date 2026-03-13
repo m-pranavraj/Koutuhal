@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,16 +12,77 @@ const FindMentors = () => {
   const [mentors, setMentors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  useEffect(() => { fetchMentors(); }, []);
+  useEffect(() => {
+    fetchMentors();
+
+    const channel = supabase
+      .channel("student-find-mentors")
+      .on("postgres_changes", { event: "*", schema: "public", table: "mentor_profiles" }, fetchMentors)
+      .on("postgres_changes", { event: "*", schema: "public", table: "mentor_availability" }, fetchMentors)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, fetchMentors)
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, []);
 
   const fetchMentors = async () => {
-    const { data } = await supabase
-      .from("mentor_profiles")
-      .select("*, profiles(full_name, avatar_url, bio)")
-      .order("created_at", { ascending: false });
-    if (data) setMentors(data);
-    setLoading(false);
+    setLoading(true);
+    try {
+      // Only list mentors who currently have at least one available slot.
+      const { data: slots, error: slotsError } = await supabase
+        .from("mentor_availability")
+        .select("mentor_id")
+        .eq("is_available", true);
+
+      if (slotsError) throw slotsError;
+
+      const mentorIds = Array.from(new Set((slots || []).map((s: any) => s.mentor_id).filter(Boolean)));
+      if (mentorIds.length === 0) {
+        setMentors([]);
+        return;
+      }
+
+      const { data: mentorRows, error: mentorsError } = await supabase
+        .from("mentor_profiles")
+        .select("*")
+        .in("id", mentorIds)
+        .order("created_at", { ascending: false });
+
+      if (mentorsError) throw mentorsError;
+
+      const userIds = Array.from(new Set((mentorRows || []).map((m: any) => m.user_id).filter(Boolean)));
+      let profileMap = new Map<string, any>();
+
+      if (userIds.length > 0) {
+        const { data: profileRows } = await supabase
+          .from("profiles")
+          .select("user_id, full_name, avatar_url, bio")
+          .in("user_id", userIds);
+
+        profileMap = new Map((profileRows || []).map((p: any) => [p.user_id, p]));
+      }
+
+      const hydrated = (mentorRows || []).map((m: any) => ({
+        ...m,
+        profiles: profileMap.get(m.user_id) || null,
+      }));
+
+      setMentors(hydrated);
+    } catch (error: any) {
+      console.error("FindMentors fetch error:", error);
+      toast({
+        title: "Could not load mentors",
+        description: error?.message || "Please refresh and try again.",
+        variant: "destructive",
+      });
+      setMentors([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) return <div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>;
@@ -59,7 +121,7 @@ const FindMentors = () => {
                       {mentor.session_type === "free" ? "Free sessions" : `$${mentor.hourly_rate}/hr`}
                     </div>
                   </div>
-                  <Button onClick={() => navigate(`/dashboard/book-mentor?id=${mentor.id}`)} className="mt-4 w-full">
+                  <Button onClick={() => navigate(`/dashboard/book-mentor/${mentor.id}`)} className="mt-4 w-full">
                     View & Book Session
                   </Button>
                 </CardContent>

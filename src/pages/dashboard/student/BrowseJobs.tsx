@@ -39,7 +39,10 @@ const BrowseJobs = () => {
 
   useEffect(() => { fetchJobs(); }, [pagination.page]);
 
-  useEffect(() => { pagination.resetPage(); }, [search, typeFilter, salaryFilter, remoteOnly]);
+  useEffect(() => { 
+    pagination.resetPage();
+    fetchJobs();
+  }, [search, typeFilter, salaryFilter, remoteOnly]);
 
   const calculateMatch = (jobSkills: string[] | null) => {
     if (!jobSkills || jobSkills.length === 0 || studentSkills.length === 0) return 0;
@@ -109,26 +112,73 @@ const BrowseJobs = () => {
   };
 
   const handleApply = async (jobId: string) => {
-    if (!user) return;
-    const { data: sp } = await supabase.from("student_profiles").select("id, headline, degree, resume_url, skills, graduation_year, college_id").eq("user_id", user.id).maybeSingle() as any;
-
-    if (!sp || !sp.headline || !sp.degree || !sp.resume_url || !sp.skills || !sp.graduation_year || !sp.college_id) {
-
-      toast({ 
-        title: "Profile Incomplete", 
-        description: "Please complete your profile (Headline, Skills, Degree, Graduation Year, College, Resume) in Settings to apply.", 
-        variant: "destructive" 
-      });
+    if (!user) {
+      toast({ title: "Error", description: "Not authenticated.", variant: "destructive" });
       return;
     }
 
-    const { error } = await supabase.from("applications").insert({ job_id: jobId, student_id: sp.id });
-    if (error) {
-      if (error.code === "23505") toast({ title: "Already Applied", description: "You've already applied to this job.", variant: "destructive" });
-      else toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      setAppliedJobIds(prev => [...prev, jobId]);
-      toast({ title: "Success!", description: "Your application has been submitted successfully." });
+    try {
+      // Validate jobId 
+      if (!jobId || jobId.length === 0) {
+        toast({ title: "Error", description: "Invalid job ID.", variant: "destructive" });
+        return;
+      }
+
+      const { data: sp, error: fetchError } = await supabase
+        .from("student_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle() as any;
+
+      if (fetchError) {
+        console.error("Fetch profile error:", fetchError);
+        toast({ title: "Error", description: "Failed to fetch profile.", variant: "destructive" });
+        return;
+      }
+
+      if (!sp || !sp.id) {
+        toast({ title: "No Profile", description: "Student profile not found. Please refresh and try again.", variant: "destructive" });
+        return;
+      }
+
+      // Ensure both IDs are valid UUIDs
+      console.log("Applying with:", { job_id: jobId, student_id: sp.id });
+
+      const { error: applyError, data: result } = await supabase
+        .from("applications")
+        .insert({ 
+          job_id: jobId, 
+          student_id: sp.id,
+          status: 'pending'  // Set default status
+        })
+        .select();
+
+      if (applyError) {
+        console.error("Application error - FULL DETAILS:", {
+          code: applyError.code,
+          message: applyError.message,
+          details: applyError.details,
+          hint: applyError.hint,
+          context: applyError.context,
+          fullError: applyError
+        });
+        
+        if (applyError.code === "23505") {
+          toast({ title: "Already Applied", description: "You've already applied to this job.", variant: "destructive" });
+        } else if (applyError.code === "23503") {
+          toast({ title: "Foreign Key Error", description: "Invalid job ID or student ID. Please refresh the page.", variant: "destructive" });
+        } else if (applyError.message?.includes("Student profile incomplete")) {
+          toast({ title: "Profile Incomplete", description: "Complete all required fields in your profile before applying.", variant: "destructive" });
+        } else {
+          toast({ title: "Error", description: applyError.message || "Failed to apply.", variant: "destructive" });
+        }
+      } else {
+        setAppliedJobIds(prev => [...prev, jobId]);
+        toast({ title: "Success! ✓", description: "Your application has been submitted successfully." });
+      }
+    } catch (err: any) {
+      console.error("Apply error:", err);
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 

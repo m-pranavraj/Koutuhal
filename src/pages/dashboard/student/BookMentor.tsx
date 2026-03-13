@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useSearchParams, useNavigate, Link } from "react-router-dom";
+import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,8 +30,9 @@ import { cn } from "@/lib/utils";
 const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 const BookMentor = () => {
+  const { mentorId: mentorIdFromPath } = useParams();
   const [searchParams] = useSearchParams();
-  const mentorId = searchParams.get("id");
+  const mentorId = mentorIdFromPath || searchParams.get("id");
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -45,7 +46,17 @@ const BookMentor = () => {
   const [booking, setBooking] = useState(false);
 
   useEffect(() => {
-    if (mentorId) fetchMentorData();
+    if (mentorId) {
+      fetchMentorData();
+      return;
+    }
+
+    setLoading(false);
+    toast({
+      title: "Invalid mentor link",
+      description: "Please select a mentor again from the mentors page.",
+      variant: "destructive",
+    });
   }, [mentorId]);
 
   const fetchMentorData = async () => {
@@ -53,9 +64,9 @@ const BookMentor = () => {
       const [mentorRes, availRes] = await Promise.all([
         supabase
           .from("mentor_profiles")
-          .select("*, profiles(full_name, avatar_url, bio)")
+          .select("*")
           .eq("id", mentorId!)
-          .single(),
+          .maybeSingle(),
         supabase
           .from("mentor_availability")
           .select("*")
@@ -64,11 +75,38 @@ const BookMentor = () => {
           .order("day_of_week"),
       ]) as any[];
 
-      if (mentorRes.data) setMentor(mentorRes.data as any);
+      if (mentorRes.error) throw mentorRes.error;
+      if (availRes.error) throw availRes.error;
+
+      if (!mentorRes.data) {
+        setMentor(null);
+        return;
+      }
+
+      const mentorRow = mentorRes.data as any;
+      let profileRow: any = null;
+
+      if (mentorRow.user_id) {
+        const { data: pData, error: pError } = await supabase
+          .from("profiles")
+          .select("full_name, avatar_url, bio")
+          .eq("user_id", mentorRow.user_id)
+          .maybeSingle();
+
+        if (pError) throw pError;
+        profileRow = pData;
+      }
+
+      setMentor({
+        ...mentorRow,
+        profiles: profileRow,
+      });
+
       if (availRes.data) setAvailability(availRes.data as any[]);
 
     } catch (err) {
       console.error("Fetch mentor error:", err);
+      setMentor(null);
     } finally {
       setLoading(false);
     }
@@ -91,8 +129,8 @@ const BookMentor = () => {
   }, [selectedDate, availability]);
 
   const generateMeetingLink = () => {
-    const roomId = crypto.randomUUID().slice(0, 8);
-    return `https://meet.jit.si/Koutuhal-${roomId}`;
+    const seed = `${Date.now().toString(36)}${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
+    return `https://vdo.ninja/?room=koutuhal-${seed}`;
   };
 
   const handleBook = async () => {
@@ -100,25 +138,22 @@ const BookMentor = () => {
     setBooking(true);
 
     try {
-      const { data: sp } = await supabase
+      const { data: sp, error: fetchError } = await supabase
         .from("student_profiles")
         .select("id, headline, degree, resume_url, skills, graduation_year, college_id")
         .eq("user_id", user.id)
         .maybeSingle() as any;
 
-
-      if (!sp || !sp.headline || !sp.degree || !sp.resume_url || !sp.skills) {
+      if (fetchError || !sp) {
         toast({
-          title: "Profile Incomplete",
-          description: "Please complete your headline, degree, skills, and resume in Settings before booking a session.",
+          title: "Profile Not Found",
+          description: "Please complete your profile in Settings before booking a session.",
           variant: "destructive",
         });
         setBooking(false);
         return;
       }
 
-
-      const meetingLink = generateMeetingLink();
       const sessionDate = format(selectedDate, "yyyy-MM-dd");
 
       const { error } = await (supabase.from("mentor_sessions") as any).insert({
@@ -127,7 +162,8 @@ const BookMentor = () => {
         session_date: sessionDate,
         start_time: selectedSlot.start_time,
         end_time: selectedSlot.end_time,
-        meeting_link: meetingLink,
+        // Mentor sets/refreshes the final room link at approval time.
+        meeting_link: null,
         session_type: mentor?.session_type || "free",
         amount: mentor?.session_type === "paid" ? mentor?.hourly_rate || 0 : 0,
         currency: mentor?.currency || "USD",

@@ -70,13 +70,13 @@ const roleLabels: Record<string, string> = {
 };
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
-  const { user, roles, profile, signOut } = useAuth();
+  const { user, roles, profile, signOut, primaryRole } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const primaryRole = roles.length > 0 ? roles[0] : "student";
-  const navItems = roleNavItems[primaryRole] || roleNavItems.student;
+  const resolvedRole = primaryRole ?? "student";
+  const navItems = roleNavItems[resolvedRole] || roleNavItems.student;
   const initials = profile?.full_name?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "U";
 
   const handleSignOut = async () => {
@@ -137,7 +137,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold truncate text-sidebar-foreground">{profile?.full_name || "User"}</p>
                 <div className="flex items-center gap-1 mt-0.5">
-                  <Badge variant="outline" className="text-[10px] h-4 px-1 border-primary/30 text-primary/80 uppercase tracking-wider">{roleLabels[primaryRole] || primaryRole}</Badge>
+                  <Badge variant="outline" className="text-[10px] h-4 px-1 border-primary/30 text-primary/80 uppercase tracking-wider">{roleLabels[resolvedRole] || resolvedRole}</Badge>
                 </div>
               </div>
             </div>

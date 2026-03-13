@@ -84,6 +84,24 @@ const initialData: ResumeData = {
 
 const ResumeContext = createContext<ResumeContextType | undefined>(undefined);
 
+const parseResumePayload = (row: any): ResumeData => {
+    const payload = row?.content ?? row?.raw_text;
+    if (!payload) return initialData;
+    if (typeof payload === 'object') return payload as ResumeData;
+    if (typeof payload === 'string') {
+        try {
+            return JSON.parse(payload) as ResumeData;
+        } catch {
+            return initialData;
+        }
+    }
+    return initialData;
+};
+
+const isMissingColumnError = (error: any) => {
+    return error?.code === 'PGRST204' && String(error?.message || '').includes('column');
+};
+
 export const ResumeProvider = ({ children }: { children: ReactNode }) => {
     const { user } = useAuth();
     const [resumeData, setResumeData] = useState<ResumeData>(initialData);
@@ -118,7 +136,7 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
                 }
 
                 if (data) {
-                    setResumeData(data.content as ResumeData);
+                    setResumeData(parseResumePayload(data));
                     setResumeId(data.id);
                 } else {
                     await createNewResume();
@@ -138,15 +156,29 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
         if (!user) return;
 
         try {
-            const { data, error } = await supabase
-                .from('resumes')
-                .insert([{
-                    user_id: user.id,
-                    title: 'My Resume',
-                    content: initialData
-                }])
-                .select()
-                .single();
+            let data: any = null;
+            let error: any = null;
+
+            const candidatePayloads: any[] = [
+                { user_id: user.id, title: 'My Resume', content: initialData },
+                { user_id: user.id, title: 'My Resume', raw_text: JSON.stringify(initialData) },
+                { user_id: user.id, raw_text: JSON.stringify(initialData) },
+                { user_id: user.id },
+            ];
+
+            for (const payload of candidatePayloads) {
+                const attempt = await supabase
+                    .from('resumes')
+                    .insert([payload])
+                    .select()
+                    .single();
+
+                data = attempt.data;
+                error = attempt.error as any;
+
+                if (!error) break;
+                if (!isMissingColumnError(error)) break;
+            }
 
             if (error) {
                 console.error('Error creating resume:', error);
@@ -182,14 +214,33 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
         setSaveError(null);
 
         try {
-            const { error } = await supabase
-                .from('resumes')
-                .update({
-                    content: resumeData,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', resumeId)
-                .eq('user_id', user.id);
+            const now = new Date().toISOString();
+            let error: any = null;
+
+            const candidateUpdates: any[] = [
+                { content: resumeData, updated_at: now },
+                { raw_text: JSON.stringify(resumeData), updated_at: now },
+                { content: resumeData },
+                { raw_text: JSON.stringify(resumeData) },
+            ];
+
+            for (const updatePayload of candidateUpdates) {
+                const attempt = await supabase
+                    .from('resumes')
+                    .update(updatePayload as any)
+                    .eq('id', resumeId)
+                    .eq('user_id', user.id);
+
+                error = attempt.error as any;
+                if (!error) break;
+                if (!isMissingColumnError(error)) break;
+            }
+
+            // If schema is too old to support any content column, avoid noisy hard-fail on unrelated pages.
+            if (error && isMissingColumnError(error)) {
+                console.warn('Resume save skipped due to legacy resumes schema:', error.message);
+                return;
+            }
 
             if (error) {
                 throw new Error(error.message);

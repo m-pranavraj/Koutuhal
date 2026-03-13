@@ -44,42 +44,9 @@ const ResumeForm = () => {
         if (currIdx > 0) setActiveTab(tabs[currIdx - 1].id);
     };
 
-    // Calculate Score
-    const calculateScore = () => {
-        let score = 0;
-        if (resumeData.personal.fullName) score += 10;
-        if (resumeData.personal.email) score += 10;
-        if (resumeData.personal.bio) score += 10;
-        if (resumeData.experience.length > 0) score += 20;
-        if (resumeData.education.length > 0) score += 20;
-        if (resumeData.skills.length > 0) score += 15;
-        if (resumeData.projects.length > 0) score += 15;
-        return score;
-    };
-
     return (
         <div className="space-y-6">
-            {/* Resume Score */}
-            <div className="bg-neutral-900 dark:bg-black p-4 rounded-xl border border-gray-200 dark:border-neutral-800 shadow-sm flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-[#ADFF44]/10 text-[#ADFF44] rounded-full">
-                        <Sparkles className="w-5 h-5" />
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-sm text-gray-900 dark:text-gray-100">Resume Strength</h4>
-                        <p className="text-xs text-gray-500">Aim for 100% to increase interview chances</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3 w-1/3">
-                    <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-gradient-to-r from-[#ADFF44] to-[#8BCC36] transition-all duration-500"
-                            style={{ width: `${calculateScore()}%` }}
-                        />
-                    </div>
-                    <span className="font-bold text-sm text-[#ADFF44]">{calculateScore()}%</span>
-                </div>
-            </div>
+            // ...existing code...
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg mb-6">

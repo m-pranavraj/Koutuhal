@@ -10,6 +10,33 @@ import { Award, Download, CheckCircle, XCircle, ArrowRight, FileCheck } from "lu
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
+const parseStorageRef = (value?: string | null): { bucket: string; path: string } | null => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return { bucket: "attachments", path: trimmed };
+  }
+
+  try {
+    const url = new URL(trimmed);
+    const marker = "/storage/v1/object/";
+    const idx = url.pathname.indexOf(marker);
+    if (idx === -1) return null;
+    const tail = url.pathname.slice(idx + marker.length);
+    const parts = tail.split("/").filter(Boolean);
+    if (parts.length < 2) return null;
+    const offset = ["public", "sign", "authenticated"].includes(parts[0]) ? 1 : 0;
+    const bucket = parts[offset];
+    const path = parts.slice(offset + 1).join("/");
+    if (!bucket || !path) return null;
+    return { bucket, path };
+  } catch {
+    return null;
+  }
+};
+
 const StudentOffers = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -39,13 +66,33 @@ const StudentOffers = () => {
   };
 
   const handleOfferAction = async (offerId: string, status: string) => {
-    const { error } = await supabase.from("offers").update({ status }).eq("id", offerId);
+    const { data: rpcResult, error } = await (supabase as any).rpc("student_respond_offer", {
+      p_offer_id: offerId,
+      p_status: status,
+    });
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else if (!rpcResult?.ok) {
+      toast({ title: "Error", description: rpcResult?.reason || "Could not update offer.", variant: "destructive" });
     } else {
       toast({ title: status === "accepted" ? "Offer accepted! âœ¨" : "Offer declined" });
-      setOffers(prev => prev.map(o => o.id === offerId ? { ...o, status } : o));
+      await fetchData();
     }
+  };
+
+  const openOfferLetter = async (offerLetterUrl: string) => {
+    const storageRef = parseStorageRef(offerLetterUrl);
+    if (!storageRef) {
+      window.open(offerLetterUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    const { data, error } = await supabase.storage.from(storageRef.bucket).createSignedUrl(storageRef.path, 3600);
+    if (error || !data?.signedUrl) {
+      toast({ title: "Error", description: error?.message || "Unable to open offer letter.", variant: "destructive" });
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
 
   if (loading) return (
@@ -136,11 +183,9 @@ const StudentOffers = () => {
                       </>
                     )}
                     {offer.offer_letter_url && (
-                      <Button variant="outline" asChild className="border-white/10 hover:bg-white/5 text-white rounded-xl h-11 px-6 transition-all group">
-                        <a href={offer.offer_letter_url} target="_blank" rel="noopener noreferrer">
-                          <Download className="h-4 w-4 mr-2 group-hover:translate-y-1 transition-transform" />
-                          View Letter
-                        </a>
+                      <Button variant="outline" onClick={() => openOfferLetter(offer.offer_letter_url)} className="border-white/10 hover:bg-white/5 text-white rounded-xl h-11 px-6 transition-all group">
+                        <Download className="h-4 w-4 mr-2 group-hover:translate-y-1 transition-transform" />
+                        View Letter
                       </Button>
                     )}
                   </div>

@@ -21,12 +21,42 @@ const StudentAssessments = () => {
     try {
       const { data: sp } = await supabase.from("student_profiles").select("id").eq("user_id", user!.id).maybeSingle();
       if (!sp) { setLoading(false); return; }
-      const { data } = await supabase
+      const { data: assignments } = await supabase
         .from("assessment_assignments")
         .select("*, assessments(*, jobs(title, organization_profiles(company_name)))")
         .eq("student_id", sp.id)
         .order("created_at", { ascending: false });
-      if (data) setSubmissions(data);
+
+      const { data: allSubs } = await supabase
+        .from("assessment_submissions")
+        .select("assessment_id, score, status, submitted_at, attempt_number, created_at")
+        .eq("student_id", sp.id)
+        .order("created_at", { ascending: false });
+
+      if (assignments) {
+        const grouped: Record<string, any[]> = {};
+        (allSubs || []).forEach((s: any) => {
+          if (!grouped[s.assessment_id]) grouped[s.assessment_id] = [];
+          grouped[s.assessment_id].push(s);
+        });
+
+        const enriched = assignments.map((a: any) => {
+          const subsForAssessment = grouped[a.assessment_id] || [];
+          const latest = subsForAssessment[0] || null;
+          const attemptsUsed = subsForAssessment.length;
+          const maxAttempts = a.assessments?.max_attempts ?? 1;
+          return {
+            ...a,
+            latestScore: latest?.score ?? null,
+            latestSubmissionStatus: latest?.status ?? null,
+            attemptsUsed,
+            maxAttempts,
+            canAttempt: attemptsUsed < maxAttempts,
+          };
+        });
+
+        setSubmissions(enriched);
+      }
     } catch (err) {
       console.error("Error fetching assessments:", err);
     } finally {
@@ -94,8 +124,9 @@ const StudentAssessments = () => {
                         {sub.assessments?.time_limit_minutes && (
                           <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {sub.assessments.time_limit_minutes} Min</span>
                         )}
-                        {sub.score !== null && (
-                          <span className="flex items-center gap-1.5 text-primary"><CheckCircle className="h-3.5 w-3.5" /> Score: {sub.score}%</span>
+                        <span className="flex items-center gap-1.5">Attempts: {sub.attemptsUsed ?? 0}/{sub.maxAttempts ?? 1}</span>
+                        {sub.latestScore !== null && (
+                          <span className="flex items-center gap-1.5 text-primary"><CheckCircle className="h-3.5 w-3.5" /> Score: {sub.latestScore}%</span>
                         )}
                       </div>
                     </div>
@@ -104,18 +135,18 @@ const StudentAssessments = () => {
                   <div className="flex items-center gap-4 w-full md:w-auto">
                     <Badge className={cn(
                       "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest",
-                      sub.status === "pending" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "bg-primary/10 text-primary border-primary/20"
+                      sub.canAttempt ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "bg-primary/10 text-primary border-primary/20"
                     )}>
                       <span className="flex items-center gap-1.5">
-                        {sub.status === "pending" ? <Clock className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
-                        {sub.status}
+                        {sub.canAttempt ? <Clock className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                        {sub.canAttempt ? "pending" : "completed"}
                       </span>
                     </Badge>
                     
-                    {sub.status === "pending" && (
+                    {sub.canAttempt && (
                       <Button asChild className="btn-green rounded-xl h-11 px-6 font-bold shadow-lg shadow-primary/10 group">
                         <Link to={`/dashboard/assessments/take/${sub.id}`}>
-                          Start Assessment <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform text-black" />
+                          {sub.attemptsUsed > 0 ? "Retry Assessment" : "Start Assessment"} <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform text-black" />
                         </Link>
                       </Button>
                     )}

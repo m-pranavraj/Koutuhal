@@ -20,18 +20,72 @@ const CollegeStudents = () => {
 
   useEffect(() => { if (user) fetchData(); }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`college-students:${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "student_profiles" }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "college_profiles" }, () => fetchData())
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [user]);
+
   const fetchData = async () => {
     try {
-      const { data: college } = await supabase.from("college_profiles").select("id").eq("user_id", user!.id).maybeSingle();
+      const { data: college } = await supabase
+        .from("college_profiles")
+        .select("id, college_name")
+        .eq("user_id", user!.id)
+        .maybeSingle();
       if (!college) { setLoading(false); return; }
 
-      const { data } = await supabase
+      const { data: idMatchedStudents } = await supabase
         .from("student_profiles")
-        .select("*, profiles:user_id(full_name, email, avatar_url)")
+        .select("id, user_id, degree, branch, graduation_year, skills, college_id, college_name, created_at")
         .eq("college_id", (college as any).id)
         .order("created_at", { ascending: false });
 
-      if (data) setStudents(data);
+      let combinedStudents = idMatchedStudents || [];
+
+      if (combinedStudents.length === 0 && (college as any).college_name) {
+        const { data: nameMatchedStudents } = await supabase
+          .from("student_profiles")
+          .select("id, user_id, degree, branch, graduation_year, skills, college_id, college_name, created_at")
+          .ilike("college_name", (college as any).college_name)
+          .order("created_at", { ascending: false });
+
+        combinedStudents = nameMatchedStudents || [];
+      }
+
+      const uniqueById = new Map<string, any>();
+      combinedStudents.forEach((s: any) => uniqueById.set(s.id, s));
+      const dedupedStudents = Array.from(uniqueById.values());
+
+      const userIds = dedupedStudents.map((s: any) => s.user_id).filter(Boolean);
+      let profilesByUserId: Record<string, any> = {};
+
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name, email, avatar_url")
+          .in("user_id", userIds);
+        profilesByUserId = (profiles || []).reduce((acc: Record<string, any>, p: any) => {
+          acc[p.user_id] = p;
+          return acc;
+        }, {});
+      }
+
+      setStudents(
+        dedupedStudents.map((s: any) => ({
+          ...s,
+          profiles: profilesByUserId[s.user_id] || null,
+        }))
+      );
     } catch (err) {
       console.error(err);
     } finally {
@@ -148,7 +202,7 @@ const CollegeStudents = () => {
                   </div>
 
                   <Button variant="ghost" asChild className="w-full justify-between h-10 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white rounded-xl text-xs font-bold border border-white/5 transition-all group/btn">
-                    <Link to={`#`}>
+                    <Link to={`/dashboard/students/${s.id}`}>
                       View Detailed Profile
                       <ArrowRight className="h-3 w-3 group-hover/btn:translate-x-1 transition-transform" />
                     </Link>

@@ -140,7 +140,7 @@ const MobileNavItem = ({
 export const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile, roles, signOut } = useAuth();
+  const { user, profile, roles, signOut, primaryRole } = useAuth();
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -258,7 +258,7 @@ export const Header = () => {
               <div className="flex items-center gap-3">
                 <div className="hidden sm:flex flex-col gap-0.5 text-right">
                   <span className="text-sm font-bold text-white">{(profile?.full_name || 'User').split(' ')[0]}</span>
-                  <span className="text-xs text-[#ADFF44] font-medium uppercase tracking-wider">{roles[0] || 'student'}</span>
+                  <span className="text-xs text-[#ADFF44] font-medium uppercase tracking-wider">{primaryRole || 'student'}</span>
                 </div>
                 {/* Role-specific dashboard link */}
                 {roles.includes('mentor') && (
@@ -349,7 +349,7 @@ export const Header = () => {
                     <div className="px-5 py-4 bg-neutral-900 rounded-xl mb-4">
                       <p className="text-xs text-neutral-500 uppercase tracking-wider font-bold mb-2">LOGGED IN AS</p>
                       <p className="text-white font-bold mb-1">{profile?.full_name || 'User'}</p>
-                      <p className="text-[#ADFF44] text-sm font-bold uppercase tracking-wider">{roles[0] || 'student'}</p>
+                      <p className="text-[#ADFF44] text-sm font-bold uppercase tracking-wider">{primaryRole || 'student'}</p>
                     </div>
                     <MobileNavItem to="/dashboard" label="DASHBOARD" isActive={isActive("/dashboard")} onClick={() => setMobileMenuOpen(false)} index={3} />
                     {roles.includes('mentor') && (

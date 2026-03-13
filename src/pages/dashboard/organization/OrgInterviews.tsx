@@ -22,6 +22,18 @@ const statusColors: Record<string, string> = {
   rescheduled: "bg-amber-500/10 text-amber-500 border-amber-500/20",
 };
 
+const getCandidateName = (application: ApplicationRow | null | undefined) => {
+  return application?.student_profiles?.full_name || application?.student_profiles?.profiles?.full_name || "Applicant";
+};
+
+const normalizeMeetingLink = (link?: string | null) => {
+  if (!link) return null;
+  const trimmed = link.trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+};
+
 const OrgInterviews = () => {
   const { user } = useAuth();
   const [interviews, setInterviews] = useState<InterviewRow[]>([]);
@@ -45,13 +57,13 @@ const OrgInterviews = () => {
 
       const [interviewsRes, appsRes] = await Promise.all([
         supabase.from("interviews")
-          .select("*, applications(jobs(title), student_profiles(profiles:user_id(full_name)))")
+          .select("*, applications(jobs(title), student_profiles(full_name))")
           .in("application_id", (await supabase.from("applications").select("id").in("job_id", jobIds) as any).data?.map((a: any) => a.id) || [])
           .order("scheduled_at", { ascending: true }) as any,
         supabase.from("applications")
-          .select("id, status, jobs(title), student_profiles(profiles:user_id(full_name))")
+          .select("id, status, jobs(title), student_profiles(full_name)")
           .in("job_id", jobIds)
-          .in("status", ["interview", "screening", "assessment", "shortlisted", "final_review"]) as any,
+          .in("status", ["interview", "screening", "assessment", "shortlisted", "final_review", "selected"]) as any,
       ]);
       if (interviewsRes.data) setInterviews(interviewsRes.data as unknown as InterviewRow[]);
       if (appsRes.data) setApplications(appsRes.data as unknown as ApplicationRow[]);
@@ -67,14 +79,17 @@ const OrgInterviews = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const { error } = await (supabase.from("interviews") as any).insert({
-        application_id: form.application_id,
-        scheduled_at: new Date(form.scheduled_at).toISOString(),
-        meeting_link: form.meeting_link || null,
-        interviewer_name: form.interviewer_name || null,
+      const { data: rpcResult, error } = await (supabase as any).rpc("org_schedule_interview", {
+        p_application_id: form.application_id,
+        p_scheduled_at: new Date(form.scheduled_at).toISOString(),
+        p_meeting_link: normalizeMeetingLink(form.meeting_link),
+        p_interviewer_name: form.interviewer_name || null,
       });
 
       if (error) throw error;
+      if (!rpcResult?.ok) {
+        throw new Error(rpcResult?.reason || "Interview scheduling failed.");
+      }
       toast({ title: "Interview scheduled! âœ¨" });
       setShowSchedule(false);
       setForm({ application_id: "", scheduled_at: "", meeting_link: "", interviewer_name: "" });
@@ -142,7 +157,7 @@ const OrgInterviews = () => {
                     <SelectContent>
                       {applications.map(a => (
                         <SelectItem key={a.id} value={a.id}>
-                          {a.student_profiles?.profiles?.full_name || "Applicant"} &ndash; {a.jobs?.title}
+                          {getCandidateName(a)} &ndash; {a.jobs?.title}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -198,7 +213,7 @@ const OrgInterviews = () => {
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-white mb-1 group-hover:text-primary transition-colors">
-                        {iv.applications?.student_profiles?.profiles?.full_name || "Candidate"}
+                        {getCandidateName(iv.applications) || "Candidate"}
                       </h3>
                       <p className="text-sm font-bold text-white/40 mb-3 uppercase tracking-wider">
                         {iv.applications?.jobs?.title}
@@ -228,7 +243,7 @@ const OrgInterviews = () => {
                   <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
                     {iv.meeting_link && iv.status === "scheduled" && (
                         <Button asChild className="btn-green rounded-xl h-11 px-6 font-bold text-black flex-1 md:flex-none">
-                          <a href={iv.meeting_link} target="_blank" rel="noopener noreferrer">
+                          <a href={normalizeMeetingLink(iv.meeting_link) || "#"} target="_blank" rel="noopener noreferrer">
                              <Video className="h-4 w-4 mr-2" /> Join Meeting
                           </a>
                         </Button>

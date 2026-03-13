@@ -107,8 +107,7 @@ const MyApplications = () => {
         .select(`
           *, 
           jobs(title, location, job_type, organization_profiles(company_name)),
-          application_activity(*),
-          job_match_scores(match_score)
+          application_activity(*)
         `)
         .eq("student_id", student_p.id)
         .order("created_at", { ascending: false });
@@ -216,11 +215,6 @@ const MyApplications = () => {
                             <StatusIcon className="h-4 w-4" />
                             <span className="text-xs font-black uppercase tracking-widest">{config.label}</span>
                          </div>
-                         {app.job_match_scores?.[0]?.match_score && (
-                           <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary font-bold px-3 py-1 rounded-lg">
-                             {app.job_match_scores[0].match_score}% Match
-                           </Badge>
-                         )}
                          <p className="text-[10px] font-medium text-white/30 italic max-w-[200px]">{config.description}</p>
                       </div>
                     </div>
