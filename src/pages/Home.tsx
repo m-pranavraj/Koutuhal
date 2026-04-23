@@ -32,6 +32,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import ScrollSequence from "@/components/motion/ScrollSequence";
+import PromoPopup from "@/components/shared/PromoPopup";
 import {
   Dialog,
   DialogContent,
@@ -329,6 +330,24 @@ const Home = () => {
   const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0]);
   const heroScale = useTransform(scrollYProgress, [0, 1], [1, 0.95]);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isPromoOpen, setIsPromoOpen] = useState(false);
+
+  useEffect(() => {
+    // Show promo after 2 seconds initially
+    const initialTimer = setTimeout(() => {
+      setIsPromoOpen(true);
+    }, 2000);
+
+    // Then repeat every 3 minutes (180,000 ms)
+    const interval = setInterval(() => {
+      setIsPromoOpen(true);
+    }, 180000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const { clientX, clientY } = e;
@@ -337,6 +356,7 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-black text-white overflow-x-hidden" onMouseMove={handleMouseMove}>
+      <PromoPopup isOpen={isPromoOpen} onClose={() => setIsPromoOpen(false)} />
 
       {/* ━━━ HERO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section ref={heroRef} className="relative min-h-[110vh] flex flex-col bg-black overflow-hidden select-none">
