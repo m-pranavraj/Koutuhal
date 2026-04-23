@@ -29,7 +29,7 @@ const PromoPopup: React.FC<PromoPopupProps> = ({ isOpen, onClose }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-lg bg-neutral-900 border border-[#ADFF44]/30 rounded-[2rem] overflow-hidden shadow-[0_0_50px_rgba(173,255,68,0.15)] z-10"
+            className="relative w-full max-w-4xl bg-neutral-900 border border-[#ADFF44]/30 rounded-[2.5rem] overflow-hidden shadow-[0_0_80px_rgba(173,255,68,0.25)] z-10"
           >
             {/* Close Button */}
             <button
@@ -47,7 +47,7 @@ const PromoPopup: React.FC<PromoPopupProps> = ({ isOpen, onClose }) => {
               className="block group"
             >
               {/* Image Section */}
-              <div className="relative h-48 sm:h-64 overflow-hidden">
+              <div className="relative h-64 sm:h-[450px] md:h-[550px] overflow-hidden">
                 <img
                   src={promoImg}
                   alt="AI for School Students"
@@ -65,17 +65,17 @@ const PromoPopup: React.FC<PromoPopupProps> = ({ isOpen, onClose }) => {
               </div>
 
               {/* Text Section */}
-              <div className="p-6 sm:p-8 pt-0">
-                <h3 className="text-2xl sm:text-3xl font-display font-black text-white mb-2 leading-tight">
+              <div className="p-8 sm:p-12 pt-0">
+                <h3 className="text-3xl sm:text-5xl font-display font-black text-white mb-4 leading-tight">
                   AI FOR students <br />
                   <span className="text-[#ADFF44]">SUMMER BOOTCAMP</span>
                 </h3>
-                <p className="text-neutral-400 text-sm mb-6 leading-relaxed">
+                <p className="text-neutral-400 text-lg sm:text-xl mb-8 leading-relaxed max-w-2xl">
                   Join the most intensive AI workshop this summer. Build real projects, master modern AI tools, and jumpstart your futuristic career today!
                 </p>
 
-                <Button className="w-full h-14 bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-black uppercase tracking-widest rounded-2xl group-hover:shadow-[0_0_30px_#ADFF4455] transition-all">
-                  Enroll Now <ArrowRight className="ml-2 h-5 w-5" />
+                <Button className="w-full sm:w-auto px-12 h-16 bg-[#ADFF44] text-black hover:bg-[#9BE63D] font-black underline uppercase tracking-widest rounded-2xl group-hover:shadow-[0_0_30px_#ADFF4455] transition-all text-lg">
+                  Enroll Now <ArrowRight className="ml-2 h-6 w-6" />
                 </Button>
               </div>
             </a>
