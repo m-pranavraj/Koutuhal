@@ -11,6 +11,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import ScrollToTop from "@/components/layout/ScrollToTop";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { Analytics } from "@vercel/analytics/react";
 
 // ─── PUBLIC PAGES (Koutuhal Shell — unchanged) ────────────────────────────────
 import Home from "@/pages/Home";
@@ -211,6 +212,7 @@ const App = () => (
         </ResumeProvider>
       </AuthProvider>
     </QueryClientProvider>
+    <Analytics />
   </ThemeProvider>
 );
 
