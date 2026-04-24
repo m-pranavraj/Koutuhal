@@ -791,8 +791,8 @@ const Home = () => {
                     src={coach.image}
                     alt={coach.name}
                     className={cn(
-                      "w-full h-full object-cover transition-all duration-700",
-                      coach.name === "M Pranav Raj" && "object-top scale-[1.3]"
+                      "w-full h-full transition-all duration-700",
+                      coach.name === "M Pranav Raj" ? "object-contain" : "object-cover"
                     )}
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
