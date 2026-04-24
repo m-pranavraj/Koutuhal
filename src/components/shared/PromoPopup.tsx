@@ -29,7 +29,7 @@ const PromoPopup: React.FC<PromoPopupProps> = ({ isOpen, onClose }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-2xl bg-neutral-900 border border-[#ADFF44]/30 rounded-[2.5rem] overflow-hidden shadow-[0_0_80px_rgba(173,255,68,0.25)] z-10"
+            className="relative w-full max-w-xl bg-neutral-900 border border-[#ADFF44]/30 rounded-[2.5rem] overflow-hidden shadow-[0_0_80px_rgba(173,255,68,0.25)] z-10"
           >
             {/* Close Button */}
             <button
@@ -47,7 +47,7 @@ const PromoPopup: React.FC<PromoPopupProps> = ({ isOpen, onClose }) => {
               className="block group"
             >
               {/* Image Section */}
-              <div className="relative h-56 sm:h-[380px] md:h-[450px] overflow-hidden bg-neutral-900">
+              <div className="relative h-48 sm:h-[300px] md:h-[350px] overflow-hidden bg-neutral-900">
                 <img
                   src={promoImg}
                   alt="AI for School Students"
@@ -65,8 +65,8 @@ const PromoPopup: React.FC<PromoPopupProps> = ({ isOpen, onClose }) => {
               </div>
 
               {/* Text Section */}
-              <div className="p-6 sm:p-10 pt-0">
-                <h3 className="text-2xl sm:text-4xl font-display font-black text-white mb-4 leading-tight">
+              <div className="p-5 sm:p-8 pt-0">
+                <h3 className="text-xl sm:text-3xl font-display font-black text-white mb-4 leading-tight">
                   AI FOR students <br />
                   <span className="text-[#ADFF44]">SUMMER BOOTCAMP</span>
                 </h3>
