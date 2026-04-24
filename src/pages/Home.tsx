@@ -792,7 +792,7 @@ const Home = () => {
                     alt={coach.name}
                     className={cn(
                       "w-full h-full transition-all duration-700",
-                      coach.name === "M Pranav Raj" ? "object-contain" : "object-cover"
+                      coach.name === "M Pranav Raj" ? "object-cover object-top" : "object-cover"
                     )}
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
