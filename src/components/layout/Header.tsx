@@ -228,8 +228,8 @@ export const Header = () => {
           {/* ── Logo ── */}
           <Link to="/" className="flex items-center gap-3 group">
             {location.pathname === '/' ? (
-              <span className="text-xl md:text-2xl font-black tracking-[0.3em] text-white group-hover:text-[#ADFF44] transition-colors">
-                K O U T U H A L
+              <span className="text-xl md:text-2xl font-black tracking-[0.25em] text-white group-hover:text-[#ADFF44] transition-colors whitespace-nowrap uppercase">
+                Koutuhal
               </span>
             ) : (
               <img src="/logo.png" alt="Koutuhal Logo" className="h-16 w-auto object-contain" />
