@@ -384,6 +384,11 @@ Output ONLY valid JSON (no markdown):
         # Validate response structure
         if not isinstance(analysis, dict):
             raise ValueError("Response must be a JSON object")
+        
+        # If explicitly not a resume, skip other validations and return immediately
+        if analysis.get("is_resume") is False:
+            return analysis
+
         if not analysis.get("ats_score"):
             raise ValueError("Missing ats_score in response")
         if not analysis.get("role_matches"):
@@ -393,8 +398,8 @@ Output ONLY valid JSON (no markdown):
         # Compute real alignment scores server-side, then override LLM hallucinations.
 
         # 1. Override ATS sub-scores with blended real + LLM
-        llm_overall = int(analysis["ats_score"].get("overall", 0))
-        llm_formatting = int(analysis["ats_score"].get("formatting", 0))
+        llm_overall = int(analysis["ats_score"].get("overall") or 0)
+        llm_formatting = int(analysis["ats_score"].get("formatting") or 0)
 
         # If any role has a JD, use it for keyword matching
         primary_jd = ""

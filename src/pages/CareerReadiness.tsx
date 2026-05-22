@@ -197,11 +197,6 @@ const CareerReadiness = () => {
             setAnalysis(analysisData);
             setStage("results");
             
-            // Auto-fetch recommended jobs
-            const recommendedRole = analysisData.best_for?.role || finalRoles[0]?.role;
-            if (recommendedRole) {
-                fetchRecommendedJobs(recommendedRole);
-            }
 
         } catch (err: any) {
             toast.error(err.message || "An unexpected error occurred.");
