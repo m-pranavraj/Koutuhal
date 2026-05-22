@@ -507,168 +507,94 @@ Output ONLY valid JSON (no markdown):
 @router.get("/jobs")
 async def find_jobs(role: str, location: str = "Remote", num_pages: int = 1):
     """
-    Fetch live job listings. Tries JSearch (RapidAPI) first, and falls back to
-    SearchAPI (searchapi.io) if JSearch fails or is not configured.
+    Fetch live job listings from JSearch (RapidAPI) — LinkedIn, Indeed, Glassdoor, etc.
+    Each page returns up to 10 results. num_pages=5 → up to 50 jobs.
     """
-    normalized = []
-    tried_jsearch = False
-    tried_searchapi = False
-    errors = []
+    if not settings.RAPIDAPI_KEY:
+        raise HTTPException(status_code=500, detail="RapidAPI Key not configured. Add RAPIDAPI_KEY to .env")
 
-    # 1. Try JSearch (RapidAPI)
-    if settings.RAPIDAPI_KEY:
-        tried_jsearch = True
-        url = "https://jsearch.p.rapidapi.com/search"
-        if location.lower() in ("remote", "global", ""):
-            query = f"{role} jobs remote"
-        else:
-            query = f"{role} jobs in {location}"
+    url = "https://jsearch.p.rapidapi.com/search"
+    # If location is 'Remote' or 'Global', don't append location to keep broad results
+    if location.lower() in ("remote", "global", ""):
+        query = f"{role} jobs remote"
+    else:
+        query = f"{role} jobs in {location}"
 
-        headers = {
-            "x-rapidapi-host": "jsearch.p.rapidapi.com",
-            "x-rapidapi-key": settings.RAPIDAPI_KEY,
-        }
-        params = {
-            "query": query,
-            "page": "1",
-            "num_pages": str(num_pages),
-            "date_posted": "all",
-        }
+    headers = {
+        "x-rapidapi-host": "jsearch.p.rapidapi.com",
+        "x-rapidapi-key": settings.RAPIDAPI_KEY,
+    }
+    params = {
+        "query": query,
+        "page": "1",
+        "num_pages": str(num_pages),  # up to 50 results (5 pages × 10)
+        "date_posted": "all",
+    }
 
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            try:
-                resp = await client.get(url, headers=headers, params=params)
-                resp.raise_for_status()
-                data = resp.json()
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        try:
+            resp = await client.get(url, headers=headers, params=params)
+            resp.raise_for_status()
+            data = resp.json()
 
-                if data.get("status") == "OK":
-                    raw_jobs = data.get("data", [])
-                    for j in raw_jobs:
-                        title = j.get("job_title") or ""
-                        if not title:
-                            continue
+            if data.get("status") != "OK":
+                error_msg = data.get("error", {}).get("message", "JSearch API error")
+                raise HTTPException(status_code=502, detail=error_msg)
 
-                        apply_url = j.get("job_apply_link") or ""
-                        if not apply_url:
-                            apply_options = j.get("apply_options") or []
-                            if apply_options:
-                                apply_url = apply_options[0].get("apply_link", "")
+            raw_jobs = data.get("data", [])
+            normalized = []
 
-                        is_remote = j.get("job_is_remote", False)
-                        employment_type = j.get("job_employment_type") or "FULLTIME"
-                        work_type = "remote" if is_remote else "on_site"
+            for j in raw_jobs:
+                title = j.get("job_title") or ""
+                if not title:
+                    continue
 
-                        city = j.get("job_city") or ""
-                        state = j.get("job_state") or ""
-                        country = j.get("job_country") or ""
-                        loc_parts = [p for p in [city, state, country] if p]
-                        job_location = ", ".join(loc_parts) if loc_parts else location
+                # Build a rich apply URL
+                apply_url = j.get("job_apply_link") or ""
+                if not apply_url:
+                    apply_options = j.get("apply_options") or []
+                    if apply_options:
+                        apply_url = apply_options[0].get("apply_link", "")
 
-                        normalized.append({
-                            "title": title,
-                            "company": j.get("employer_name") or "Company",
-                            "location": "Remote" if is_remote else job_location,
-                            "apply_url": apply_url,
-                            "snippet": (j.get("job_description") or "")[:300],
-                            "work_type": work_type,
-                            "employment_type": employment_type,
-                            "posted_time": j.get("job_posted_at_timestamp"),
-                            "logo": j.get("employer_logo"),
-                            "source": j.get("job_publisher") or "",
-                        })
-                else:
-                    error_msg = data.get("error", {}).get("message", "JSearch API status not OK")
-                    errors.append(f"JSearch status error: {error_msg}")
-            except Exception as e:
-                logging.warning(f"JSearch fetch failed, trying fallback: {str(e)}")
-                errors.append(f"JSearch exception: {str(e)}")
+                # Determine work type
+                is_remote = j.get("job_is_remote", False)
+                employment_type = j.get("job_employment_type") or "FULLTIME"
+                work_type = "remote" if is_remote else "on_site"
 
-    # 2. Try SearchAPI.io (if JSearch failed or wasn't configured)
-    if not normalized and settings.SEARCHAPI_KEY:
-        tried_searchapi = True
-        url = "https://www.searchapi.io/api/v1/search"
-        if location.lower() in ("remote", "global", ""):
-            query = f"{role} jobs remote"
-        else:
-            query = f"{role} jobs in {location}"
+                # Location string
+                city = j.get("job_city") or ""
+                state = j.get("job_state") or ""
+                country = j.get("job_country") or ""
+                loc_parts = [p for p in [city, state, country] if p]
+                job_location = ", ".join(loc_parts) if loc_parts else location
 
-        params = {
-            "engine": "google_jobs",
-            "q": query,
-            "api_key": settings.SEARCHAPI_KEY,
-        }
+                normalized.append({
+                    "title": title,
+                    "company": j.get("employer_name") or "Company",
+                    "location": "Remote" if is_remote else job_location,
+                    "apply_url": apply_url,
+                    "snippet": (j.get("job_description") or "")[:300],
+                    "work_type": work_type,
+                    "employment_type": employment_type,
+                    "posted_time": j.get("job_posted_at_timestamp"),
+                    "logo": j.get("employer_logo"),
+                    "source": j.get("job_publisher") or "",
+                })
 
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            try:
-                resp = await client.get(url, params=params)
-                resp.raise_for_status()
-                data = resp.json()
+            # ── Deduplicate by apply_url (JSearch sometimes returns same job on multiple pages) ──
+            seen = set()
+            deduped = []
+            for job in normalized:
+                key = job["apply_url"] or (job["title"] + job["company"])
+                if key not in seen:
+                    seen.add(key)
+                    deduped.append(job)
 
-                raw_jobs = data.get("jobs", [])
-                for j in raw_jobs:
-                    title = j.get("title") or ""
-                    if not title:
-                        continue
+            return deduped
 
-                    apply_url = j.get("apply_link") or ""
-                    if not apply_url:
-                        apply_links = j.get("apply_links") or []
-                        if apply_links:
-                            apply_url = apply_links[0].get("link", "")
-                    if not apply_url:
-                        apply_url = j.get("sharing_link") or ""
-
-                    # Check if remote
-                    is_remote = False
-                    if j.get("detected_extensions", {}).get("work_from_home", False):
-                        is_remote = True
-                    elif "remote" in title.lower() or "remote" in (j.get("location") or "").lower():
-                        is_remote = True
-
-                    schedule = j.get("detected_extensions", {}).get("schedule") or "Full-time"
-                    work_type = "remote" if is_remote else "on_site"
-                    job_location = j.get("location") or location
-
-                    # Source
-                    source = j.get("via", "")
-                    if source.startswith("via "):
-                        source = source[4:]
-
-                    normalized.append({
-                        "title": title,
-                        "company": j.get("company_name") or "Company",
-                        "location": "Remote" if is_remote else job_location,
-                        "apply_url": apply_url,
-                        "snippet": (j.get("description") or "")[:300],
-                        "work_type": work_type,
-                        "employment_type": schedule,
-                        "posted_time": None,
-                        "logo": j.get("thumbnail"),
-                        "source": source,
-                    })
-            except Exception as e:
-                logging.error(f"SearchAPI fetch failed: {str(e)}")
-                errors.append(f"SearchAPI exception: {str(e)}")
-
-    # 3. Handle results or errors
-    if normalized:
-        # Deduplicate
-        seen = set()
-        deduped = []
-        for job in normalized:
-            key = job["apply_url"] or (job["title"] + job["company"])
-            if key not in seen:
-                seen.add(key)
-                deduped.append(job)
-        return deduped
-
-    # If no results and we tried at least one API, raise error
-    if not tried_jsearch and not tried_searchapi:
-        raise HTTPException(
-            status_code=500,
-            detail="Neither RapidAPI Key nor SearchAPI Key is configured. Please configure at least one in .env"
-        )
-
-    # If we tried but got nothing, raise error details
-    error_detail = " | ".join(errors) if errors else "No jobs returned by API"
-    raise HTTPException(status_code=502, detail=f"Job fetch failed: {error_detail}")
+        except httpx.HTTPStatusError as e:
+            logging.error(f"JSearch HTTP error: {e.response.status_code} — {e.response.text}")
+            raise HTTPException(status_code=502, detail=f"JSearch API error: {e.response.status_code}")
+        except Exception as e:
+            logging.error(f"Job fetch failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))

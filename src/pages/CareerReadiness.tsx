@@ -112,7 +112,7 @@ const CareerReadiness = () => {
         setJobsLoading(true);
         setJobsRequested(true);
         try {
-            const res = await fetch(`/api/v1/career/jobs?role=${encodeURIComponent(roleQuery)}&location=Remote&num_pages=5`);
+            const res = await fetch(`/api/v1/career/jobs?role=${encodeURIComponent(roleQuery)}&location=Remote&num_pages=1`);
             if (res.ok) {
                 const data = await res.json();
                 setJobs(data);
@@ -196,7 +196,12 @@ const CareerReadiness = () => {
             setResumeText(uploadData.resume_text || "");
             setAnalysis(analysisData);
             setStage("results");
-            // Jobs are now fetched ON-DEMAND — not auto-loaded here
+            
+            // Auto-fetch recommended jobs
+            const recommendedRole = analysisData.best_for?.role || finalRoles[0]?.role;
+            if (recommendedRole) {
+                fetchRecommendedJobs(recommendedRole);
+            }
 
         } catch (err: any) {
             toast.error(err.message || "An unexpected error occurred.");
