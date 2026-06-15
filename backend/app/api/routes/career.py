@@ -816,3 +816,636 @@ Output ONLY valid JSON (no markdown, no formatting other than valid JSON):
     except Exception as e:
         logging.error(f"Bullet rewrite failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Bullet rewrite failed: {str(e)}")
+
+
+# ─── MOCK INTERVIEW & Q&A DATA STRUCTURES ───────────────────────────────
+
+class QuestionAnswerRequest(BaseModel):
+    role: str
+    question: str
+
+class InterviewEvaluateRequest(BaseModel):
+    role: str
+    answers: List[Dict[str, str]]
+    metrics: Dict[str, float]
+
+BEHAVIORAL_TEMPLATES = [
+    "Tell me about yourself and your journey to becoming a {role}.",
+    "Why do you want to work as a {role} at our company?",
+    "Describe a time when you faced a major obstacle as a {role} and how you overcame it.",
+    "Tell me about a project you worked on as a {role} that you are most proud of.",
+    "Describe a situation where you had to work with a difficult coworker or stakeholder.",
+    "How do you handle tight deadlines or high-pressure situations in your work?",
+    "Tell me about a mistake you made as a {role} and what you learned from it.",
+    "How do you prioritize your tasks when you have multiple competing deadlines?",
+    "Describe a time when you had to learn a new tool or technology quickly to complete a task.",
+    "How do you handle constructive criticism or negative feedback on your work?",
+    "Tell me about a time you went above and beyond your standard duties as a {role}.",
+    "How do you explain complex technical concepts to non-technical team members?",
+    "Describe a time you had to persuade someone to see your point of view or accept your idea.",
+    "Tell me about a time you had to manage a project with vague or changing requirements.",
+    "How do you stay motivated during repetitive or less interesting tasks?",
+    "Describe a time when you had a disagreement with your manager and how you resolved it.",
+    "Tell me about a time you had to make a quick decision without all the information you wanted.",
+    "How do you ensure quality and accuracy in your work as a {role}?",
+    "Describe a time you had to work in a cross-functional team. What was your role?",
+    "What is your greatest professional achievement as a {role}?",
+    "Where do you see yourself in five years in your career as a {role}?",
+    "What do you think is the most important skill for a successful {role}?",
+    "How do you handle failure or setbacks in your projects?",
+    "Describe a time when you had to take lead on a task or project. What was the outcome?",
+    "Tell me about a time you helped a team member who was struggling with their work.",
+    "How do you manage stress and maintain a healthy work-life balance?",
+    "Describe a time you had to adapt to a major change in your workplace or project structure.",
+    "What is your approach to setting and achieving professional goals?",
+    "Tell me about a time you had to handle an unhappy client or customer.",
+    "How do you ensure you stay up-to-date with industry trends and developments as a {role}?",
+    "Describe a time you had to collaborate with someone whose working style was very different from yours.",
+    "What motivated you to pursue a career as a {role}?",
+    "Tell me about a time you resolved a conflict within your team.",
+    "How do you handle situations where you do not know the answer to a problem?",
+    "Describe a time you proposed an innovative solution that improved a workflow or product.",
+    "Tell me about a time you had to work with a teammate who was not pulling their weight.",
+    "How do you maintain a positive attitude during challenging projects?",
+    "Describe a time you had to deliver bad news to a stakeholder or team lead.",
+    "What is your ideal work environment or company culture?",
+    "Tell me about a time you had to balance short-term tasks with long-term strategic goals.",
+    "How do you handle ambiguity in your daily tasks as a {role}?",
+    "Describe a time when you successfully onboarded or mentored a junior colleague.",
+    "What do you find most rewarding about your work as a {role}?",
+    "Tell me about a time you had to present your work to senior management.",
+    "How do you handle context switching between multiple projects?",
+    "Describe a time when you had to compromise on your ideal solution to meet a business constraint.",
+    "What is your strategy for managing your daily energy and productivity?",
+    "Tell me about a time you noticed a process inefficiency and took steps to fix it.",
+    "How do you approach building trust and rapport with new team members?",
+    "Describe a time you had to work with data or systems you were not familiar with."
+]
+
+SYSTEM_TEMPLATES = [
+    "How do you design a robust workflow or system for your daily tasks as a {role}?",
+    "Describe the lifecycle of a typical project or task in your role.",
+    "What methodologies (e.g. Agile, Scrum, Kanban) do you prefer for managing your work?",
+    "How do you establish standard operating procedures (SOPs) or guidelines for your team?",
+    "What metrics or key performance indicators (KPIs) do you track to measure your success?",
+    "How do you manage documentation and knowledge sharing in your team?",
+    "Describe your process for gathering requirements before starting a major task.",
+    "How do you ensure compliance and security standards are met in your workflow?",
+    "What tools and software do you consider essential for your workflow as a {role}?",
+    "How do you handle version control or change management in your deliverables?",
+    "What is your approach to system integration or cross-team collaboration workflows?",
+    "How do you perform risk assessment and mitigation before launching a project?",
+    "Describe how you structure your communication channels with stakeholders.",
+    "How do you handle backups, recovery, or rollbacks in your work?",
+    "What is your process for QA, review, or double-checking work before delivery?",
+    "How do you optimize a bottleneck or slow process in your workflow?",
+    "Describe how you handle task delegation or collaboration in a team environment.",
+    "How do you design for scalability and future growth in your projects?",
+    "What is your strategy for managing dependencies or external vendors in a project?",
+    "How do you conduct post-mortem or retrospective reviews after a project finishes?",
+    "What is your approach to budget or resource allocation for your tasks?",
+    "Describe how you handle escalations when a workflow or system breaks down.",
+    "How do you align your daily workflows with the overall business objectives?",
+    "What is your method for tracking progress and reporting it to managers?",
+    "How do you handle technical debt or process debt in your daily operations?",
+    "Describe your approach to user testing or client feedback incorporation.",
+    "How do you ensure design consistency or standards across all deliverables?",
+    "What is your process for onboarding a new tool or platform into your workflow?",
+    "How do you design disaster recovery or contingency plans for your projects?",
+    "What role does automation play in your workflow, and how do you implement it?",
+    "How do you balance speed of delivery with high-quality standards?",
+    "Describe how you structure your files, data, or code repositories for collaboration.",
+    "How do you manage access control, permissions, or confidentiality in your projects?",
+    "What is your method for conducting research before proposing a new system?",
+    "How do you handle legacy systems, outdated processes, or technical debt?",
+    "Describe your approach to standardization vs. customization in your solutions.",
+    "How do you monitor system health, performance, or output quality over time?",
+    "What is your protocol for releasing updates or deploying changes?",
+    "How do you design a feedback loop to continuously improve your workflows?",
+    "Describe your strategy for scaling a service or operation under heavy demand.",
+    "How do you handle data management, storage, and retrieval in your projects?",
+    "What is your approach to modularity and reusability in your work deliverables?",
+    "How do you design workflows that are accessible and inclusive?",
+    "Describe your method for testing corner cases or edge-case failures.",
+    "How do you handle capacity planning or future resource forecasting?",
+    "What is your protocol for security breaches or data leaks in your domain?",
+    "How do you ensure cross-platform or cross-device compatibility in your outputs?",
+    "Describe your approach to refactoring or optimizing existing systems.",
+    "How do you align technical architecture with user experience requirements?",
+    "What is your philosophy on build vs. buy decisions for tools and platforms?"
+]
+
+SCENARIO_TEMPLATES = [
+    "What would you do if a critical system or workflow failed right before a major launch?",
+    "If a client requests a sudden change in requirements halfway through, how do you manage it?",
+    "How would you handle a situation where two senior stakeholders give you conflicting directions?",
+    "If you find a major error in a colleague's completed work, how do you address it?",
+    "How do you react if you realize you cannot meet a committed deadline for a key deliverable?",
+    "If you are asked to implement a solution you strongly disagree with, how do you handle it?",
+    "What would you do if a tool or service you rely on went down during critical operations?",
+    "If your project budget is suddenly cut by 30%, how do you adjust your strategy?",
+    "How would you handle a team member who refuses to adopt a new process or tool?",
+    "If you suspect a security or data privacy breach in your project, what steps do you take?",
+    "What do you do if your deliverables are dependent on another team that is delaying you?",
+    "If a feature or service you launched receives highly negative feedback, how do you respond?",
+    "How would you handle being assigned a task with no documentation or guidelines?",
+    "If you notice a sudden drop in performance metrics, how do you troubleshoot the issue?",
+    "What would you do if you discovered a critical bug or flaw in production or live operations?",
+    "If a customer or user reports a blocker issue that you cannot replicate, how do you debug it?",
+    "How do you handle a situation where your manager asks you to do something unethical?",
+    "If you are overwhelmed with 5 urgent tasks simultaneously, how do you manage your time?",
+    "What would you do if you ran out of storage or resources during a critical data run?",
+    "If a key team member leaves unexpectedly in the middle of a project, how do you adapt?",
+    "How would you handle a client who refuses to pay or claims the work is unsatisfactory?",
+    "If you make a mistake that causes a temporary outage or delay, how do you recover?",
+    "What would you do if a proposed solution violates a technical or design constraint?",
+    "If you are asked to estimate a timeline for a project with many unknown variables, how do you proceed?",
+    "How would you handle a stakeholder who constantly bypasses communication channels?",
+    "If your presentation deck or demo fails to load during a live meeting, how do you handle it?",
+    "What do you do if you notice a teammate is experiencing severe burnout?",
+    "If you find out a competitor has launched a product that makes your project obsolete, what do you suggest?",
+    "How would you handle a dispute over intellectual property or code ownership?",
+    "If you are asked to work overtime persistently to meet a deadline, how do you handle it?",
+    "What would you do if a critical vendor goes out of business in the middle of a project?",
+    "If you are assigned a role on a project where you have zero interest or matching skills, how do you handle it?",
+    "How do you handle a situation where a client asks for free out-of-scope work (scope creep)?",
+    "What would you do if you found out your project violates a new government regulation?",
+    "If a key tool is deprecating a API you heavily rely on, how do you plan the migration?",
+    "How would you handle a team lead who micromanages your daily tasks?",
+    "If a coworker takes credit for your work or ideas, how do you address the situation?",
+    "What do you do if you realize you gave an incorrect answer or data point in a major meeting?",
+    "If you have to choose between a perfect, slow solution and a fast, hacky solution, how do you decide?",
+    "How would you handle a situation where your teammate is using outdated methodologies?",
+    "What would you do if a user interface or dashboard you built is deemed inaccessible to disabled users?",
+    "If your model or analysis starts drifting and giving inaccurate results over time, how do you fix it?",
+    "How do you handle a code or configuration merge conflict that breaks the main branch?",
+    "What would you do if you found out a critical dependency is no longer maintained?",
+    "If your database or system experiences a sudden surge of spam requests, how do you mitigate it?",
+    "How would you handle a client who has extremely unrealistic expectations of AI/tech capabilities?",
+    "What do you do if your project is cancelled after months of hard work?",
+    "If you notice another department is duplicating your efforts, how do you address it?",
+    "How would you handle a critical team member who constantly shows up late to standups?",
+    "What would you do if you lost internet connection during a critical live release or event?"
+]
+
+TECH_TECHNICAL = [
+    "What is your approach to writing clean, maintainable, and self-documenting code?",
+    "Explain the difference between SQL and NoSQL databases, and when you would use each.",
+    "How do you design, build, and document a secure RESTful API?",
+    "What is the difference between synchronous and asynchronous programming, and when is async needed?",
+    "Describe the Git workflow you use for collaborative code development.",
+    "What is CI/CD, and how do you set up an automated deployment pipeline?",
+    "How do you optimize database queries and indexes to improve performance?",
+    "Explain the concepts of containerization (Docker) and orchestration (Kubernetes).",
+    "What is your approach to unit testing, integration testing, and mock objects?",
+    "How do you handle state management in complex frontend applications?",
+    "What is serverless computing, and what are its pros and cons?",
+    "Explain MVC architecture and how it supports separation of concerns.",
+    "How do you protect applications against common vulnerabilities like SQL injection and XSS?",
+    "What is your strategy for debugging a memory leak in a running application?",
+    "Explain the difference between Monolithic and Microservices architectures.",
+    "How do you implement authentication and authorization (e.g. JWT, OAuth) securely?",
+    "What is your approach to error handling, logging, and application monitoring?",
+    "Explain the concept of caching (e.g. Redis) and how you design cache invalidation.",
+    "What is the difference between REST, GraphQL, and gRPC?",
+    "How do you optimize front-end performance (e.g. bundle splitting, lazy loading)?",
+    "Explain object-oriented programming (OOP) principles vs. functional programming.",
+    "What is your process for conducting code reviews and giving feedback?",
+    "How do you design a database schema to support many-to-many relationships?",
+    "Explain the HTTP protocol, status codes, and standard request/response headers.",
+    "What is CORS, and how do you configure it securely in backend systems?",
+    "How do you handle database migrations safely without causing downtime?",
+    "What are design patterns, and can you explain one you use frequently?",
+    "How do you handle API versioning and deprecation?",
+    "Explain horizontal vs. vertical scaling and how to implement each.",
+    "What is a message broker (e.g. RabbitMQ, Kafka), and when would you use it?",
+    "How do you secure secrets, API keys, and environment variables?",
+    "Explain DNS, SSL/TLS handshakes, and how HTTPS works.",
+    "What is your strategy for writing high-performance Javascript or Python code?",
+    "How do you structure CSS or styling in large-scale React projects?",
+    "Explain semantic HTML5 and why accessibility (a11y) is important.",
+    "How do you write reusable components and design systems?",
+    "What is rate limiting, and how do you implement it in an API?",
+    "Explain database transaction isolation levels and ACID properties.",
+    "How do you handle file uploads, storage, and CDNs securely?",
+    "What is the difference between client-side rendering (CSR) and server-side rendering (SSR)?",
+    "Explain web sockets and how they facilitate real-time communication.",
+    "How do you profile application performance to find bottlenecks?",
+    "What is the role of a reverse proxy (e.g. Nginx) and load balancers?",
+    "Explain browser storage mechanisms: cookies, localStorage, and sessionStorage.",
+    "How do you handle background jobs and cron queues in backend applications?",
+    "Explain the concept of reactivity and virtual DOM in modern frameworks.",
+    "How do you implement search capabilities (e.g. full-text search, Elasticsearch)?",
+    "What is your approach to data serialization (e.g. JSON, Protocol Buffers)?",
+    "Explain test-driven development (TDD) and its advantages.",
+    "How do you keep dependencies updated and secure in your projects?"
+]
+
+DATA_TECHNICAL = [
+    "What is the difference between supervised and unsupervised machine learning?",
+    "Explain the bias-variance tradeoff and how you prevent overfitting.",
+    "What is your workflow for cleaning, preprocessing, and transforming raw data?",
+    "Explain how database indexes work in SQL and how you optimize query times.",
+    "What is a Pandas DataFrame, and how do you handle missing values in Python?",
+    "Explain the difference between L1 (Lasso) and L2 (Ridge) regularization.",
+    "How do you evaluate a classification model's performance (e.g. ROC, Precision, Recall)?",
+    "Explain the Central Limit Theorem and its importance in data analysis.",
+    "What is a confusion matrix, and when is F1-score preferred over accuracy?",
+    "How do you write a complex SQL query using Joins, Group By, and CTEs?",
+    "Explain the difference between K-Means clustering and Hierarchical clustering.",
+    "What is feature engineering, and can you share an example of a feature you created?",
+    "How do you handle imbalanced datasets (e.g. SMOTE, class weights)?",
+    "Explain how Decision Trees split nodes, and what Random Forest does.",
+    "What is PCA (Principal Component Analysis), and when do you use it?",
+    "Explain A/B testing: how do you calculate sample size and statistical significance?",
+    "What is the difference between deep learning and traditional machine learning?",
+    "Describe how a Convolutional Neural Network (CNN) processes image data.",
+    "What is an RNN, and how does LSTM improve gradient vanishing issues?",
+    "Explain the Transformer architecture and the self-attention mechanism.",
+    "How do you deploy machine learning models to production APIs?",
+    "What is MLflow or DVC, and how do you track experiments?",
+    "Explain the difference between batch data processing and real-time stream processing.",
+    "What is Hadoop, Spark, and when is Big Data tooling actually needed?",
+    "How do you explain a complex data model to business stakeholders?",
+    "Explain cross-validation and why it is crucial for model validation.",
+    "What is a statistical p-value, and how do you interpret hypothesis tests?",
+    "Explain linear regression assumptions and how you check for homoscedasticity.",
+    "What is logistic regression, and how do you interpret its odds ratios?",
+    "Explain gradient descent and how learning rate adjustments affect training.",
+    "What is hyperparameter tuning, and what are Grid Search vs. Random Search?",
+    "How do you perform text tokenization, TF-IDF, and word embeddings in NLP?",
+    "Explain time-series analysis: what are seasonality, trend, and ARIMA models?",
+    "What is data normalization vs. standardization, and when to use each?",
+    "How do you build interactive data dashboards (e.g. Tableau, PowerBI, Streamlit)?",
+    "Explain database normalization levels (1NF, 2NF, 3NF) and why they matter.",
+    "What is a vector database (e.g. Pinecone, Milvus), and when is it used?",
+    "Describe retrieval-augmented generation (RAG) and how it enhances LLMs.",
+    "What is fine-tuning an LLM vs. prompt engineering?",
+    "How do you audit models for algorithmic bias and data fairness?",
+    "What is an ETL pipeline, and what orchestration tools (e.g. Airflow) do you use?",
+    "Explain dimensional modeling: facts vs. dimension tables in data warehousing.",
+    "What is the difference between a Data Lake and a Data Warehouse?",
+    "How do you perform outlier detection and handle anomalies in data?",
+    "Explain correlation vs. causation and how to establish causal links.",
+    "What is your approach to exploratory data analysis (EDA) on a new dataset?",
+    "Explain confidence intervals and how to calculate them.",
+    "How do you secure sensitive data and comply with GDPR/HIPAA regulations?",
+    "What is data virtualization, and how does it differ from ETL?",
+    "How do you ensure data quality and schema consistency in data pipelines?"
+]
+
+DESIGN_TECHNICAL = [
+    "What is the difference between UI (User Interface) and UX (User Experience)?",
+    "Describe your user research process before sketching any design layouts.",
+    "Explain the core principles of visual hierarchy and how you direct user attention.",
+    "How do you establish a design system or component library in Figma?",
+    "What is your approach to responsive design and designing across multiple devices?",
+    "Explain color theory and how you choose cohesive color palettes for digital products.",
+    "How do you ensure your web designs comply with WCAG 2.1 accessibility standards?",
+    "What is typography hierarchy, and how do you choose typefaces for readability?",
+    "Describe how you conduct usability testing and gather feedback on a prototype.",
+    "What is information architecture, and how do you design user flow diagrams?",
+    "Explain the difference between wireframes, mockups, and interactive prototypes.",
+    "How do you design for different states of an interface (e.g. empty, loading, error)?",
+    "What is design thinking, and how do you apply its phases to your projects?",
+    "How do you handle grid systems (e.g. 8pt grid) to create layout consistency?",
+    "Explain the concept of micro-interactions and how they enhance UX.",
+    "How do you collaborate with software developers to ensure pixel-perfect handoff?",
+    "What is a user persona, and how does it guide your design decisions?",
+    "How do you design checkout flows, sign-up funnels, and landing pages for conversion?",
+    "What is cognitive load, and how do you minimize it in complex application dashboards?",
+    "Explain mobile-first design philosophy and its advantages.",
+    "How do you use white space (negative space) to improve design readability?",
+    "What is your process for wireframing a new page layout from scratch?",
+    "How do you design navigation menus, search bars, and filter interfaces?",
+    "Explain card sorting and how it helps design website menus.",
+    "What is your approach to motion design and page transitions in prototypes?",
+    "How do you design dashboards that make complex data easily understandable?",
+    "What is atomic design, and how does it map to Figma components?",
+    "How do you benchmark your designs against competitors or industry standards?",
+    "Describe how you design forms to minimize friction and bounce rates.",
+    "What is your process for designing a dark mode interface?",
+    "How do you design tooltips, popups, and modal dialogs to not annoy users?",
+    "What is A/B testing in design, and how do you iterate based on results?",
+    "How do you design interfaces that handle multilingual translations (localization)?",
+    "Explain the concept of affordance and signifiers in interface design.",
+    "How do you write microcopy (UX writing) that guides user behavior?",
+    "What is heuristic evaluation, and how do you audit a website for usability?",
+    "How do you design search results pages that are easy to scan?",
+    "Describe how you design multi-step forms (wizards) without overwhelming users.",
+    "What is your method for tracking user behaviour (e.g. Hotjar heatmaps, click rates)?",
+    "How do you design empty states that encourage user engagement?",
+    "Explain the difference between flat design, skeuomorphism, and glassmorphism.",
+    "How do you handle feedback from non-designers and business stakeholders?",
+    "What is your approach to illustration, iconography, and custom image assets?",
+    "How do you design onboarding flows for new users of a product?",
+    "What is the role of psychology (e.g. Fitts's law, Hick's law) in UX design?",
+    "How do you design notification systems and badge alerts?",
+    "Describe how you design interfaces that prevent user errors.",
+    "What is your process for designing responsive tables and data lists?",
+    "How do you design feedback states (e.g. success checkmarks, toast alerts)?",
+    "How do you keep up with design trends while maintaining usability?"
+]
+
+MARKETING_TECHNICAL = [
+    "What is the difference between inbound marketing and outbound marketing?",
+    "Explain SEO (Search Engine Optimization) and how you optimize on-page content.",
+    "How do you design, set up, and optimize a Google Ads or Meta Ads campaign?",
+    "What is a marketing funnel (TOFU, MOFU, BOFU), and how do you address each stage?",
+    "Explain email marketing optimization: how do you improve open rates and CTR?",
+    "What is your approach to content strategy, blogging, and organic lead generation?",
+    "Explain customer acquisition cost (CAC) and customer lifetime value (LTV).",
+    "How do you use Google Analytics to track site traffic, conversions, and user behavior?",
+    "What is a lead magnet, and how do you design landing pages to capture emails?",
+    "Explain social media management, brand voice, and community engagement.",
+    "How do you design and execute an A/B test for a marketing landing page?",
+    "What is influencer marketing, and how do you evaluate potential partners?",
+    "Explain CTR, CPA, CPC, CPM, and how they impact campaign budgets.",
+    "How do you conduct keyword research to identify high-intent search terms?",
+    "What is cold email outreach, and what is your process for writing templates?",
+    "Explain CRM (Customer Relationship Management) tools and lead scoring pipelines.",
+    "What is account-based marketing (ABM), and when is it preferred over broad campaigns?",
+    "How do you handle brand management and public relations (PR) for a business?",
+    "What is affiliate marketing, and how do you set up an affiliate program?",
+    "Explain product-led growth (PLG) vs. sales-led growth models.",
+    "How do you write persuasive copywriting headlines that boost conversions?",
+    "What is viral marketing, and how do you design loops to encourage sharing?",
+    "Explain the role of video marketing and platforms like YouTube or TikTok.",
+    "How do you measure marketing ROI (Return on Investment) across channels?",
+    "What is mobile marketing, app store optimization (ASO), and push alerts?",
+    "Explain marketing automation and designing drip campaigns for user onboarding.",
+    "How do you analyze competitor marketing strategies and traffic sources?",
+    "What is your approach to event marketing, webinars, and virtual summits?",
+    "Explain the difference between marketing qualified leads (MQL) and sales qualified leads (SQL).",
+    "How do you handle brand positioning, messaging frameworks, and value propositions?",
+    "What is conversion rate optimization (CRO), and how do you identify friction points?",
+    "Explain remarketing and retargeting ads, and how they improve conversion rates.",
+    "How do you comply with GDPR, CCPA, and privacy regulations in marketing databases?",
+    "What is content distribution, and how do you repurpose content across platforms?",
+    "Explain local SEO and how to optimize a business for local Google maps.",
+    "How do you execute a product launch campaign from planning to post-launch?",
+    "What is the difference between brand marketing and performance marketing?",
+    "How do you conduct market segmentation and define target customer personas?",
+    "Explain email deliverability, SPF, DKIM, DMARC, and avoiding spam folders.",
+    "What is your approach to corporate sponsorship, partnerships, and co-marketing?",
+    "Explain growth hacking and how rapid experimentation cycles drive scale.",
+    "How do you write a compelling press release that journalists will publish?",
+    "What is community-led growth, and how do you build a customer community?",
+    "Explain social proof, testimonials, and case studies, and how to utilize them.",
+    "How do you analyze customer churn and design marketing strategies to reduce it?",
+    "What is customer advocacy, and how do you build a referral program?",
+    "Explain user generated content (UGC) and its impact on brand trust.",
+    "How do you handle social media crisis management or negative PR?",
+    "What tools are in your daily marketing stack (e.g. HubSpot, SEMrush, Canva)?",
+    "How do you adapt marketing campaigns to different cultures and global regions?"
+]
+
+BUSINESS_TECHNICAL = [
+    "What is your process for conducting a financial analysis or projection for a project?",
+    "Explain the key financial statements: Income Statement, Balance Sheet, and Cash Flow.",
+    "What is SWOT analysis, and how do you use it for strategic planning?",
+    "How do you design, optimize, and document business processes or workflows?",
+    "Explain change management principles and how you implement process changes in a team.",
+    "What is Agile project management, and what are Scrum ceremonies?",
+    "How do you perform stakeholder management and communicate progress to executives?",
+    "Explain key business metrics: EBITDA, Profit Margins, ROI, and NPV.",
+    "How do you manage project budgets, cost allocation, and resource forecasting?",
+    "What is risk management, and how do you build a corporate risk register?",
+    "Describe your approach to vendor management, negotiating contracts, and SLA reviews.",
+    "What is corporate governance, compliance, and regulatory risk auditing?",
+    "How do you conduct market research and competitive analysis for new operations?",
+    "Explain HR recruitment pipelines, onboarding workflows, and talent acquisition.",
+    "How do you design employee performance review systems and KPIs?",
+    "What is employee engagement, retention strategy, and managing corporate burnout?",
+    "Explain payroll management, benefits administration, and labor law compliance.",
+    "What is organizational design, hierarchy structure, and span of control?",
+    "How do you handle conflict resolution and employee relations in a team?",
+    "What is corporate social responsibility (CSR) and its role in brand value?",
+    "Explain supply chain logistics, inventory optimization, and procurement workflows.",
+    "What is lean management, Six Sigma, and reducing process wastes?",
+    "How do you perform data-driven decision making using business intelligence tools?",
+    "Explain B2B client onboarding, account management, and CRM pipelines.",
+    "What is your approach to strategic consulting and advising business leaders?",
+    "How do you conduct a cost-benefit analysis for implementing a new software tool?",
+    "Explain data governance, information security, and internal access control policies.",
+    "What is crisis management, and how do you design business continuity plans?",
+    "How do you manage cross-departmental alignment and break down corporate silos?",
+    "Explain customer experience (CX) strategy and tracking Net Promoter Score (NPS).",
+    "What is your method for setting annual budgets and quarterly targets?",
+    "How do you audit corporate expenditures and identify cost-saving initiatives?",
+    "Explain equity distribution, options pool structuring, and cap table management.",
+    "What is merger and acquisition (M&A) due diligence, and what metrics do you audit?",
+    "How do you manage global remote operations, timezone logistics, and virtual teams?",
+    "Explain the role of business development in driving corporate partnerships.",
+    "How do you build a business case to justify expanding into a new market?",
+    "Explain workspace design, safety compliance, and hybrid work policies.",
+    "What is performance management, and how do you implement PIPs (Performance Improvement Plans)?",
+    "How do you design an internship or graduate training program for a company?",
+    "Explain key metrics in SaaS business model: MRR, ARR, Churn, and LTV/CAC.",
+    "How do you run a brainstorming workshop or strategic alignment session?",
+    "What is intellectual property (IP) protection, patents, and trademark management?",
+    "How do you manage internal corporate communications and town hall meetings?",
+    "Explain operations auditing and optimizing supply chain delivery times.",
+    "What is data privacy compliance under ISO 27001 or SOC 2?",
+    "How do you design onboarding training manuals for customer support staff?",
+    "Explain pricing strategy models: cost-plus, value-based, and subscription models.",
+    "How do you handle performance analytics for campaigns from a business perspective?",
+    "What is your philosophy on building vs. buying backend business infrastructure?"
+]
+
+
+def get_role_domain(role: str) -> str:
+    role_lower = role.lower()
+    # Data & AI
+    if any(k in role_lower for k in ["data", "machine learning", "ai", "scientist", "analyst", "intelligence", "scraping", "nlp"]):
+        return "data"
+    # UI/UX & Design
+    elif any(k in role_lower for k in ["design", "ux", "ui", "figma", "sketch", "user", "graphics", "frontend"]):
+        return "design"
+    # Sales & Marketing
+    elif any(k in role_lower for k in ["sales", "marketing", "sdr", "account", "growth", "seo", "content", "social", "copywriter", "client", "customer"]):
+        return "marketing"
+    # Software & Tech/DevOps (excluding frontend which is design/UX)
+    elif any(k in role_lower for k in ["engineer", "developer", "architect", "programmer", "devops", "cloud", "blockchain", "embedded", "qa", "backend", "full stack", "scrum", "system"]):
+        return "tech"
+    # Business & Management/HR/Finance (default if nothing else fits)
+    else:
+        return "business"
+
+
+@router.get("/interview-questions")
+async def get_interview_questions(role: str):
+    domain = get_role_domain(role)
+    
+    # Select technical questions
+    if domain == "data":
+        tech_qs = DATA_TECHNICAL
+    elif domain == "design":
+        tech_qs = DESIGN_TECHNICAL
+    elif domain == "marketing":
+        tech_qs = MARKETING_TECHNICAL
+    elif domain == "tech":
+        tech_qs = TECH_TECHNICAL
+    else:
+        tech_qs = BUSINESS_TECHNICAL
+
+    # Build the list of 200 questions
+    questions = []
+    
+    # 1. Behavioral (50)
+    for i, q_temp in enumerate(BEHAVIORAL_TEMPLATES):
+        questions.append({
+            "id": f"behavioral-{i+1}",
+            "text": q_temp.format(role=role),
+            "category": "Behavioral & Fit"
+        })
+        
+    # 2. Technical (50)
+    for i, q_temp in enumerate(tech_qs):
+        questions.append({
+            "id": f"technical-{i+1}",
+            "text": q_temp.format(role=role),
+            "category": "Technical & Domain"
+        })
+        
+    # 3. System & Architecture (50)
+    for i, q_temp in enumerate(SYSTEM_TEMPLATES):
+        questions.append({
+            "id": f"system-{i+1}",
+            "text": q_temp.format(role=role),
+            "category": "System & Architecture"
+        })
+        
+    # 4. Scenario & Troubleshooting (50)
+    for i, q_temp in enumerate(SCENARIO_TEMPLATES):
+        questions.append({
+            "id": f"scenario-{i+1}",
+            "text": q_temp.format(role=role),
+            "category": "Scenario & Troubleshooting"
+        })
+        
+    return questions
+
+
+# In-memory simple cache for generated answers
+ANSWER_CACHE = {}
+
+@router.post("/question-answer")
+async def get_question_answer(req: QuestionAnswerRequest):
+    groq = get_groq()
+    role = req.role.strip()
+    question = req.question.strip()
+    
+    cache_key = f"{role}:{question}"
+    if cache_key in ANSWER_CACHE:
+        return ANSWER_CACHE[cache_key]
+        
+    prompt = f"""
+You are an expert technical interviewer and career coach.
+Generate a comprehensive, high-quality sample answer and tips for the following interview question.
+
+TARGET ROLE: {role}
+QUESTION: {question}
+
+Provide the response as valid JSON with the following structure:
+{{
+  "suggested_answer": "<A highly detailed, professional sample answer. If behavioral, use the STAR format (Situation, Task, Action, Result). If technical, explain the concepts and principles clearly. Key points should be highlighted. Length: 150-250 words.>",
+  "tips": [
+    "<Actionable tip #1: what interviewers look for in this answer>",
+    "<Actionable tip #2: keywords or tech tools to mention>",
+    "<Actionable tip #3: what pitfalls to avoid>"
+  ]
+}}
+"""
+    try:
+        completion = groq.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": "You output ONLY valid raw JSON. No markdown, no explanations. Valid JSON only."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2,
+            max_tokens=1500
+        )
+        
+        ai_text = completion.choices[0].message.content
+        result = parse_json_from_response(ai_text)
+        
+        # Save to cache
+        ANSWER_CACHE[cache_key] = result
+        return result
+        
+    except Exception as e:
+        logging.error(f"Failed to generate question answer: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate question answer: {str(e)}")
+
+
+@router.post("/evaluate-interview")
+async def evaluate_interview(req: InterviewEvaluateRequest):
+    groq = get_groq()
+    
+    role = req.role.strip()
+    answers_str = ""
+    for idx, ans in enumerate(req.answers):
+        q = ans.get("question", "")
+        a = ans.get("answer", "")
+        answers_str += f"Q{idx+1}: {q}\nA{idx+1}: {a}\n\n"
+        
+    metrics = req.metrics
+    eye_contact = metrics.get("eye_contact_ratio", 1.0) * 100
+    head_stability = metrics.get("head_stability_ratio", 1.0) * 100
+    posture = metrics.get("posture_alignment_ratio", 1.0) * 100
+    
+    prompt = f"""
+You are an expert public speaking coach and hiring manager.
+Evaluate this candidate's mock video interview performance for the role of {role}.
+
+TRANSCRIPT OF SPOKEN ANSWERS:
+{answers_str}
+
+VIDEO TRACKING METRICS:
+- Eye Contact (looking at camera/screen): {eye_contact:.1f}% of the time
+- Head Stability (minimizing unnecessary movements): {head_stability:.1f}% of the time
+- Posture Alignment (sitting centered and upright): {posture:.1f}% of the time
+
+CRITICAL EVALUATION RULES:
+1. Score out of 100. Be honest and constructive.
+2. Deliver two sections of feedback: Verbal Content (STAR structure, correctness) and Non-Verbal Delivery (body language, posture, eye contact).
+3. Grade each individual answer, highlighting strengths and offering a better/optimized way to word the answer.
+
+Output ONLY valid JSON:
+{{
+  "overall_score": <0-100 overall blended grade>,
+  "delivery_score": <0-100 score strictly for delivery/body language/metrics>,
+  "content_score": <0-100 score strictly for answer quality/accuracy>,
+  "summary": "<2-3 sentences overall evaluation verdict>",
+  "delivery_feedback": "<Feedback addressing eye contact, head movement, posture, and suggestions to sit/look better>",
+  "content_feedback": "<Feedback addressing answers, structure (STAR), technical terminology, and confidence>",
+  "graded_answers": [
+    {{
+      "question": "<question text>",
+      "rating": "<Strong|Good|Weak>",
+      "critique": "<Detailed 1-2 sentence critique of their spoken response>",
+      "better_answer": "<Optimized version of how they could have answered using better structure and action verbs>"
+    }}
+  ]
+}}
+"""
+    try:
+        completion = groq.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": "You output ONLY valid raw JSON. No markdown, no explanations. Valid JSON only."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.25,
+            max_tokens=2500
+        )
+        
+        ai_text = completion.choices[0].message.content
+        result = parse_json_from_response(ai_text)
+        return result
+        
+    except Exception as e:
+        logging.error(f"Interview evaluation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Interview evaluation failed: {str(e)}")

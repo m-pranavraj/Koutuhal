@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Upload,
@@ -27,7 +27,13 @@ import {
     GraduationCap,
     Award,
     Check,
-    BookOpen
+    BookOpen,
+    Video,
+    Camera,
+    Mic,
+    Volume2,
+    VolumeX,
+    UserCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,13 +86,72 @@ interface AnalysisResult {
     bullet_rewrites?: Array<{ original: string; rewritten: string }>;
 }
 
+const FAMOUS_ROLES = [
+    "Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Developer",
+    "Mobile App Developer", "DevOps Engineer", "Cloud Architect", "Data Scientist",
+    "Data Analyst", "Machine Learning Engineer", "AI Engineer", "Database Administrator",
+    "QA Automation Engineer", "Site Reliability Engineer (SRE)", "Solution Architect",
+    "Security Analyst", "System Administrator", "Network Engineer", "Salesforce Developer",
+    "Embedded Systems Engineer", "Product Manager", "Technical Product Manager (TPM)",
+    "UX/UI Designer", "UX Researcher", "Product Designer", "Business Analyst",
+    "IT Project Manager", "Scrum Master", "Agile Coach", "Chief Technology Officer (CTO)",
+    "Engineering Manager", "Solutions Engineer", "Technical Writer", "SEO Specialist",
+    "Growth Hacker", "Digital Marketer", "Social Media Manager", "Content Strategist",
+    "Copywriter", "Sales Development Representative (SDR)", "Account Executive (AE)",
+    "Customer Success Manager (CSM)", "Financial Analyst", "Investment Banker",
+    "Accountant", "Operations Manager", "Supply Chain Analyst", "HR Specialist",
+    "Talent Acquisition Specialist", "Management Consultant"
+];
+
 const CareerReadiness = () => {
     const [stage, setStage] = useState<"upload" | "results">("upload");
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState("");
 
+    // Top-level active section
+    const [activeSection, setActiveSection] = useState<"resume" | "linkedin" | "qa" | "interview">("resume");
+
     // Mode State
     const [mode, setMode] = useState<"resume" | "linkedin">("resume");
+
+    // Q&A Database States
+    const [qaRole, setQaRole] = useState<string>("Software Engineer");
+    const [qaSearch, setQaSearch] = useState<string>("");
+    const [qaCategory, setQaCategory] = useState<string>("Behavioral & Fit");
+    const [qaQuestions, setQaQuestions] = useState<any[]>([]);
+    const [qaQuestionsLoading, setQaQuestionsLoading] = useState<boolean>(false);
+    const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(null);
+    const [expandedQuestionLoading, setExpandedQuestionLoading] = useState<boolean>(false);
+    const [answersStore, setAnswersStore] = useState<Record<string, { suggested_answer: string; tips: string[] }>>({});
+
+    // Video Mock Interview States
+    const [interviewRole, setInterviewRole] = useState<string>("Software Engineer");
+    const [interviewStage, setInterviewStage] = useState<"setup" | "calibrating" | "running" | "evaluating" | "completed">("setup");
+    const [webcamActive, setWebcamActive] = useState<boolean>(false);
+    const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+    const [faceMeshLoaded, setFaceMeshLoaded] = useState<boolean>(false);
+    const [currentQuestionIdx, setCurrentQuestionIdx] = useState<number>(0);
+    const [interviewQuestions, setInterviewQuestions] = useState<any[]>([]);
+    const [spokenAnswers, setSpokenAnswers] = useState<Array<{ question: string; answer: string }>>([]);
+    const [transcribing, setTranscribing] = useState<boolean>(false);
+    const [transcript, setTranscript] = useState<string>("");
+    const [calibrated, setCalibrated] = useState<boolean>(false);
+    const [calibrationBaseline, setCalibrationBaseline] = useState<any>(null);
+    const [evaluatingLoading, setEvaluatingLoading] = useState<boolean>(false);
+    const [evaluationResult, setEvaluationResult] = useState<any>(null);
+
+    // Dynamic metrics
+    const [liveMetrics, setLiveMetrics] = useState({
+        eyeContact: true,
+        headStability: true,
+        posture: true
+    });
+    const [trackingMetrics, setTrackingMetrics] = useState({
+        eyeContactFrames: 0,
+        headStabilityFrames: 0,
+        postureFrames: 0,
+        totalFrames: 0
+    });
 
     // Form State
     const [formData, setFormData] = useState({
@@ -346,13 +411,496 @@ const CareerReadiness = () => {
         }
     };
 
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const recognitionRef = useRef<any>(null);
+
+    // Initial load of questions on role change
+    useEffect(() => {
+        if (activeSection === "qa") {
+            loadQaQuestions(qaRole);
+        }
+    }, [qaRole, activeSection]);
+
+    // Load dynamic scripts for MediaPipe Face Mesh
+    const loadMediaPipe = async () => {
+        if ((window as any).FaceMesh) {
+            setFaceMeshLoaded(true);
+            return;
+        }
+        try {
+            await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js");
+            await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js");
+            setFaceMeshLoaded(true);
+            toast.success("AI eye and posture tracking models loaded!");
+        } catch (err) {
+            console.error("Failed to load MediaPipe scripts", err);
+            toast.error("Failed to load eye and posture tracking models.");
+        }
+    };
+
+    const loadScript = (src: string) => {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement("script");
+            script.src = src;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    };
+
+    // --- Q&A Handlers ---
+    const loadQaQuestions = async (roleName: string) => {
+        setQaQuestionsLoading(true);
+        try {
+            const res = await fetch(`/api/v1/career/interview-questions?role=${encodeURIComponent(roleName)}`);
+            if (res.ok) {
+                const data = await res.json();
+                setQaQuestions(data);
+            } else {
+                toast.error("Failed to load interview questions.");
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error("Error loading interview questions.");
+        } finally {
+            setQaQuestionsLoading(false);
+        }
+    };
+
+    const loadQuestionAnswer = async (questionText: string) => {
+        const cacheKey = `${qaRole}:${questionText}`;
+        if (answersStore[cacheKey]) {
+            return;
+        }
+        setExpandedQuestionLoading(true);
+        try {
+            const res = await fetch("/api/v1/career/question-answer", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ role: qaRole, question: questionText }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setAnswersStore(prev => ({
+                    ...prev,
+                    [cacheKey]: data
+                }));
+            } else {
+                toast.error("Failed to fetch answer.");
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error("Error fetching answer.");
+        } finally {
+            setExpandedQuestionLoading(false);
+        }
+    };
+
+    const startSpeechRecognition = () => {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            toast.error("Web Speech Recognition not supported in this browser. Please use Chrome/Safari.");
+            return;
+        }
+
+        if (recognitionRef.current) {
+            try { recognitionRef.current.stop(); } catch (e) {}
+        }
+
+        const rec = new SpeechRecognition();
+        rec.continuous = true;
+        rec.interimResults = true;
+        rec.lang = "en-US";
+
+        rec.onstart = () => {
+            setTranscribing(true);
+            setTranscript("");
+        };
+
+        rec.onresult = (event: any) => {
+            let interimTranscript = "";
+            let finalTranscript = "";
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+            setTranscript(finalTranscript || interimTranscript);
+        };
+
+        rec.onerror = (e: any) => {
+            console.error("Speech recognition error:", e);
+        };
+
+        rec.onend = () => {
+            setTranscribing(false);
+        };
+
+        recognitionRef.current = rec;
+        try {
+            rec.start();
+        } catch (e) {
+            console.error("Failed to start speech recognition", e);
+        }
+    };
+
+    const stopSpeechRecognition = () => {
+        if (recognitionRef.current) {
+            try {
+                recognitionRef.current.stop();
+            } catch (e) {}
+        }
+        setTranscribing(false);
+    };
+
+    const speakQuestion = (text: string) => {
+        if ("speechSynthesis" in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
+    };
+
+    // --- Mock Interview Handlers ---
+    const handleStartMockInterview = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/v1/career/interview-questions?role=${encodeURIComponent(interviewRole)}`);
+            if (!res.ok) throw new Error("Failed to fetch questions");
+            const data = await res.json();
+            
+            // Randomly select 5 questions
+            const bQs = data.filter((q: any) => q.category.includes("Behavioral"));
+            const tQs = data.filter((q: any) => q.category.includes("Technical"));
+            const syQs = data.filter((q: any) => q.category.includes("System"));
+            const scQs = data.filter((q: any) => q.category.includes("Scenario"));
+            
+            const selected = [
+                bQs[Math.floor(Math.random() * bQs.length)],
+                tQs[Math.floor(Math.random() * tQs.length)],
+                syQs[Math.floor(Math.random() * syQs.length)],
+                scQs[Math.floor(Math.random() * scQs.length)],
+                bQs[(Math.floor(Math.random() * bQs.length) + 1) % bQs.length]
+            ].filter(Boolean);
+            
+            setInterviewQuestions(selected);
+            setSpokenAnswers([]);
+            setCurrentQuestionIdx(0);
+            setTrackingMetrics({
+                eyeContactFrames: 0,
+                headStabilityFrames: 0,
+                postureFrames: 0,
+                totalFrames: 0
+            });
+            
+            // Request webcam
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { width: 640, height: 480 },
+                audio: true
+            });
+            setMediaStream(stream);
+            setWebcamActive(true);
+            setInterviewStage("calibrating");
+            
+            setTimeout(() => {
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                    videoRef.current.play().catch(err => console.error("Video play error", err));
+                }
+            }, 300);
+
+            // Load MediaPipe
+            await loadMediaPipe();
+
+            // Run calibration countdown
+            let count = 3;
+            const interval = setInterval(() => {
+                count--;
+                if (count <= 0) {
+                    clearInterval(interval);
+                    setCalibrated(true);
+                    setInterviewStage("running");
+                    speakQuestion(selected[0].text);
+                    startSpeechRecognition();
+                }
+            }, 1000);
+
+        } catch (err: any) {
+            toast.error(err.message || "Failed to initialize webcam or fetch questions.");
+            setWebcamActive(false);
+            setMediaStream(null);
+            setInterviewStage("setup");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleNextQuestion = () => {
+        stopSpeechRecognition();
+        
+        const currentQ = interviewQuestions[currentQuestionIdx];
+        const nextAnswers = [...spokenAnswers, { question: currentQ.text, answer: transcript || "[No spoken response captured]" }];
+        setSpokenAnswers(nextAnswers);
+        setTranscript("");
+        
+        if (currentQuestionIdx < interviewQuestions.length - 1) {
+            const nextIdx = currentQuestionIdx + 1;
+            setCurrentQuestionIdx(nextIdx);
+            speakQuestion(interviewQuestions[nextIdx].text);
+            startSpeechRecognition();
+        } else {
+            handleFinishInterview(nextAnswers);
+        }
+    };
+
+    const handleFinishInterview = async (finalAnswers: any[]) => {
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(track => track.stop());
+        }
+        setWebcamActive(false);
+        setMediaStream(null);
+        stopSpeechRecognition();
+        
+        setInterviewStage("evaluating");
+        setEvaluatingLoading(true);
+        
+        const t = trackingMetrics.totalFrames || 1;
+        const metrics = {
+            eye_contact_ratio: trackingMetrics.eyeContactFrames / t,
+            head_stability_ratio: trackingMetrics.headStabilityFrames / t,
+            posture_alignment_ratio: trackingMetrics.postureFrames / t
+        };
+        
+        try {
+            const res = await fetch("/api/v1/career/evaluate-interview", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    role: interviewRole,
+                    answers: finalAnswers,
+                    metrics: metrics
+                })
+            });
+            if (!res.ok) throw new Error("Evaluation failed");
+            const data = await res.json();
+            setEvaluationResult(data);
+            setInterviewStage("completed");
+            toast.success("Interview evaluation complete!");
+        } catch (err: any) {
+            toast.error(err.message || "Interview evaluation failed.");
+            setInterviewStage("setup");
+        } finally {
+            setEvaluatingLoading(false);
+        }
+    };
+
+    // MediaPipe processing loop effect
+    useEffect(() => {
+        let activeFaceMesh: any = null;
+        let activeCamera: any = null;
+
+        if (webcamActive && videoRef.current && (window as any).FaceMesh && (interviewStage === "calibrating" || interviewStage === "running")) {
+            const FaceMesh = (window as any).FaceMesh;
+            const Camera = (window as any).cameraUtils?.Camera || (window as any).Camera;
+
+            activeFaceMesh = new FaceMesh({
+                locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+            });
+
+            activeFaceMesh.setOptions({
+                maxNumFaces: 1,
+                refineLandmarks: true,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            activeFaceMesh.onResults((results: any) => {
+                if (!canvasRef.current || !videoRef.current) return;
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext("2d");
+                if (!ctx) return;
+
+                canvas.width = videoRef.current.videoWidth || 640;
+                canvas.height = videoRef.current.videoHeight || 480;
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+
+                if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                    const landmarks = results.multiFaceLandmarks[0];
+
+                    ctx.strokeStyle = "#ADFF44";
+                    ctx.lineWidth = 1;
+                    
+                    const jawOutline = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
+                    ctx.beginPath();
+                    jawOutline.forEach((idx, i) => {
+                        const pt = landmarks[idx];
+                        if (pt) {
+                            const x = pt.x * canvas.width;
+                            const y = pt.y * canvas.height;
+                            if (i === 0) ctx.moveTo(x, y);
+                            else ctx.lineTo(x, y);
+                        }
+                    });
+                    ctx.closePath();
+                    ctx.stroke();
+
+                    const leftEyeCorner = landmarks[33];
+                    const rightEyeCorner = landmarks[263];
+                    const noseTip = landmarks[4];
+
+                    let roll = 0;
+                    let yawRatio = 1.0;
+                    let eyeContact = true;
+                    let headStability = true;
+                    let posture = true;
+
+                    if (leftEyeCorner && rightEyeCorner && noseTip) {
+                        roll = Math.atan2(rightEyeCorner.y - leftEyeCorner.y, rightEyeCorner.x - leftEyeCorner.x) * (180 / Math.PI);
+                        const distLeft = noseTip.x - leftEyeCorner.x;
+                        const distRight = rightEyeCorner.x - noseTip.x;
+                        if (distRight > 0) {
+                            yawRatio = distLeft / distRight;
+                        }
+
+                        const leftIris = landmarks[468];
+                        const rightIris = landmarks[473];
+                        const leftInnerCorner = landmarks[133];
+                        const rightInnerCorner = landmarks[362];
+
+                        if (leftIris && rightIris && leftInnerCorner && rightInnerCorner) {
+                            const leftEyeWidth = leftInnerCorner.x - leftEyeCorner.x;
+                            const rightEyeWidth = rightEyeCorner.x - rightInnerCorner.x;
+
+                            if (leftEyeWidth > 0 && rightEyeWidth > 0) {
+                                const leftRatio = (leftIris.x - leftEyeCorner.x) / leftEyeWidth;
+                                const rightRatio = (rightIris.x - rightInnerCorner.x) / rightEyeWidth;
+                                if (leftRatio < 0.35 || leftRatio > 0.65 || rightRatio < 0.35 || rightRatio > 0.65) {
+                                    eyeContact = false;
+                                }
+                            }
+                        }
+
+                        if (Math.abs(roll) > 10 || yawRatio < 0.7 || yawRatio > 1.4) {
+                            headStability = false;
+                        }
+
+                        const faceSize = Math.sqrt(Math.pow(rightEyeCorner.x - leftEyeCorner.x, 2) + Math.pow(rightEyeCorner.y - leftEyeCorner.y, 2));
+                        
+                        if (interviewStage === "calibrating") {
+                            setCalibrationBaseline({
+                                x: noseTip.x,
+                                y: noseTip.y,
+                                size: faceSize
+                            });
+                        } else if (interviewStage === "running" && calibrationBaseline) {
+                            const calib = calibrationBaseline;
+                            const dx = Math.abs(noseTip.x - calib.x);
+                            const dy = Math.abs(noseTip.y - calib.y);
+                            const sizeRatio = faceSize / calib.size;
+
+                            if (dx > 0.1 || dy > 0.1 || sizeRatio < 0.8 || sizeRatio > 1.2) {
+                                posture = false;
+                            }
+                        }
+                    }
+
+                    if (landmarks[468]) {
+                        ctx.fillStyle = eyeContact ? "#ADFF44" : "#FF5555";
+                        ctx.beginPath();
+                        ctx.arc(landmarks[468].x * canvas.width, landmarks[468].y * canvas.height, 3, 0, 2 * Math.PI);
+                        ctx.arc(landmarks[473].x * canvas.width, landmarks[473].y * canvas.height, 3, 0, 2 * Math.PI);
+                        ctx.fill();
+                    }
+
+                    setLiveMetrics({ eyeContact, headStability, posture });
+
+                    if (interviewStage === "running") {
+                        setTrackingMetrics(prev => ({
+                            eyeContactFrames: prev.eyeContactFrames + (eyeContact ? 1 : 0),
+                            headStabilityFrames: prev.headStabilityFrames + (headStability ? 1 : 0),
+                            postureFrames: prev.postureFrames + (posture ? 1 : 0),
+                            totalFrames: prev.totalFrames + 1
+                        }));
+                    }
+                } else {
+                    setLiveMetrics({ eyeContact: false, headStability: false, posture: false });
+                }
+            });
+
+            if (Camera) {
+                activeCamera = new Camera(videoRef.current, {
+                    onFrame: async () => {
+                        if (videoRef.current && activeFaceMesh) {
+                            await activeFaceMesh.send({ image: videoRef.current });
+                        }
+                    },
+                    width: 640,
+                    height: 480
+                });
+                activeCamera.start();
+            }
+        }
+
+        return () => {
+            if (activeCamera) {
+                try { activeCamera.stop(); } catch (e) {}
+            }
+            if (activeFaceMesh) {
+                try { activeFaceMesh.close(); } catch (e) {}
+            }
+        };
+    }, [webcamActive, interviewStage]);
+
     return (
         <div className="min-h-screen bg-black text-white career-readiness-page selection:bg-[#ADFF44] selection:text-black">
 
             <main className="max-w-7xl mx-auto px-4 py-32">
+                {/* Top Level Suite Navigation Switcher */}
+                <div className="flex justify-center mb-16">
+                    <div className="inline-flex bg-white/5 p-1.5 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-xl gap-1">
+                        {[
+                            { id: "resume", label: "Resume Optimizer", icon: FileText },
+                            { id: "linkedin", label: "LinkedIn Auditor", icon: Linkedin },
+                            { id: "qa", label: "Interview Q&A Explorer", icon: BookOpen },
+                            { id: "interview", label: "AI Video Mock Interview", icon: Video }
+                        ].map((sec) => (
+                            <button
+                                key={sec.id}
+                                type="button"
+                                onClick={() => {
+                                    setActiveSection(sec.id as any);
+                                    if (sec.id === "resume") setMode("resume");
+                                    if (sec.id === "linkedin") setMode("linkedin");
+                                    // Stop video stream if leaving mock interview
+                                    if (sec.id !== "interview" && mediaStream) {
+                                        mediaStream.getTracks().forEach(track => track.stop());
+                                        setWebcamActive(false);
+                                        setMediaStream(null);
+                                        stopSpeechRecognition();
+                                        setInterviewStage("setup");
+                                    }
+                                }}
+                                className={`flex items-center gap-2 px-5 py-3 text-xs font-bold rounded-xl transition-all ${activeSection === sec.id ? "bg-[#ADFF44] text-black shadow-lg shadow-[#ADFF44]/20" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
+                            >
+                                <sec.icon size={14} />
+                                {sec.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 <AnimatePresence mode="wait">
-                    {stage === "upload" ? (
-                        <motion.div
+                    {(activeSection === "resume" || activeSection === "linkedin") && (
+                        stage === "upload" ? (
+                            <motion.div
                             key="upload-stage"
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -1401,6 +1949,506 @@ const CareerReadiness = () => {
                                     </div>
                                 )}
                             </div>
+                        </motion.div>
+                        )
+                    )}
+
+                    {/* INTERVIEW Q&A DATABASE */}
+                    {activeSection === "qa" && (
+                        <motion.div
+                            key="qa-stage"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            className="space-y-8"
+                        >
+                            <div className="text-center space-y-4 max-w-3xl mx-auto">
+                                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#ADFF44]/10 border border-[#ADFF44]/20 text-[#ADFF44] text-xs font-bold uppercase tracking-widest mb-2">
+                                    <BookOpen size={14} />
+                                    Curated Interview Q&A Database
+                                </div>
+                                <h1 className="text-4xl md:text-5xl font-bold font-sora">
+                                    Master Your <span className="text-[#ADFF44]">Next Interview</span>
+                                </h1>
+                                <p className="text-gray-400 text-sm max-w-xl mx-auto">
+                                    Browse 200 most-asked interview questions with expert suggested answers for 50 popular job roles.
+                                </p>
+                            </div>
+
+                            <div className="grid lg:grid-cols-4 gap-8 mt-12 items-start">
+                                {/* Left Controls Sidebar */}
+                                <div className="lg:col-span-1 space-y-6 bg-white/5 p-6 rounded-3xl border border-white/10">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider">Select Job Role</label>
+                                        <select
+                                            value={qaRole}
+                                            onChange={(e) => {
+                                                setQaRole(e.target.value);
+                                                setExpandedQuestionId(null);
+                                            }}
+                                            className="w-full h-12 rounded-xl bg-black border border-white/10 px-3 text-sm text-gray-200 focus:border-[#ADFF44] outline-none"
+                                        >
+                                            {FAMOUS_ROLES.map((r, i) => (
+                                                <option key={i} value={r} className="bg-neutral-900 text-gray-300">{r}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider">Search Questions</label>
+                                        <div className="relative">
+                                            <Search className="absolute left-3.5 top-3.5 text-gray-500" size={16} />
+                                            <Input
+                                                placeholder="Search question keywords..."
+                                                className="bg-black border-white/10 focus:border-[#ADFF44] h-12 pl-10 rounded-xl text-sm"
+                                                value={qaSearch}
+                                                onChange={(e) => setQaSearch(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2 pt-2 border-t border-white/5">
+                                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider">Question Categories</label>
+                                        <div className="flex flex-col gap-2">
+                                            {["Behavioral & Fit", "Technical & Domain", "System & Architecture", "Scenario & Troubleshooting"].map((cat) => (
+                                                <button
+                                                    key={cat}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setQaCategory(cat);
+                                                        setExpandedQuestionId(null);
+                                                    }}
+                                                    className={`w-full py-3 px-4 rounded-xl text-left text-xs font-bold transition-all border flex items-center justify-between ${qaCategory === cat ? "bg-[#ADFF44]/10 border-[#ADFF44]/30 text-[#ADFF44]" : "bg-transparent border-transparent text-gray-400 hover:text-white hover:bg-white/5"}`}
+                                                >
+                                                    <span>{cat}</span>
+                                                    <span className="text-[9px] bg-white/5 px-2 py-0.5 rounded text-gray-500">50 Qs</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right Questions List */}
+                                <div className="lg:col-span-3 space-y-4">
+                                    {qaQuestionsLoading ? (
+                                        <div className="space-y-3">
+                                            {[1, 2, 3, 4, 5].map(i => (
+                                                <div key={i} className="h-16 rounded-2xl bg-white/5 animate-pulse" />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between items-center bg-white/3 border border-white/5 px-6 py-4 rounded-2xl">
+                                                <span className="text-xs font-bold text-gray-400">Showing {qaCategory} Questions for <strong className="text-white">{qaRole}</strong></span>
+                                                <span className="text-xs bg-[#ADFF44]/10 text-[#ADFF44] font-bold px-3 py-1 rounded-full">200 Questions Loaded</span>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                {qaQuestions
+                                                    .filter(q => q.category === qaCategory && (qaSearch === "" || q.text.toLowerCase().includes(qaSearch.toLowerCase())))
+                                                    .map((q, idx) => {
+                                                        const isExpanded = expandedQuestionId === q.id;
+                                                        const cacheKey = `${qaRole}:${q.text}`;
+                                                        const answerData = answersStore[cacheKey];
+
+                                                        return (
+                                                            <div
+                                                                key={q.id}
+                                                                className={`border rounded-2xl transition-all overflow-hidden bg-white/3 ${isExpanded ? "border-[#ADFF44]/30 ring-1 ring-[#ADFF44]/10" : "border-white/5 hover:border-white/10"}`}
+                                                            >
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        if (isExpanded) {
+                                                                            setExpandedQuestionId(null);
+                                                                        } else {
+                                                                            setExpandedQuestionId(q.id);
+                                                                            loadQuestionAnswer(q.text);
+                                                                        }
+                                                                    }}
+                                                                    className="w-full px-6 py-5 text-left flex justify-between items-start gap-4 hover:bg-white/2 transition-colors"
+                                                                >
+                                                                    <div className="flex gap-4">
+                                                                        <span className="text-xs font-mono font-bold text-gray-600 mt-0.5">{idx + 1}.</span>
+                                                                        <h4 className="font-bold text-sm text-gray-200 leading-snug">{q.text}</h4>
+                                                                    </div>
+                                                                    <ChevronRight
+                                                                        size={16}
+                                                                        className={`text-gray-500 mt-1 transition-transform shrink-0 ${isExpanded ? "rotate-90 text-[#ADFF44]" : ""}`}
+                                                                    />
+                                                                </button>
+
+                                                                {isExpanded && (
+                                                                    <div className="border-t border-white/5 bg-black/40 p-6 space-y-6">
+                                                                        {expandedQuestionLoading && !answerData ? (
+                                                                            <div className="space-y-3 animate-pulse">
+                                                                                <div className="h-4 bg-white/5 rounded w-3/4" />
+                                                                                <div className="h-4 bg-white/5 rounded w-5/6" />
+                                                                                <div className="h-4 bg-white/5 rounded w-2/3" />
+                                                                            </div>
+                                                                        ) : answerData ? (
+                                                                            <div className="grid md:grid-cols-3 gap-6 items-start">
+                                                                                <div className="md:col-span-2 space-y-3">
+                                                                                    <div className="flex items-center justify-between">
+                                                                                        <span className="text-[10px] font-black uppercase text-[#ADFF44] tracking-wider flex items-center gap-1">
+                                                                                            <Sparkles size={10} /> Suggested Model Answer
+                                                                                        </span>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() => {
+                                                                                                navigator.clipboard.writeText(answerData.suggested_answer);
+                                                                                                toast.success("Answer copied to clipboard!");
+                                                                                            }}
+                                                                                            className="text-xs text-[#ADFF44] hover:underline flex items-center gap-1"
+                                                                                        >
+                                                                                            <Copy size={12} /> Copy Answer
+                                                                                        </button>
+                                                                                    </div>
+                                                                                    <p className="text-xs text-gray-300 leading-relaxed font-sans whitespace-pre-wrap select-text selection:bg-[#ADFF44] selection:text-black">
+                                                                                        {answerData.suggested_answer}
+                                                                                    </p>
+                                                                                </div>
+                                                                                <div className="bg-[#ADFF44]/5 border border-[#ADFF44]/15 p-4 rounded-xl space-y-3">
+                                                                                    <span className="text-[10px] font-black uppercase text-[#ADFF44] tracking-wider flex items-center gap-1">
+                                                                                        <Star size={10} fill="currentColor" /> Expert Response Tips
+                                                                                    </span>
+                                                                                    <ul className="space-y-2">
+                                                                                        {answerData.tips?.map((t: string, ti: number) => (
+                                                                                            <li key={ti} className="flex gap-2 text-[11px] text-gray-400 leading-normal">
+                                                                                                <div className="w-1.5 h-1.5 rounded-full bg-[#ADFF44]/40 mt-1.5 shrink-0" />
+                                                                                                <span>{t}</span>
+                                                                                            </li>
+                                                                                        ))}
+                                                                                    </ul>
+                                                                                </div>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <p className="text-xs text-gray-500 italic">No answer data available.</p>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* AI VIDEO MOCK INTERVIEW */}
+                    {activeSection === "interview" && (
+                        <motion.div
+                            key="interview-stage"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            className="space-y-8"
+                        >
+                            {interviewStage === "setup" && (
+                                <div className="max-w-2xl mx-auto space-y-8 py-12">
+                                    <div className="text-center space-y-4">
+                                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#ADFF44]/10 border border-[#ADFF44]/20 text-[#ADFF44] text-xs font-bold uppercase tracking-widest mb-2">
+                                            <Video size={14} />
+                                            AI Video Mock Interview Simulator
+                                        </div>
+                                        <h1 className="text-4xl md:text-5xl font-bold font-sora">
+                                            Practice in <span className="text-[#ADFF44]">Real-Time</span>
+                                        </h1>
+                                        <p className="text-gray-400 text-sm leading-relaxed max-w-xl mx-auto">
+                                            Connect your camera and speak your answers. Our browser-based MediaPipe model tracks your eye contact, head stability, and posture in real-time, while AI evaluates your spoken responses.
+                                        </p>
+                                    </div>
+
+                                    <Card className="bg-white/5 border border-white/10 p-8 rounded-3xl space-y-6">
+                                        <div className="space-y-4">
+                                            <label className="text-xs font-black uppercase text-gray-400 tracking-wider">Select target interview role</label>
+                                            <select
+                                                value={interviewRole}
+                                                onChange={(e) => setInterviewRole(e.target.value)}
+                                                className="w-full h-14 rounded-xl bg-black border border-white/10 px-4 text-gray-200 focus:border-[#ADFF44] outline-none font-bold"
+                                            >
+                                                {FAMOUS_ROLES.map((r, i) => (
+                                                    <option key={i} value={r} className="bg-neutral-900 text-gray-300">{r}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="grid md:grid-cols-3 gap-4 border-t border-white/5 pt-6 text-xs text-gray-400">
+                                            <div className="p-4 rounded-xl bg-white/3 space-y-1.5">
+                                                <h4 className="font-bold text-white flex items-center gap-1.5 uppercase text-[10px] tracking-wider"><Star size={12} fill="currentColor" className="text-[#ADFF44]" /> Eye Contact</h4>
+                                                <p>Tracks iris movements to ensure you maintain direct eye engagement with the screen.</p>
+                                            </div>
+                                            <div className="p-4 rounded-xl bg-white/3 space-y-1.5">
+                                                <h4 className="font-bold text-white flex items-center gap-1.5 uppercase text-[10px] tracking-wider"><UserCheck size={12} className="text-[#ADFF44]" /> Head Pose</h4>
+                                                <p>Analyzes head pitch, roll, and yaw to record professional speaking posture stability.</p>
+                                            </div>
+                                            <div className="p-4 rounded-xl bg-white/3 space-y-1.5">
+                                                <h4 className="font-bold text-white flex items-center gap-1.5 uppercase text-[10px] tracking-wider"><Target size={12} className="text-[#ADFF44]" /> Posture Alert</h4>
+                                                <p>Monitors distance and neck alignment, warning you in real-time if you lean or slouch.</p>
+                                            </div>
+                                        </div>
+
+                                        <Button
+                                            onClick={handleStartMockInterview}
+                                            disabled={loading}
+                                            className="w-full h-14 rounded-xl bg-[#ADFF44] hover:bg-[#9BE63D] text-black font-black text-base transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 shadow-lg shadow-[#ADFF44]/15"
+                                        >
+                                            {loading ? (
+                                                <>
+                                                    <Loader2 className="animate-spin" size={18} />
+                                                    <span>Initializing AI Engine...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Camera size={18} />
+                                                    <span>Start AI Video Mock Interview</span>
+                                                </>
+                                            )}
+                                        </Button>
+                                    </Card>
+                                </div>
+                            )}
+
+                            {(interviewStage === "calibrating" || interviewStage === "running") && (
+                                <div className="grid lg:grid-cols-5 gap-8 items-start">
+                                    {/* Left: Video & Face Tracking */}
+                                    <div className="lg:col-span-3 space-y-6">
+                                        <div className="relative rounded-3xl overflow-hidden bg-neutral-900 border border-white/10 aspect-video shadow-2xl">
+                                            <video
+                                                ref={videoRef}
+                                                muted
+                                                playsInline
+                                                className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
+                                            />
+                                            <canvas
+                                                ref={canvasRef}
+                                                className="absolute inset-0 w-full h-full object-cover z-20 pointer-events-none"
+                                            />
+
+                                            {interviewStage === "calibrating" && (
+                                                <div className="absolute inset-0 bg-black/60 z-30 flex flex-col items-center justify-center gap-4 text-center p-6 backdrop-blur-sm animate-fade-in">
+                                                    <div className="w-20 h-20 rounded-full border-4 border-dashed border-[#ADFF44] flex items-center justify-center animate-spin text-[#ADFF44] text-3xl font-black">
+                                                        3
+                                                    </div>
+                                                    <div className="max-w-xs space-y-2">
+                                                        <h3 className="font-bold text-lg text-white">Calibrating Webcam</h3>
+                                                        <p className="text-xs text-gray-400">Please sit straight, look directly at your camera, and hold still.</p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="absolute bottom-4 left-4 z-30 flex gap-2">
+                                                <span className="px-3 py-1 rounded-full bg-black/80 text-[10px] font-bold border border-[#ADFF44]/20 text-[#ADFF44] flex items-center gap-1">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-[#ADFF44] animate-ping" /> Camera Live
+                                                </span>
+                                                {calibrated && (
+                                                    <span className="px-3 py-1 rounded-full bg-black/80 text-[10px] font-bold border border-white/10 text-white flex items-center gap-1">
+                                                        Tracking Active
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Real-time Tracking Dials/Bars */}
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <Card className="bg-white/5 border border-white/10 p-4 rounded-2xl flex flex-col items-center text-center space-y-2">
+                                                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">Eye Contact</span>
+                                                <div className={`w-3.5 h-3.5 rounded-full ${liveMetrics.eyeContact ? "bg-[#ADFF44] shadow-lg shadow-[#ADFF44]/30" : "bg-red-500 shadow-lg shadow-red-500/30"} transition-colors`} />
+                                                <span className="text-xs font-bold text-white">{liveMetrics.eyeContact ? "Looking at Screen" : "Looking Away"}</span>
+                                            </Card>
+                                            <Card className="bg-white/5 border border-white/10 p-4 rounded-2xl flex flex-col items-center text-center space-y-2">
+                                                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">Head Pose</span>
+                                                <div className={`w-3.5 h-3.5 rounded-full ${liveMetrics.headStability ? "bg-[#ADFF44] shadow-lg shadow-[#ADFF44]/30" : "bg-red-500 shadow-lg shadow-red-500/30"} transition-colors`} />
+                                                <span className="text-xs font-bold text-white">{liveMetrics.headStability ? "Stable Posture" : "Head Movement"}</span>
+                                            </Card>
+                                            <Card className="bg-white/5 border border-white/10 p-4 rounded-2xl flex flex-col items-center text-center space-y-2">
+                                                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">Alignment</span>
+                                                <div className={`w-3.5 h-3.5 rounded-full ${liveMetrics.posture ? "bg-[#ADFF44] shadow-lg shadow-[#ADFF44]/30" : "bg-red-500 shadow-lg shadow-red-500/30"} transition-colors`} />
+                                                <span className="text-xs font-bold text-white">{liveMetrics.posture ? "Centered" : "Slouching / Leaning"}</span>
+                                            </Card>
+                                        </div>
+                                    </div>
+
+                                    {/* Right: Questions & Audio flow */}
+                                    <div className="lg:col-span-2 space-y-6">
+                                        <Card className="bg-white/5 border border-white/10 p-6 rounded-3xl space-y-6 min-h-[350px] flex flex-col justify-between">
+                                            <div className="space-y-6">
+                                                <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                                                    <span className="text-[10px] font-black uppercase tracking-wider text-[#ADFF44]">Question {currentQuestionIdx + 1} of {interviewQuestions.length}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => speakQuestion(interviewQuestions[currentQuestionIdx]?.text)}
+                                                        className="text-gray-400 hover:text-white transition-colors"
+                                                        title="Re-read Question"
+                                                    >
+                                                        <Volume2 size={18} />
+                                                    </button>
+                                                </div>
+
+                                                <h3 className="text-2xl font-bold font-sora text-white leading-tight">
+                                                    "{interviewQuestions[currentQuestionIdx]?.text}"
+                                                </h3>
+
+                                                {/* Voice transcription preview */}
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-2 text-xs font-bold text-gray-400">
+                                                        <Mic size={14} className={transcribing ? "text-[#ADFF44] animate-pulse" : "text-gray-500"} />
+                                                        <span>{transcribing ? "Transcribing spoken answer..." : "Connecting Mic..."}</span>
+                                                    </div>
+                                                    <div className="bg-black/40 border border-white/5 rounded-2xl p-4 min-h-[120px] max-h-[160px] overflow-y-auto text-xs text-gray-300 font-sans leading-relaxed select-text">
+                                                        {transcript || (
+                                                            <span className="text-gray-600 italic">Start speaking your response... transcript will appear here in real-time.</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-4 border-t border-white/5 pt-6">
+                                                <Button
+                                                    onClick={() => handleFinishInterview([...spokenAnswers, { question: interviewQuestions[currentQuestionIdx]?.text, answer: transcript || "[No spoken response captured]" }])}
+                                                    variant="outline"
+                                                    className="flex-1 border-white/10 hover:bg-red-500/10 hover:border-red-500/20 text-red-400 h-12 rounded-xl text-xs font-bold uppercase tracking-wider"
+                                                >
+                                                    Finish Early
+                                                </Button>
+                                                <Button
+                                                    onClick={handleNextQuestion}
+                                                    className="flex-1 bg-[#ADFF44] hover:bg-[#9BE63D] text-black h-12 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg shadow-[#ADFF44]/15"
+                                                >
+                                                    <span>{currentQuestionIdx === interviewQuestions.length - 1 ? "Submit Interview" : "Next Question"}</span>
+                                                    <ArrowRight size={14} />
+                                                </Button>
+                                            </div>
+                                        </Card>
+                                    </div>
+                                </div>
+                            )}
+
+                            {interviewStage === "evaluating" && (
+                                <div className="max-w-md mx-auto py-24 flex flex-col items-center justify-center text-center gap-6">
+                                    <div className="relative">
+                                        <div className="w-24 h-24 rounded-full border-4 border-[#ADFF44]/20 border-t-[#ADFF44] animate-spin" />
+                                        <div className="absolute inset-0 flex items-center justify-center text-[#ADFF44]">
+                                            <Brain size={32} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <h3 className="text-xl font-bold font-sora">Analyzing Video & Transcript</h3>
+                                        <p className="text-gray-500 text-sm leading-relaxed max-w-xs mx-auto">
+                                            AI is grading your technical content, STAR alignment, eye contact ratios, and speaking posture stability.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {interviewStage === "completed" && evaluationResult && (
+                                <div className="space-y-8">
+                                    {/* Score Dials / Summary Dashboard */}
+                                    <div className="grid lg:grid-cols-4 gap-8">
+                                        {/* Overall Score Card */}
+                                        <Card className="lg:col-span-1 bg-white/5 border border-white/10 p-8 rounded-3xl flex flex-col items-center text-center space-y-6">
+                                            <h3 className="font-bold text-gray-400 uppercase tracking-widest text-xs">Interview Score</h3>
+                                            <div className="relative">
+                                                <svg className="w-40 h-40 transform -rotate-90">
+                                                    <circle className="text-white/5" strokeWidth="6" stroke="currentColor" fill="transparent" r="72" cx="80" cy="80" />
+                                                    <circle
+                                                        className="text-[#ADFF44]"
+                                                        strokeWidth="6"
+                                                        strokeDasharray={2 * Math.PI * 72}
+                                                        strokeDashoffset={2 * Math.PI * 72 * (1 - (evaluationResult.overall_score || 0) / 100)}
+                                                        strokeLinecap="round"
+                                                        stroke="currentColor"
+                                                        fill="transparent"
+                                                        r="72" cx="80" cy="80"
+                                                    />
+                                                </svg>
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                    <span className="text-5xl font-black text-[#ADFF44] font-sora">{evaluationResult.overall_score}</span>
+                                                    <span className="text-[10px] font-black uppercase text-gray-500 tracking-wider">Overall</span>
+                                                </div>
+                                            </div>
+                                            <Button
+                                                onClick={() => setInterviewStage("setup")}
+                                                variant="outline"
+                                                className="w-full border-white/10 hover:bg-white/5 h-11 text-xs font-bold uppercase tracking-wider rounded-xl"
+                                            >
+                                                Retake Interview
+                                            </Button>
+                                        </Card>
+
+                                        {/* Details Critique Block */}
+                                        <div className="lg:col-span-3 grid md:grid-cols-2 gap-6 bg-white/3 border border-white/5 p-8 rounded-3xl">
+                                            <div className="space-y-4">
+                                                <h3 className="text-sm font-black uppercase tracking-wider text-[#ADFF44] flex items-center gap-1.5">
+                                                    <Volume2 size={16} /> Verbal Content Feedback
+                                                </h3>
+                                                <div className="space-y-3">
+                                                    <div className="flex justify-between items-center text-xs font-bold text-gray-400">
+                                                        <span>Content & Structure Score</span>
+                                                        <span className="text-white">{evaluationResult.content_score}/100</span>
+                                                    </div>
+                                                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-[#ADFF44]" style={{ width: `${evaluationResult.content_score}%` }} />
+                                                    </div>
+                                                </div>
+                                                <p className="text-xs text-gray-400 leading-relaxed font-sans">{evaluationResult.content_feedback}</p>
+                                            </div>
+
+                                            <div className="space-y-4 md:border-l md:border-white/5 md:pl-6">
+                                                <h3 className="text-sm font-black uppercase tracking-wider text-[#ADFF44] flex items-center gap-1.5">
+                                                    <Camera size={16} /> Non-Verbal Delivery Feedback
+                                                </h3>
+                                                <div className="space-y-3">
+                                                    <div className="flex justify-between items-center text-xs font-bold text-gray-400">
+                                                        <span>Delivery & Posture Score</span>
+                                                        <span className="text-white">{evaluationResult.delivery_score}/100</span>
+                                                    </div>
+                                                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-[#ADFF44]" style={{ width: `${evaluationResult.delivery_score}%` }} />
+                                                    </div>
+                                                </div>
+                                                <p className="text-xs text-gray-400 leading-relaxed font-sans">{evaluationResult.delivery_feedback}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Detailed Graded Question Responses */}
+                                    <div className="space-y-4">
+                                        <h3 className="text-lg font-bold font-sora text-white">Spoken Question Breakdown</h3>
+                                        <div className="grid gap-4">
+                                            {evaluationResult.graded_answers?.map((ans: any, i: number) => (
+                                                <Card key={i} className="bg-white/5 border border-white/10 p-6 rounded-3xl space-y-6">
+                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+                                                        <div className="flex gap-3 items-start">
+                                                            <span className="text-xs font-mono font-bold text-gray-500 mt-1">{i + 1}.</span>
+                                                            <h4 className="font-bold text-sm text-white leading-tight">{ans.question}</h4>
+                                                        </div>
+                                                        <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shrink-0 border ${ans.rating === "Strong" ? "bg-[#ADFF44]/10 border-[#ADFF44]/20 text-[#ADFF44]" : ans.rating === "Good" ? "bg-blue-500/10 border-blue-500/20 text-blue-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
+                                                            {ans.rating} Response
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="grid md:grid-cols-2 gap-6 text-xs leading-relaxed">
+                                                        <div className="space-y-2">
+                                                            <span className="text-[10px] font-black uppercase text-gray-500 tracking-wider">AI Critique</span>
+                                                            <p className="text-gray-400 font-sans">{ans.critique}</p>
+                                                        </div>
+                                                        <div className="space-y-2 bg-[#ADFF44]/5 p-4 rounded-xl border border-[#ADFF44]/10 relative">
+                                                            <span className="text-[10px] font-black uppercase text-[#ADFF44] tracking-wider flex items-center gap-1">
+                                                                <Sparkles size={10} /> How You Should Have Answered
+                                                            </span>
+                                                            <p className="text-gray-300 font-medium font-sans italic">"{ans.better_answer}"</p>
+                                                        </div>
+                                                    </div>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>
