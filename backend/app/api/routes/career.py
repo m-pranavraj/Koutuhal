@@ -1,3 +1,4 @@
+# DEPLOYED: 2026-06-15 — Includes /question-answer, /evaluate-interview, /analyze-linkedin v2
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, status
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -648,61 +649,103 @@ async def analyze_linkedin(
             raise HTTPException(status_code=400, detail="Could not extract text from the LinkedIn PDF profile.")
             
         prompt = f"""
-You are an expert LinkedIn profile optimizer and career consultant.
-Audit the following LinkedIn PDF profile text and score each section out of its maximum points:
-- Headline: Max 20 points
-- About/Summary: Max 25 points
-- Experience: Max 30 points
-- Skills: Max 15 points
-- Education: Max 10 points
+You are an elite LinkedIn profile optimizer. Audit the following LinkedIn profile PDF text.
+Score each section individually using the EXACT scoring system below (Hiration-style):
 
-Your evaluation must be based STRICTLY on the text provided. Do not hallucinate or assume facts.
-Return step-by-step optimization actions and a fully rewritten optimized draft for each section.
+- url: Max 5 points — Is the URL customized/professional (not a random string)?
+- header_title: Max 10 points — Is the headline powerful, keyword-rich, and role-specific?
+- location: Max 5 points — Is location filled in and accurate?
+- about: Max 20 points — Is the About section compelling, first-person, metrics-driven, 300+ chars?
+- experience: Max 20 points — Are experiences quantified, action-verb-led, with measurable outcomes?
+- education: Max 10 points — Is education listed with institution, degree, dates, CGPA if relevant?
+- skills: Max 15 points — Are 5+ relevant skills listed? Any endorsements mentioned?
 
-TARGET ROLE OR INDUSTRY (if provided): {role or "General Professional"}
+TARGET ROLE OR INDUSTRY: {role or "General Professional"}
+CANDIDATE NAME: {name}
 
 LINKEDIN PROFILE TEXT:
 {profile_text[:12000]}
 
-Output ONLY valid JSON (no markdown, no formatting other than valid JSON):
+CRITICAL RULES:
+1. Base scoring ONLY on what is in the text. Do NOT hallucinate facts.
+2. Be honest — if a section is missing or weak, give a low score.
+3. For each section provide: current content extracted, specific suggestions to improve, and a fully rewritten optimized draft.
+4. overall_score = sum of all section scores (max 85, scale to 100 by multiplying by 100/85).
+
+Output ONLY valid JSON (no markdown, no extra text):
 {{
-  "overall_score": <sum of the section scores, integer from 0 to 100>,
-  "summary": "<2-3 sentence executive audit summary in second-person perspective>",
+  "overall_score": <integer 0-100, scaled from raw section total>,
+  "summary": "<2-3 sentence executive audit verdict in second-person>",
   "sections": {{
-    "headline": {{
-      "score": <0 to 20>,
-      "max_points": 20,
-      "current": "<current headline extracted from profile>",
-      "suggestions": ["<suggestion #1>", "<suggestion #2>"],
-      "optimized_draft": "<fully rewritten optimized headline ready to copy>"
+    "url": {{
+      "score": <0 to 5>,
+      "max_points": 5,
+      "label": "URL",
+      "current": "<the LinkedIn URL or 'Not found'>",
+      "things_right": ["<what is done correctly, or empty list>"],
+      "suggestions": ["<improvement tip 1>", "<improvement tip 2>"],
+      "optimized_draft": "<example of ideal LinkedIn URL format>",
+      "sample": "linkedin.com/in/firstname-lastname"
+    }},
+    "header_title": {{
+      "score": <0 to 10>,
+      "max_points": 10,
+      "label": "Header Title",
+      "current": "<current headline>",
+      "things_right": ["<what is done correctly>"],
+      "suggestions": ["<tip 1>", "<tip 2>"],
+      "optimized_draft": "<fully rewritten powerful headline>",
+      "sample": "Senior Software Engineer | React & Node.js | Building Scalable Web Apps"
+    }},
+    "location": {{
+      "score": <0 to 5>,
+      "max_points": 5,
+      "label": "Location",
+      "current": "<location from profile or 'Not specified'>",
+      "things_right": ["<what is done correctly>"],
+      "suggestions": ["<tip 1>"],
+      "optimized_draft": "<ideal location format: City, State, Country>",
+      "sample": "Hyderabad, Telangana, India"
     }},
     "about": {{
-      "score": <0 to 25>,
-      "max_points": 25,
-      "current": "<current about/summary section>",
-      "suggestions": ["<suggestion #1>", "<suggestion #2>"],
-      "optimized_draft": "<fully rewritten optimized about section written in first-person, engaging and metrics-driven>"
+      "score": <0 to 20>,
+      "max_points": 20,
+      "label": "About",
+      "current": "<current about/summary text>",
+      "things_right": ["<what is done correctly>"],
+      "suggestions": ["<tip 1>", "<tip 2>", "<tip 3>"],
+      "optimized_draft": "<fully rewritten About section, first-person, engaging, 200-300 words>",
+      "sample": "Results-driven Software Engineer with 3+ years..."
     }},
     "experience": {{
-      "score": <0 to 30>,
-      "max_points": 30,
-      "current": "<current experience summary>",
-      "suggestions": ["<suggestion #1>", "<suggestion #2>"],
-      "optimized_draft": "<fully rewritten optimized experience section draft containing strong action verbs and metrics>"
-    }},
-    "skills": {{
-      "score": <0 to 15>,
-      "max_points": 15,
-      "current": "<list of current skills>",
-      "suggestions": ["<suggestion #1>", "<suggestion #2>"],
-      "optimized_draft": "<comma-separated list of recommended high-impact skills to add>"
+      "score": <0 to 20>,
+      "max_points": 20,
+      "label": "Experience",
+      "current": "<summary of current experience entries>",
+      "things_right": ["<what is done correctly>"],
+      "suggestions": ["<tip 1>", "<tip 2>"],
+      "optimized_draft": "<rewritten experience bullets with strong action verbs and metrics>",
+      "sample": "Led migration of monolith to microservices, reducing latency by 40%"
     }},
     "education": {{
       "score": <0 to 10>,
       "max_points": 10,
-      "current": "<current education details>",
-      "suggestions": ["<suggestion #1>", "<suggestion #2>"],
-      "optimized_draft": "<clean formatting optimized draft of education>"
+      "label": "Education",
+      "current": "<education details from profile>",
+      "things_right": ["<what is done correctly>"],
+      "suggestions": ["<tip 1>"],
+      "optimized_draft": "<clean formatted education entry>",
+      "sample": "B.Tech Computer Science | GITAM University | 2022–2026 | CGPA: 8.81"
+    }},
+    "skills": {{
+      "score": <0 to 15>,
+      "max_points": 15,
+      "label": "Skills",
+      "current": "<list of current skills from profile>",
+      "things_right": ["<what is done correctly>"],
+      "suggestions": ["<tip 1>", "<tip 2>"],
+      "optimized_draft": "<comma-separated list of high-impact skills to add or restructure>",
+      "sample": "Python, React, Node.js, Docker, Kubernetes, AWS, PostgreSQL"
     }}
   }}
 }}

@@ -790,6 +790,14 @@ const CareerReadiness = () => {
             setActiveTab("ats");
             toast.success("Resume analysis complete!");
             
+            // Auto-generate cover letter if JD is present
+            if (finalRoles[0]?.job_description?.trim()) {
+                handleGenerateCoverLetter(
+                    uploadData.resume_text || "",
+                    finalRoles[0].job_description,
+                    finalRoles[0].role
+                );
+            }
 
         } catch (err: any) {
             toast.error(err.message || "An unexpected error occurred.");
@@ -798,13 +806,14 @@ const CareerReadiness = () => {
         }
     };
 
-    const handleGenerateCoverLetter = async () => {
-        if (!resumeText) {
+    const handleGenerateCoverLetter = async (textOverride?: string, jdOverride?: string, roleOverride?: string) => {
+        const textToUse = textOverride || resumeText;
+        if (!textToUse) {
             toast.error("Please upload a resume first.");
             return;
         }
 
-        const primaryJD = roles[0]?.job_description || "";
+        const primaryJD = jdOverride || roles[0]?.job_description || "";
         if (!primaryJD.trim()) {
             toast.error("A Job Description (JD) is required to generate a tailored cover letter.");
             return;
@@ -816,9 +825,9 @@ const CareerReadiness = () => {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    resume_text: resumeText,
+                    resume_text: textToUse,
                     job_description: primaryJD,
-                    role_name: roles[0]?.role || "Target Role",
+                    role_name: roleOverride || roles[0]?.role || "Target Role",
                 }),
             });
 
@@ -873,20 +882,21 @@ const CareerReadiness = () => {
         }
     }, [qaRole, activeSection]);
 
-    // Load dynamic scripts for MediaPipe Face Mesh
+    // Load dynamic scripts for MediaPipe Face Mesh & Pose
     const loadMediaPipe = async () => {
-        if ((window as any).FaceMesh) {
+        if ((window as any).FaceMesh && (window as any).Pose) {
             setFaceMeshLoaded(true);
             return;
         }
         try {
             await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js");
             await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js");
+            await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js");
             setFaceMeshLoaded(true);
-            toast.success("AI eye and posture tracking models loaded!");
+            toast.success("AI eye, face, and full body posture tracking loaded!");
         } catch (err) {
             console.error("Failed to load MediaPipe scripts", err);
-            toast.error("Failed to load eye and posture tracking models.");
+            toast.error("Failed to load tracking models.");
         }
     };
 
@@ -1126,13 +1136,17 @@ const CareerReadiness = () => {
                     metrics: metrics
                 })
             });
-            if (!res.ok) throw new Error("Evaluation failed");
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || "Server failed to evaluate interview.");
+            }
             const data = await res.json();
             setEvaluationResult(data);
             setInterviewStage("completed");
             toast.success("Interview evaluation complete!");
         } catch (err: any) {
-            toast.error(err.message || "Interview evaluation failed.");
+            console.error("Evaluation Error:", err);
+            toast.error(err.message || "Interview evaluation failed. Are you sure the backend was deployed with the new routes?");
             setInterviewStage("setup");
         } finally {
             setEvaluatingLoading(false);
@@ -1142,23 +1156,25 @@ const CareerReadiness = () => {
     // MediaPipe processing loop effect
     useEffect(() => {
         let activeFaceMesh: any = null;
+        let activePose: any = null;
         let activeCamera: any = null;
 
-        if (webcamActive && videoRef.current && (window as any).FaceMesh && (interviewStage === "calibrating" || interviewStage === "running")) {
+        if (webcamActive && videoRef.current && (window as any).FaceMesh && (window as any).Pose && (interviewStage === "calibrating" || interviewStage === "running")) {
             const FaceMesh = (window as any).FaceMesh;
+            const Pose = (window as any).Pose;
             const Camera = (window as any).cameraUtils?.Camera || (window as any).Camera;
 
             activeFaceMesh = new FaceMesh({
                 locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
             });
+            activeFaceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
 
-            activeFaceMesh.setOptions({
-                maxNumFaces: 1,
-                refineLandmarks: true,
-                minDetectionConfidence: 0.5,
-                minTrackingConfidence: 0.5
+            activePose = new Pose({
+                locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
             });
+            activePose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
 
+            // Clear canvas only once per frame via a flag or just do it in face mesh, assuming face mesh runs first
             activeFaceMesh.onResults((results: any) => {
                 if (!canvasRef.current || !videoRef.current) return;
                 const canvas = canvasRef.current;
@@ -1169,6 +1185,7 @@ const CareerReadiness = () => {
                 canvas.height = videoRef.current.videoHeight || 480;
 
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
                 ctx.translate(canvas.width, 0);
                 ctx.scale(-1, 1);
 
@@ -1206,9 +1223,7 @@ const CareerReadiness = () => {
                         roll = Math.atan2(rightEyeCorner.y - leftEyeCorner.y, rightEyeCorner.x - leftEyeCorner.x) * (180 / Math.PI);
                         const distLeft = noseTip.x - leftEyeCorner.x;
                         const distRight = rightEyeCorner.x - noseTip.x;
-                        if (distRight > 0) {
-                            yawRatio = distLeft / distRight;
-                        }
+                        if (distRight > 0) yawRatio = distLeft / distRight;
 
                         const leftIris = landmarks[468];
                         const rightIris = landmarks[473];
@@ -1218,7 +1233,6 @@ const CareerReadiness = () => {
                         if (leftIris && rightIris && leftInnerCorner && rightInnerCorner) {
                             const leftEyeWidth = leftInnerCorner.x - leftEyeCorner.x;
                             const rightEyeWidth = rightEyeCorner.x - rightInnerCorner.x;
-
                             if (leftEyeWidth > 0 && rightEyeWidth > 0) {
                                 const leftRatio = (leftIris.x - leftEyeCorner.x) / leftEyeWidth;
                                 const rightRatio = (rightIris.x - rightInnerCorner.x) / rightEyeWidth;
@@ -1228,24 +1242,17 @@ const CareerReadiness = () => {
                             }
                         }
 
-                        if (Math.abs(roll) > 10 || yawRatio < 0.7 || yawRatio > 1.4) {
-                            headStability = false;
-                        }
+                        if (Math.abs(roll) > 10 || yawRatio < 0.7 || yawRatio > 1.4) headStability = false;
 
                         const faceSize = Math.sqrt(Math.pow(rightEyeCorner.x - leftEyeCorner.x, 2) + Math.pow(rightEyeCorner.y - leftEyeCorner.y, 2));
                         
                         if (interviewStage === "calibrating") {
-                            setCalibrationBaseline({
-                                x: noseTip.x,
-                                y: noseTip.y,
-                                size: faceSize
-                            });
+                            setCalibrationBaseline({ x: noseTip.x, y: noseTip.y, size: faceSize });
                         } else if (interviewStage === "running" && calibrationBaseline) {
                             const calib = calibrationBaseline;
                             const dx = Math.abs(noseTip.x - calib.x);
                             const dy = Math.abs(noseTip.y - calib.y);
                             const sizeRatio = faceSize / calib.size;
-
                             if (dx > 0.1 || dy > 0.1 || sizeRatio < 0.8 || sizeRatio > 1.2) {
                                 posture = false;
                             }
@@ -1260,26 +1267,74 @@ const CareerReadiness = () => {
                         ctx.fill();
                     }
 
-                    setLiveMetrics({ eyeContact, headStability, posture });
+                    setLiveMetrics(prev => ({ ...prev, eyeContact, headStability, posture }));
 
                     if (interviewStage === "running") {
                         setTrackingMetrics(prev => ({
+                            ...prev,
                             eyeContactFrames: prev.eyeContactFrames + (eyeContact ? 1 : 0),
                             headStabilityFrames: prev.headStabilityFrames + (headStability ? 1 : 0),
                             postureFrames: prev.postureFrames + (posture ? 1 : 0),
                             totalFrames: prev.totalFrames + 1
                         }));
                     }
-                } else {
-                    setLiveMetrics({ eyeContact: false, headStability: false, posture: false });
                 }
+                ctx.restore();
+            });
+
+            activePose.onResults((results: any) => {
+                if (!canvasRef.current) return;
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext("2d");
+                if (!ctx) return;
+
+                ctx.save();
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+
+                if (results.poseLandmarks) {
+                    const lm = results.poseLandmarks;
+                    ctx.strokeStyle = "#44ADFF";
+                    ctx.lineWidth = 3;
+                    ctx.fillStyle = "#ADFF44";
+
+                    const drawLine = (p1: number, p2: number) => {
+                        if(lm[p1] && lm[p2] && lm[p1].visibility > 0.5 && lm[p2].visibility > 0.5) {
+                            ctx.beginPath();
+                            ctx.moveTo(lm[p1].x * canvas.width, lm[p1].y * canvas.height);
+                            ctx.lineTo(lm[p2].x * canvas.width, lm[p2].y * canvas.height);
+                            ctx.stroke();
+                        }
+                    }
+                    const drawNode = (p: number) => {
+                        if (lm[p] && lm[p].visibility > 0.5) {
+                            ctx.beginPath();
+                            ctx.arc(lm[p].x * canvas.width, lm[p].y * canvas.height, 4, 0, 2 * Math.PI);
+                            ctx.fill();
+                        }
+                    }
+
+                    // Draw body skeleton
+                    drawLine(11, 12); // shoulders
+                    drawLine(11, 13); // L arm
+                    drawLine(13, 15);
+                    drawLine(12, 14); // R arm
+                    drawLine(14, 16);
+                    drawLine(11, 23); // L torso
+                    drawLine(12, 24); // R torso
+                    drawLine(23, 24); // hips
+                    
+                    [11, 12, 13, 14, 15, 16, 23, 24].forEach(drawNode);
+                }
+                ctx.restore();
             });
 
             if (Camera) {
                 activeCamera = new Camera(videoRef.current, {
                     onFrame: async () => {
-                        if (videoRef.current && activeFaceMesh) {
-                            await activeFaceMesh.send({ image: videoRef.current });
+                        if (videoRef.current) {
+                            if (activeFaceMesh) await activeFaceMesh.send({ image: videoRef.current });
+                            if (activePose) await activePose.send({ image: videoRef.current });
                         }
                     },
                     width: 640,
@@ -1295,6 +1350,9 @@ const CareerReadiness = () => {
             }
             if (activeFaceMesh) {
                 try { activeFaceMesh.close(); } catch (e) {}
+            }
+            if (activePose) {
+                try { activePose.close(); } catch (e) {}
             }
         };
     }, [webcamActive, interviewStage]);
@@ -1655,19 +1713,20 @@ const CareerReadiness = () => {
 
                             {/* Tab Contents */}
                             <div>
-                                {/* LINKEDIN MODE AUDIT RESULTS */}
+                                {/* LINKEDIN MODE AUDIT RESULTS (HIRATION STYLE) */}
                                 {linkedinAnalysis && activeTab === "linkedin" && (
                                     <div className="space-y-10 animate-in fade-in duration-300">
-                                        <div className="grid lg:grid-cols-3 gap-8">
-                                            {/* Score circle & audit summary */}
+                                        <div className="grid lg:grid-cols-4 gap-8">
+                                            {/* Left Column: Overall Score & Summary */}
                                             <div className="lg:col-span-1 space-y-6">
-                                                <Card className="p-8 rounded-3xl bg-white/5 border border-white/10 flex flex-col items-center text-center space-y-6">
-                                                    <h3 className="font-bold text-gray-400 uppercase tracking-widest text-sm">Overall LinkedIn Score</h3>
+                                                <Card className="p-8 rounded-3xl bg-neutral-900/80 border border-neutral-800 flex flex-col items-center text-center space-y-6 shadow-2xl relative overflow-hidden">
+                                                    <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-transparent via-[#ADFF44] to-transparent"></div>
+                                                    <h3 className="font-bold text-gray-400 uppercase tracking-widest text-[10px]">Resume Score</h3>
                                                     <div className="relative">
                                                         <svg className="w-48 h-48 transform -rotate-90">
-                                                            <circle className="text-white/5" strokeWidth="8" stroke="currentColor" fill="transparent" r="88" cx="96" cy="96" />
+                                                            <circle className="text-neutral-800" strokeWidth="8" stroke="currentColor" fill="transparent" r="88" cx="96" cy="96" />
                                                             <circle
-                                                                className="text-[#ADFF44] transition-all duration-1000 ease-out"
+                                                                className={`${(linkedinAnalysis.overall_score || 0) > 75 ? "text-[#ADFF44]" : (linkedinAnalysis.overall_score || 0) > 50 ? "text-amber-400" : "text-red-500"} transition-all duration-1000 ease-out`}
                                                                 strokeWidth="8"
                                                                 strokeDasharray={2 * Math.PI * 88}
                                                                 strokeDashoffset={2 * Math.PI * 88 * (1 - (linkedinAnalysis.overall_score || 0) / 100)}
@@ -1677,96 +1736,162 @@ const CareerReadiness = () => {
                                                                 r="88" cx="96" cy="96"
                                                             />
                                                         </svg>
-                                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                                            <span className="text-6xl font-bold font-sora score-text">{linkedinAnalysis.overall_score}</span>
-                                                            <span className="text-xs uppercase font-bold text-gray-500 tracking-tighter">Profile Strength</span>
+                                                        <div className="absolute inset-0 flex flex-col items-center justify-center pt-2">
+                                                            <span className="text-6xl font-bold font-sora score-text leading-none">{linkedinAnalysis.overall_score}</span>
+                                                            <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider mt-1">Out of 100</span>
                                                         </div>
                                                     </div>
-                                                    <div className="w-full space-y-2 border-t border-white/5 pt-4">
-                                                        <p className="text-xs text-gray-400 font-medium">Scores weighted out of 100 total points based on section impacts.</p>
-                                                    </div>
+                                                    <p className="text-xs text-neutral-400 leading-relaxed font-medium">
+                                                        {(linkedinAnalysis.overall_score || 0) >= 80 ? "Excellent profile! You're in the top percentile." : 
+                                                         (linkedinAnalysis.overall_score || 0) >= 60 ? "Good start, but some critical sections need work." : 
+                                                         "Your profile needs a major overhaul to get noticed."}
+                                                    </p>
                                                 </Card>
 
-                                                <Card className="p-8 rounded-3xl bg-[#ADFF44]/5 border border-[#ADFF44]/15">
-                                                    <h4 className="text-xs font-bold text-[#ADFF44] uppercase tracking-wider mb-2">Audit Verdict</h4>
-                                                    <p className="text-sm text-gray-300 leading-relaxed italic">"{linkedinAnalysis.summary}"</p>
+                                                <Card className="p-6 rounded-3xl bg-[#ADFF44]/5 border border-[#ADFF44]/15 shadow-xl">
+                                                    <h4 className="text-[10px] font-black text-[#ADFF44] uppercase tracking-wider mb-3 flex items-center gap-2">
+                                                        <Sparkles size={12} /> Expert Verdict
+                                                    </h4>
+                                                    <p className="text-sm text-neutral-300 leading-relaxed">"{linkedinAnalysis.summary}"</p>
                                                 </Card>
                                             </div>
 
-                                            {/* Section-by-section audit */}
-                                            <div className="lg:col-span-2 space-y-8">
-                                                {Object.entries(linkedinAnalysis.sections || {}).map(([secKey, secValue]: [string, any]) => {
-                                                    const icons: Record<string, any> = {
-                                                        headline: Sparkles,
-                                                        about: UserCheck,
-                                                        experience: Briefcase,
-                                                        skills: Award,
-                                                        education: GraduationCap
-                                                    };
-                                                    const SecIcon = icons[secKey] || Star;
-                                                    
-                                                    return (
-                                                        <Card key={secKey} className="bg-white/5 border border-white/10 p-6 rounded-3xl space-y-6">
-                                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-10 h-10 rounded-xl bg-[#ADFF44]/10 border border-[#ADFF44]/20 text-[#ADFF44] flex items-center justify-center shrink-0">
-                                                                        <SecIcon size={18} />
-                                                                    </div>
-                                                                    <div>
-                                                                        <h4 className="font-bold text-lg capitalize">{secKey} Audit</h4>
-                                                                        <p className="text-gray-500 text-xs">Optimization analysis</p>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-xs font-bold text-gray-400 uppercase">Weightage:</span>
-                                                                    <span className="text-lg font-black text-[#ADFF44]">{secValue.score} <span className="text-xs text-gray-500">/ {secValue.max_points}</span></span>
-                                                                </div>
-                                                            </div>
+                                            {/* Right Column: Section Chips & Drill Down */}
+                                            <div className="lg:col-span-3 flex flex-col gap-8">
+                                                
+                                                {/* Section Score Chips */}
+                                                <div className="flex flex-wrap gap-3">
+                                                    {Object.entries(linkedinAnalysis.sections || {}).map(([secKey, secValue]: [string, any]) => {
+                                                        const scorePercent = (secValue.score / secValue.max_points) * 100;
+                                                        const isPerfect = scorePercent === 100;
+                                                        const isGood = scorePercent >= 75;
+                                                        const isBad = scorePercent < 50;
 
-                                                            {/* Suggestions List */}
-                                                            <div className="space-y-2">
-                                                                <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wide">Improvement Suggestions:</h5>
-                                                                <ul className="grid gap-2">
-                                                                    {secValue.suggestions?.map((sug: string, idx: number) => (
-                                                                        <li key={idx} className="flex gap-2 text-xs text-gray-300 leading-relaxed bg-white/3 p-2.5 rounded-lg border border-white/5">
-                                                                            <div className="h-4 w-4 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 font-bold shrink-0 text-[10px] mt-0.5">!</div>
-                                                                            <span>{sug}</span>
-                                                                        </li>
-                                                                    ))}
-                                                                </ul>
-                                                            </div>
+                                                        return (
+                                                            <button 
+                                                                key={secKey} 
+                                                                onClick={() => {
+                                                                    const el = document.getElementById(`linkedin-section-${secKey}`);
+                                                                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                }}
+                                                                className="flex items-center gap-3 bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 hover:border-neutral-600 transition-colors group relative overflow-hidden"
+                                                            >
+                                                                <div className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-transparent via-white/10 to-transparent w-full"></div>
+                                                                <div className="flex flex-col text-left">
+                                                                    <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">{secValue.label || secKey}</span>
+                                                                    <div className="flex items-baseline gap-1 mt-0.5">
+                                                                        <span className={`text-base font-black ${isPerfect ? 'text-[#ADFF44]' : isGood ? 'text-white' : isBad ? 'text-red-400' : 'text-amber-400'}`}>
+                                                                            {secValue.score}
+                                                                        </span>
+                                                                        <span className="text-xs text-neutral-600 font-bold">/{secValue.max_points}</span>
+                                                                    </div>
+                                                                </div>
+                                                                {isPerfect && <CheckCircle2 className="w-5 h-5 text-[#ADFF44] ml-2 opacity-50 group-hover:opacity-100 transition-opacity" />}
+                                                                {!isPerfect && isGood && <Check className="w-4 h-4 text-white ml-2 opacity-30" />}
+                                                                {isBad && <AlertCircle className="w-4 h-4 text-red-500 ml-2 opacity-50" />}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
 
-                                                            {/* Side-by-side comparison */}
-                                                            <div className="grid md:grid-cols-2 gap-4">
-                                                                <div className="space-y-1.5">
-                                                                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Current Text</span>
-                                                                    <div className="bg-black/30 border border-white/5 rounded-xl p-4 min-h-[120px] text-xs text-gray-400 whitespace-pre-wrap leading-relaxed select-text font-sans">
-                                                                        {secValue.current || <span className="italic">No text found or section empty in profile.</span>}
+                                                {/* Section Drill-downs */}
+                                                <div className="space-y-6">
+                                                    {Object.entries(linkedinAnalysis.sections || {}).map(([secKey, secValue]: [string, any]) => {
+                                                        const scorePercent = (secValue.score / secValue.max_points) * 100;
+                                                        const isPerfect = scorePercent === 100;
+                                                        const isGood = scorePercent >= 75;
+
+                                                        return (
+                                                            <Card key={secKey} id={`linkedin-section-${secKey}`} className="bg-neutral-900 border border-neutral-800 rounded-3xl overflow-hidden relative">
+                                                                {/* Colored top bar based on score */}
+                                                                <div className={`h-1.5 w-full ${isPerfect ? 'bg-[#ADFF44]' : isGood ? 'bg-amber-400' : 'bg-red-500'}`}></div>
+                                                                
+                                                                <div className="p-6">
+                                                                    <div className="flex items-center justify-between mb-6">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <h4 className="font-bold text-xl text-white">{secValue.label || secKey}</h4>
+                                                                            {isPerfect && <span className="bg-[#ADFF44]/20 text-[#ADFF44] text-[10px] font-black uppercase px-2 py-0.5 rounded-full tracking-wider">Perfect</span>}
+                                                                        </div>
+                                                                        <div className="text-right">
+                                                                            <span className={`text-2xl font-black ${isPerfect ? 'text-[#ADFF44]' : 'text-white'}`}>{secValue.score}</span>
+                                                                            <span className="text-sm font-bold text-neutral-600 ml-1">/ {secValue.max_points}</span>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="grid md:grid-cols-2 gap-8">
+                                                                        {/* Left: Feedback */}
+                                                                        <div className="space-y-6">
+                                                                            {secValue.things_right && secValue.things_right.length > 0 && secValue.things_right[0] !== "" && (
+                                                                                <div className="space-y-3">
+                                                                                    <h5 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest flex items-center gap-2">
+                                                                                        <CheckCircle2 size={12} className="text-[#ADFF44]" /> What you did well
+                                                                                    </h5>
+                                                                                    <ul className="space-y-2">
+                                                                                        {secValue.things_right.map((tr: string, idx: number) => (
+                                                                                            <li key={idx} className="text-xs text-neutral-300 leading-relaxed flex items-start gap-2">
+                                                                                                <div className="w-1 h-1 rounded-full bg-[#ADFF44] mt-1.5 shrink-0"></div>
+                                                                                                {tr}
+                                                                                            </li>
+                                                                                        ))}
+                                                                                    </ul>
+                                                                                </div>
+                                                                            )}
+
+                                                                            {secValue.suggestions && secValue.suggestions.length > 0 && secValue.suggestions[0] !== "" && (
+                                                                                <div className="space-y-3">
+                                                                                    <h5 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest flex items-center gap-2">
+                                                                                        <AlertCircle size={12} className="text-amber-400" /> How to improve
+                                                                                    </h5>
+                                                                                    <ul className="space-y-2">
+                                                                                        {secValue.suggestions.map((sug: string, idx: number) => (
+                                                                                            <li key={idx} className="text-xs text-neutral-300 leading-relaxed flex items-start gap-2">
+                                                                                                <div className="w-1 h-1 rounded-full bg-amber-400 mt-1.5 shrink-0"></div>
+                                                                                                {sug}
+                                                                                            </li>
+                                                                                        ))}
+                                                                                    </ul>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {/* Right: Before / After */}
+                                                                        <div className="space-y-4">
+                                                                            <div className="space-y-2">
+                                                                                <div className="flex items-center justify-between">
+                                                                                    <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Original Text</span>
+                                                                                </div>
+                                                                                <div className="bg-black/40 border border-neutral-800 rounded-xl p-4 min-h-[80px] text-xs text-neutral-400 whitespace-pre-wrap font-mono line-clamp-4 hover:line-clamp-none transition-all">
+                                                                                    {secValue.current || <span className="italic opacity-50">No content provided...</span>}
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <div className="space-y-2">
+                                                                                <div className="flex items-center justify-between">
+                                                                                    <span className="text-[10px] font-black text-[#ADFF44] uppercase tracking-widest flex items-center gap-1.5">
+                                                                                        <Sparkles size={10} /> Optimized Draft
+                                                                                    </span>
+                                                                                    <button 
+                                                                                        onClick={() => {
+                                                                                            navigator.clipboard.writeText(secValue.optimized_draft);
+                                                                                            toast.success("Draft copied!");
+                                                                                        }}
+                                                                                        className="text-neutral-500 hover:text-[#ADFF44] transition-colors"
+                                                                                        title="Copy Draft"
+                                                                                    >
+                                                                                        <Copy size={12} />
+                                                                                    </button>
+                                                                                </div>
+                                                                                <div className="bg-[#ADFF44]/5 border border-[#ADFF44]/20 rounded-xl p-4 min-h-[80px] text-xs text-neutral-200 whitespace-pre-wrap leading-relaxed select-text">
+                                                                                    {secValue.optimized_draft}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                                <div className="space-y-1.5 relative group">
-                                                                    <span className="text-[10px] font-black text-[#ADFF44] uppercase tracking-wider flex items-center gap-1">
-                                                                        <Sparkles size={10} /> Optimized AI Draft
-                                                                    </span>
-                                                                    <div className="bg-[#ADFF44]/5 border border-[#ADFF44]/15 rounded-xl p-4 min-h-[120px] text-xs text-gray-200 whitespace-pre-wrap leading-relaxed relative select-text font-sans">
-                                                                        {secValue.optimized_draft}
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => {
-                                                                                navigator.clipboard.writeText(secValue.optimized_draft);
-                                                                                toast.success("Optimized draft copied to clipboard!");
-                                                                            }}
-                                                                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 text-[#ADFF44] transition-colors"
-                                                                            title="Copy Optimized Draft"
-                                                                        >
-                                                                            <Copy size={12} />
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </Card>
-                                                    );
-                                                })}
+                                                            </Card>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
