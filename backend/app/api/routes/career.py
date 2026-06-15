@@ -46,6 +46,16 @@ class AnalyzeRequest(BaseModel):
     roles: List[RoleItem]
     career_prefs: Optional[CareerPrefs] = None
 
+class CoverLetterRequest(BaseModel):
+    resume_text: str
+    job_description: str
+    role_name: Optional[str] = None
+    company_name: Optional[str] = None
+
+class RewriteBulletRequest(BaseModel):
+    bullet: str
+    job_description: Optional[str] = None
+
 # ─── HELPERS ────────────────────────────────────────────────────────────
 
 def parse_json_from_response(text: str) -> Dict[str, Any]:
@@ -356,7 +366,13 @@ Output ONLY valid JSON (no markdown):
       "reason": "<2-3 sentences>"
     }}
   ],
-  "summary": "<2-3 sentence executive summary. Use 'You' perspective. Mention overall career readiness, top match role, and one key action.>"
+  "summary": "<2-3 sentence executive summary. Use 'You' perspective. Mention overall career readiness, top match role, and one key action.>",
+  "missing_skills": [
+    {{"name": "<required skill name missing in resume>", "type": "<Technical|Soft|Tool>"}}
+  ],
+  "bullet_rewrites": [
+    {{"original": "<original key achievement/bullet from experience section>", "rewritten": "<rewritten bullet point using the X-Y-Z formula: Accomplished [X] as measured by [Y], by doing [Z] using metrics and action verbs>"}}
+  ]
 }}
     """
     
@@ -388,6 +404,11 @@ Output ONLY valid JSON (no markdown):
         # If explicitly not a resume, skip other validations and return immediately
         if analysis.get("is_resume") is False:
             return analysis
+
+        if "missing_skills" not in analysis:
+            analysis["missing_skills"] = []
+        if "bullet_rewrites" not in analysis:
+            analysis["bullet_rewrites"] = []
 
         if not analysis.get("ats_score"):
             raise ValueError("Missing ats_score in response")
@@ -603,3 +624,195 @@ async def find_jobs(role: str, location: str = "Remote", num_pages: int = 1):
         except Exception as e:
             logging.error(f"Job fetch failed: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/analyze-linkedin")
+async def analyze_linkedin(
+    name: str = Form(...),
+    email: str = Form(...),
+    role: Optional[str] = Form(None),
+    linkedin_profile: UploadFile = File(...)
+):
+    groq = get_groq()
+    
+    try:
+        # Extract text from LinkedIn PDF
+        content = await linkedin_profile.read()
+        pdf_file = io.BytesIO(content)
+        reader = pypdf.PdfReader(pdf_file)
+        profile_text = ""
+        for page in reader.pages:
+            profile_text += page.extract_text() + "\n"
+            
+        if not profile_text.strip():
+            raise HTTPException(status_code=400, detail="Could not extract text from the LinkedIn PDF profile.")
+            
+        prompt = f"""
+You are an expert LinkedIn profile optimizer and career consultant.
+Audit the following LinkedIn PDF profile text and score each section out of its maximum points:
+- Headline: Max 20 points
+- About/Summary: Max 25 points
+- Experience: Max 30 points
+- Skills: Max 15 points
+- Education: Max 10 points
+
+Your evaluation must be based STRICTLY on the text provided. Do not hallucinate or assume facts.
+Return step-by-step optimization actions and a fully rewritten optimized draft for each section.
+
+TARGET ROLE OR INDUSTRY (if provided): {role or "General Professional"}
+
+LINKEDIN PROFILE TEXT:
+{profile_text[:12000]}
+
+Output ONLY valid JSON (no markdown, no formatting other than valid JSON):
+{{
+  "overall_score": <sum of the section scores, integer from 0 to 100>,
+  "summary": "<2-3 sentence executive audit summary in second-person perspective>",
+  "sections": {{
+    "headline": {{
+      "score": <0 to 20>,
+      "max_points": 20,
+      "current": "<current headline extracted from profile>",
+      "suggestions": ["<suggestion #1>", "<suggestion #2>"],
+      "optimized_draft": "<fully rewritten optimized headline ready to copy>"
+    }},
+    "about": {{
+      "score": <0 to 25>,
+      "max_points": 25,
+      "current": "<current about/summary section>",
+      "suggestions": ["<suggestion #1>", "<suggestion #2>"],
+      "optimized_draft": "<fully rewritten optimized about section written in first-person, engaging and metrics-driven>"
+    }},
+    "experience": {{
+      "score": <0 to 30>,
+      "max_points": 30,
+      "current": "<current experience summary>",
+      "suggestions": ["<suggestion #1>", "<suggestion #2>"],
+      "optimized_draft": "<fully rewritten optimized experience section draft containing strong action verbs and metrics>"
+    }},
+    "skills": {{
+      "score": <0 to 15>,
+      "max_points": 15,
+      "current": "<list of current skills>",
+      "suggestions": ["<suggestion #1>", "<suggestion #2>"],
+      "optimized_draft": "<comma-separated list of recommended high-impact skills to add>"
+    }},
+    "education": {{
+      "score": <0 to 10>,
+      "max_points": 10,
+      "current": "<current education details>",
+      "suggestions": ["<suggestion #1>", "<suggestion #2>"],
+      "optimized_draft": "<clean formatting optimized draft of education>"
+    }}
+  }}
+}}
+"""
+        
+        completion = groq.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": "You output ONLY valid raw JSON. No markdown, no explanations. Valid JSON only."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2,
+            max_tokens=3500
+        )
+        
+        ai_text = completion.choices[0].message.content
+        analysis = parse_json_from_response(ai_text)
+        return analysis
+        
+    except Exception as e:
+        logging.error(f"LinkedIn analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"LinkedIn analysis failed: {str(e)}")
+
+
+@router.post("/generate-cover-letter")
+async def generate_cover_letter(req: CoverLetterRequest):
+    groq = get_groq()
+    
+    prompt = f"""
+You are an expert career coach and professional writer. Write a highly tailored, persuasive, and professional Cover Letter based on the candidate's resume and target Job Description.
+
+TARGET ROLE: {req.role_name or "Target Role"}
+TARGET COMPANY: {req.company_name or "Target Company"}
+
+JOB DESCRIPTION:
+{req.job_description[:2500]}
+
+RESUME TEXT:
+{req.resume_text[:8000]}
+
+CRITICAL RULES:
+1. Do not invent any experience, company, role, metric, or skill not explicitly present in the resume text.
+2. Structure the cover letter beautifully with standard sections: date, address (use placeholders if not known), salutation, body paragraphs, and professional closing.
+3. Quantify accomplishments in the body paragraphs using details from the resume.
+4. Align the candidate's core strengths to the key requirements of the Job Description.
+5. Keep the length under one page (approx. 300-400 words).
+
+Output ONLY valid JSON (no markdown, no formatting other than valid JSON):
+{{
+  "cover_letter": "<the full text of the cover letter with newlines escaped>",
+  "tips": [
+    "<customization tip #1>",
+    "<customization tip #2>"
+  ]
+}}
+"""
+    try:
+        completion = groq.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": "You output ONLY valid raw JSON. No markdown, no explanations. Valid JSON only."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.25,
+            max_tokens=2500
+        )
+        
+        ai_text = completion.choices[0].message.content
+        result = parse_json_from_response(ai_text)
+        return result
+        
+    except Exception as e:
+        logging.error(f"Cover letter generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Cover letter generation failed: {str(e)}")
+
+
+@router.post("/rewrite-bullet-item")
+async def rewrite_bullet_item(req: RewriteBulletRequest):
+    groq = get_groq()
+    
+    prompt = f"""
+You are an expert resume writer. Rewrite the following resume bullet point using action-oriented verbs and the Google X-Y-Z formula: "Accomplished [X] as measured by [Y], by doing [Z]".
+Make sure to keep all original facts, metrics, and technical skills. Do NOT invent new metrics or facts that are not present. If no metrics are provided, rewrite it to sound professional, achievement-oriented, and highlight the impact, suggesting a placeholder metric where appropriate in brackets like [X%].
+
+BULLET POINT TO REWRITE:
+{req.bullet}
+
+JOB DESCRIPTION FOR CONTEXT (optional):
+{req.job_description or "None"}
+
+Output ONLY valid JSON (no markdown, no formatting other than valid JSON):
+{{
+  "rewritten": "<the rewritten metrics-driven bullet point>"
+}}
+"""
+    try:
+        completion = groq.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": "You output ONLY valid raw JSON. No markdown, no explanations. Valid JSON only."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2,
+            max_tokens=1000
+        )
+        
+        ai_text = completion.choices[0].message.content
+        result = parse_json_from_response(ai_text)
+        return result
+        
+    except Exception as e:
+        logging.error(f"Bullet rewrite failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Bullet rewrite failed: {str(e)}")
