@@ -1576,8 +1576,24 @@ const CareerReadiness = () => {
                                 type="button"
                                 onClick={() => {
                                     setActiveSection(sec.id as any);
-                                    if (sec.id === "resume") setMode("resume");
-                                    if (sec.id === "linkedin") setMode("linkedin");
+                                    if (sec.id === "resume") {
+                                        setMode("resume");
+                                        if (analysis) {
+                                            setStage("results");
+                                            setActiveTab("ats");
+                                        } else {
+                                            setStage("upload");
+                                        }
+                                    }
+                                    if (sec.id === "linkedin") {
+                                        setMode("linkedin");
+                                        if (linkedinAnalysis) {
+                                            setStage("results");
+                                            setActiveTab("linkedin");
+                                        } else {
+                                            setStage("upload");
+                                        }
+                                    }
                                     // Stop video stream if leaving mock interview
                                     if (sec.id !== "interview" && mediaStream) {
                                         mediaStream.getTracks().forEach(track => track.stop());
@@ -1860,7 +1876,14 @@ const CareerReadiness = () => {
                                     <p className="text-gray-400">Analysis for {formData.name} • {new Date().toLocaleDateString()}</p>
                                 </div>
                                 <Button
-                                    onClick={() => setStage("upload")}
+                                    onClick={() => {
+                                        if (activeSection === "resume") {
+                                            setAnalysis(null);
+                                        } else if (activeSection === "linkedin") {
+                                            setLinkedinAnalysis(null);
+                                        }
+                                        setStage("upload");
+                                    }}
                                     variant="outline"
                                     className="rounded-xl border-white/10 hover:bg-white/5 h-12"
                                 >
@@ -1868,7 +1891,7 @@ const CareerReadiness = () => {
                                 </Button>
                             </div>
                                                       {/* Tab Switcher */}
-                            {linkedinAnalysis ? (
+                            {activeSection === "linkedin" ? (
                                 <div className="flex border-b border-white/10 gap-8 mb-8 overflow-x-auto scrollbar-none">
                                     <button
                                         onClick={() => setActiveTab("linkedin")}
