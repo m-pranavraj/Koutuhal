@@ -674,6 +674,89 @@ const CareerReadiness = () => {
         }
     };
 
+    const generateLocalLinkedInAudit = (candName: string, targetRole: string) => {
+        const cleanName = candName || "Candidate";
+        const cleanRole = targetRole || "Professional";
+        const handleName = cleanName.toLowerCase().replace(/[^a-z0-9]/g, "-");
+        
+        return {
+            overall_score: 76,
+            summary: `Your profile has a solid baseline, ${cleanName}. However, your headline and summary sections are missing critical metrics-driven descriptions that recruiters look for in a ${cleanRole}.`,
+            sections: {
+                url: {
+                    score: 3,
+                    max_points: 5,
+                    label: "URL Optimization",
+                    current: "Not optimized (default query string)",
+                    things_right: ["The link points to your profile."],
+                    suggestions: ["Customize your public profile URL to remove raw random numbers.", "Format it as /in/first-last to look professional on your resume."],
+                    optimized_draft: `linkedin.com/in/${handleName}`,
+                    sample: "linkedin.com/in/firstname-lastname"
+                },
+                header_title: {
+                    score: 6,
+                    max_points: 10,
+                    label: "Headline / Title",
+                    current: `${cleanRole} at Self-Employed`,
+                    things_right: ["Your headline specifies your current job role."],
+                    suggestions: ["Include top keywords matching target descriptions.", "Use a multi-section formula: Role | Core Skills | Unique Value Proposition."],
+                    optimized_draft: `${cleanRole} | Specializing in high-performance architectures, data pipelines, & agile delivery`,
+                    sample: "Senior Software Engineer | React & Node.js | Building Scalable Web Apps"
+                },
+                location: {
+                    score: 5,
+                    max_points: 5,
+                    label: "Location",
+                    current: "Not specified or general",
+                    things_right: ["Your location is visible."],
+                    suggestions: ["Ensure your location is set to the city level of your target job market to increase recruiter match rates."],
+                    optimized_draft: "Hyderabad, Telangana, India",
+                    sample: "Hyderabad, Telangana, India"
+                },
+                about: {
+                    score: 14,
+                    max_points: 20,
+                    label: "About Summary",
+                    current: "Brief background summary",
+                    things_right: ["You have an About section filled in."],
+                    suggestions: ["Expand your summary to 3 paragraphs written in first-person.", "Highlight key tools, your core methodology, and list 3 major career highlights with metrics."],
+                    optimized_draft: `Results-oriented ${cleanRole} with a passion for building scalable solutions. Expert in analyzing complex business logic, establishing modular configurations, and leading code reviews. Proactive collaborator dedicated to aligning business targets with high quality code design.`,
+                    sample: "Results-driven Software Engineer with 3+ years..."
+                },
+                experience: {
+                    score: 13,
+                    max_points: 20,
+                    label: "Experience Details",
+                    current: "List of job titles and descriptions",
+                    things_right: ["Your career path shows logical progression."],
+                    suggestions: ["Quantify your bullet points: use action verbs followed by what you did and the concrete percentage or dollar value output.", "Format as STAR statements."],
+                    optimized_draft: `• Developed and deployed robust microservices for key workflows, reducing average processing latency by 20%.\n• Maintained 99.9% uptime across production clusters by optimizing docker-compose pipelines and configuration parameters.`,
+                    sample: "Led migration of monolith to microservices, reducing latency by 40%"
+                },
+                education: {
+                    score: 8,
+                    max_points: 10,
+                    label: "Education Details",
+                    current: "University listings",
+                    things_right: ["Your degrees are listed."],
+                    suggestions: ["Add relevant coursework, projects, or honors to make the academic history more competitive."],
+                    optimized_draft: "Degree in Computer Science / Engineering | Major Academic Institutions",
+                    sample: "B.Tech Computer Science | GITAM University | 2022–2026 | CGPA: 8.81"
+                },
+                skills: {
+                    score: 11,
+                    max_points: 15,
+                    label: "Skills & Endorsements",
+                    current: "Raw skills list",
+                    things_right: ["You have listed several core capabilities."],
+                    suggestions: ["Add high-demand industry tags relevant to the ${cleanRole} domain.", "Seek recommendations and skill endorsements from former peers."],
+                    optimized_draft: `${cleanRole} Skills, Agile Methodologies, Project Strategy, Client Coordination`,
+                    sample: "Python, React, Node.js, Docker, Kubernetes, AWS, PostgreSQL"
+                }
+            }
+        };
+    };
+
     const handleUpload = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -694,89 +777,6 @@ const CareerReadiness = () => {
                     uploadFormData.append("role", roles[0].role);
                 }
                 uploadFormData.append("linkedin_profile", linkedinFile);
-
-                const generateLocalLinkedInAudit = (candName: string, targetRole: string) => {
-                    const cleanName = candName || "Candidate";
-                    const cleanRole = targetRole || "Professional";
-                    const handleName = cleanName.toLowerCase().replace(/[^a-z0-9]/g, "-");
-                    
-                    return {
-                        overall_score: 76,
-                        summary: `Your profile has a solid baseline, ${cleanName}. However, your headline and summary sections are missing critical metrics-driven descriptions that recruiters look for in a ${cleanRole}.`,
-                        sections: {
-                            url: {
-                                score: 3,
-                                max_points: 5,
-                                label: "URL Optimization",
-                                current: "Not optimized (default query string)",
-                                things_right: ["The link points to your profile."],
-                                suggestions: ["Customize your public profile URL to remove raw random numbers.", "Format it as /in/first-last to look professional on your resume."],
-                                optimized_draft: `linkedin.com/in/${handleName}`,
-                                sample: "linkedin.com/in/firstname-lastname"
-                            },
-                            header_title: {
-                                score: 6,
-                                max_points: 10,
-                                label: "Headline / Title",
-                                current: `${cleanRole} at Self-Employed`,
-                                things_right: ["Your headline specifies your current job role."],
-                                suggestions: ["Include top keywords matching target descriptions.", "Use a multi-section formula: Role | Core Skills | Unique Value Proposition."],
-                                optimized_draft: `${cleanRole} | Specializing in high-performance architectures, data pipelines, & agile delivery`,
-                                sample: "Senior Software Engineer | React & Node.js | Building Scalable Web Apps"
-                            },
-                            location: {
-                                score: 5,
-                                max_points: 5,
-                                label: "Location",
-                                current: "Not specified or general",
-                                things_right: ["Your location is visible."],
-                                suggestions: ["Ensure your location is set to the city level of your target job market to increase recruiter match rates."],
-                                optimized_draft: "Hyderabad, Telangana, India",
-                                sample: "Hyderabad, Telangana, India"
-                            },
-                            about: {
-                                score: 14,
-                                max_points: 20,
-                                label: "About Summary",
-                                current: "Brief background summary",
-                                things_right: ["You have an About section filled in."],
-                                suggestions: ["Expand your summary to 3 paragraphs written in first-person.", "Highlight key tools, your core methodology, and list 3 major career highlights with metrics."],
-                                optimized_draft: `Results-oriented ${cleanRole} with a passion for building scalable solutions. Expert in analyzing complex business logic, establishing modular configurations, and leading code reviews. Proactive collaborator dedicated to aligning business targets with high quality code design.`,
-                                sample: "Results-driven Software Engineer with 3+ years..."
-                            },
-                            experience: {
-                                score: 13,
-                                max_points: 20,
-                                label: "Experience Details",
-                                current: "List of job titles and descriptions",
-                                things_right: ["Your career path shows logical progression."],
-                                suggestions: ["Quantify your bullet points: use action verbs followed by what you did and the concrete percentage or dollar value output.", "Format as STAR statements."],
-                                optimized_draft: `• Developed and deployed robust microservices for key workflows, reducing average processing latency by 20%.\n• Maintained 99.9% uptime across production clusters by optimizing docker-compose pipelines and configuration parameters.`,
-                                sample: "Led migration of monolith to microservices, reducing latency by 40%"
-                            },
-                            education: {
-                                score: 8,
-                                max_points: 10,
-                                label: "Education Details",
-                                current: "University listings",
-                                things_right: ["Your degrees are listed."],
-                                suggestions: ["Add relevant coursework, projects, or honors to make the academic history more competitive."],
-                                optimized_draft: "Degree in Computer Science / Engineering | Major Academic Institutions",
-                                sample: "B.Tech Computer Science | GITAM University | 2022–2026 | CGPA: 8.81"
-                            },
-                            skills: {
-                                score: 11,
-                                max_points: 15,
-                                label: "Skills & Endorsements",
-                                current: "Raw skills list",
-                                things_right: ["You have listed several core capabilities."],
-                                suggestions: ["Add high-demand industry tags relevant to the ${cleanRole} domain.", "Seek recommendations and skill endorsements from former peers."],
-                                optimized_draft: `${cleanRole} Skills, Agile Methodologies, Project Strategy, Client Coordination`,
-                                sample: "Python, React, Node.js, Docker, Kubernetes, AWS, PostgreSQL"
-                            }
-                        }
-                    };
-                };
 
                 const res = await fetch("/api/v1/career/analyze-linkedin", {
                     method: "POST",
