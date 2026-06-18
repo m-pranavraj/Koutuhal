@@ -2273,15 +2273,15 @@ const CareerReadiness = () => {
                                                             Recommended Fit
                                                         </div>
                                                         <h3 className="text-2xl font-bold font-sora">
-                                                            {analysis.best_for.role}
+                                                            {analysis.best_for?.role || "Target Role"}
                                                         </h3>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-3xl font-black text-[#ADFF44]">
-                                                                {Math.min(100, analysis.best_for.match_percentage + (addedSkills.length * 4))}%
+                                                                {Math.min(100, (analysis.best_for?.match_percentage || 0) + (addedSkills.length * 4))}%
                                                             </span>
                                                             <span className="text-gray-400 text-xs font-medium">Alignment Score</span>
                                                         </div>
-                                                        <p className="text-gray-300 leading-relaxed text-xs italic">"{analysis.best_for.reasoning}"</p>
+                                                        <p className="text-gray-300 leading-relaxed text-xs italic">"{analysis.best_for?.reasoning || "Analyzing fit..."}"</p>
                                                     </div>
                                                 </div>
 
@@ -2416,7 +2416,7 @@ const CareerReadiness = () => {
                                                             </div>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => fetchRecommendedJobs(analysis.best_for.role || roles[0]?.role || '')}
+                                                                onClick={() => fetchRecommendedJobs(analysis.best_for?.role || roles[0]?.role || '')}
                                                                 className="px-8 py-3 rounded-xl bg-[#ADFF44] text-black font-black text-sm hover:bg-[#9BE63D] transition-all hover:scale-105 shadow-lg shadow-[#ADFF44]/20 flex items-center gap-2"
                                                             >
                                                                 <Search size={15} /> Explore Live Jobs
