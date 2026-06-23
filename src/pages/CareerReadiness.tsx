@@ -569,6 +569,13 @@ const CareerReadiness = () => {
     const [qaRole, setQaRole] = useState<string>("Software Engineer");
     const [qaSearch, setQaSearch] = useState<string>("");
     const [qaCategory, setQaCategory] = useState<string>("Behavioral & Fit");
+    const [qaMode, setQaMode] = useState<"browse" | "star">("browse");
+    const [starS, setStarS] = useState("");
+    const [starT, setStarT] = useState("");
+    const [starA, setStarA] = useState("");
+    const [starR, setStarR] = useState("");
+    const [starRefinedAnswer, setStarRefinedAnswer] = useState("");
+    const [starRefiningLoading, setStarRefiningLoading] = useState(false);
     const [qaQuestions, setQaQuestions] = useState<any[]>([]);
     const [qaQuestionsLoading, setQaQuestionsLoading] = useState<boolean>(false);
     const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(null);
@@ -581,6 +588,11 @@ const CareerReadiness = () => {
     const [webcamActive, setWebcamActive] = useState<boolean>(false);
     const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
     const [faceMeshLoaded, setFaceMeshLoaded] = useState<boolean>(false);
+    const [interviewerPersona, setInterviewerPersona] = useState<string>("Alex");
+    const [detectedEmotion, setDetectedEmotion] = useState<string>("Focused");
+    const [fillerCount, setFillerCount] = useState<number>(0);
+    const [speechPace, setSpeechPace] = useState<number>(0);
+    const speechStartTimeRef = useRef<number>(0);
     const [currentQuestionIdx, setCurrentQuestionIdx] = useState<number>(0);
     const [interviewQuestions, setInterviewQuestions] = useState<any[]>([]);
     const [spokenAnswers, setSpokenAnswers] = useState<Array<{ question: string; answer: string }>>([]);
@@ -1059,7 +1071,7 @@ const CareerReadiness = () => {
     };
 
     const loadQuestionAnswer = async (questionText: string) => {
-        const cacheKey = `${qaRole}:${questionText}`;
+        const cacheKey = `${qaRole}:${questionText}:${interviewerPersona}`;
         if (answersStore[cacheKey]) {
             return;
         }
@@ -1068,7 +1080,7 @@ const CareerReadiness = () => {
             const res = await fetch("/api/v1/career/question-answer", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ role: qaRole, question: questionText }),
+                body: JSON.stringify({ role: qaRole, question: questionText, persona: interviewerPersona }),
             });
             if (res.ok) {
                 const data = await res.json();
@@ -1122,6 +1134,9 @@ const CareerReadiness = () => {
         rec.onstart = () => {
             setTranscribing(true);
             setTranscript("");
+            speechStartTimeRef.current = Date.now();
+            setFillerCount(0);
+            setSpeechPace(0);
         };
 
         rec.onresult = (event: any) => {
@@ -1134,7 +1149,34 @@ const CareerReadiness = () => {
                     interimTranscript += event.results[i][0].transcript;
                 }
             }
-            setTranscript(finalTranscript || interimTranscript);
+            const currentText = finalTranscript || interimTranscript;
+            setTranscript(currentText);
+
+            // count filler words
+            const textLower = currentText.toLowerCase();
+            const fillers = ["um", "uh", "like", "so", "actually", "basically", "literally"];
+            let count = 0;
+            fillers.forEach(word => {
+                const regex = new RegExp(`\\b${word}\\b`, 'gi');
+                const matches = textLower.match(regex);
+                if (matches) {
+                    count += matches.length;
+                }
+            });
+            // check for "you know"
+            const youKnowMatches = textLower.match(/\byou know\b/gi);
+            if (youKnowMatches) {
+                count += youKnowMatches.length;
+            }
+            setFillerCount(count);
+
+            // calculate speech pace (WPM)
+            const words = currentText.split(/\s+/).filter(Boolean).length;
+            const elapsedSeconds = (Date.now() - speechStartTimeRef.current) / 1000;
+            if (elapsedSeconds > 1 && words > 0) {
+                const wpm = Math.round((words / elapsedSeconds) * 60);
+                setSpeechPace(wpm);
+            }
         };
 
         rec.onerror = (e: any) => {
@@ -1169,6 +1211,42 @@ const CareerReadiness = () => {
             utterance.rate = 1.0;
             utterance.pitch = 1.0;
             window.speechSynthesis.speak(utterance);
+        }
+    };
+
+    const handleRefineSTARAnswer = async () => {
+        if (!starS.trim() || !starT.trim() || !starA.trim() || !starR.trim()) {
+            toast.error("Please fill in all Situation, Task, Action, and Result fields.");
+            return;
+        }
+        setStarRefiningLoading(true);
+        setStarRefinedAnswer("");
+        try {
+            const combinedQuestion = `STAR Method Refinement:\n- Situation: ${starS}\n- Task: ${starT}\n- Action: ${starA}\n- Result: ${starR}`;
+            const res = await fetch("/api/v1/career/question-answer", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    role: qaRole,
+                    question: combinedQuestion,
+                    persona: interviewerPersona
+                })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setStarRefinedAnswer(data.suggested_answer);
+                toast.success("STAR response refined successfully!");
+            } else {
+                throw new Error("Failed to refine STAR response.");
+            }
+        } catch (e) {
+            console.error(e);
+            // Local fallback refiner
+            const fallback = `**[Situation]** ${starS}\n\n**[Task]** ${starT}\n\n**[Action]** ${starA}\n\n**[Result]** ${starR}\n\n*Optimized structure (Client-Side Fallback):* In my role as a ${qaRole}, I faced a situation where ${starS.toLowerCase().replace(/\.$/, "")}. To address this, I was tasked with ${starT.toLowerCase().replace(/\.$/, "")}. I took action by ${starA.toLowerCase().replace(/\.$/, "")}, which successfully resulted in ${starR.toLowerCase()}.`;
+            setStarRefinedAnswer(fallback);
+            toast.warning("Server refinement unavailable. Displaying local STAR layout.");
+        } finally {
+            setStarRefiningLoading(false);
         }
     };
 
@@ -1331,7 +1409,8 @@ const CareerReadiness = () => {
                 body: JSON.stringify({
                     role: interviewRole,
                     answers: finalAnswers,
-                    metrics: metrics
+                    metrics: metrics,
+                    persona: interviewerPersona
                 })
             });
             if (!res.ok) {
@@ -1386,16 +1465,117 @@ const CareerReadiness = () => {
                 canvas.height = videoRef.current.videoHeight || 480;
 
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Hologram HUD scanlines/gridlines background (draw before mirrored translations)
+                ctx.save();
+                ctx.strokeStyle = "rgba(173, 255, 68, 0.05)";
+                ctx.lineWidth = 1;
+                const scanLineY = (performance.now() / 15) % canvas.height;
+                ctx.beginPath();
+                ctx.moveTo(0, scanLineY);
+                ctx.lineTo(canvas.width, scanLineY);
+                ctx.stroke();
+                
+                // Draw grid lines
+                ctx.beginPath();
+                for (let x = 40; x < canvas.width; x += 80) {
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                }
+                for (let y = 40; y < canvas.height; y += 80) {
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                }
+                ctx.stroke();
+                ctx.restore();
+
                 ctx.save();
                 ctx.translate(canvas.width, 0);
                 ctx.scale(-1, 1);
 
+                let isFacePresent = false;
+                let minX = 1, maxX = 0, minY = 1, maxY = 0;
+                let eyeContact = true;
+                let headStability = true;
+                let posture = true;
+                let activeEmotion = "Focused";
+
                 if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                    isFacePresent = true;
                     const landmarks = results.multiFaceLandmarks[0];
 
-                    ctx.strokeStyle = "#ADFF44";
-                    ctx.lineWidth = 1;
+                    // Bounding box calculations
+                    landmarks.forEach((lm: any) => {
+                        if (lm.x < minX) minX = lm.x;
+                        if (lm.x > maxX) maxX = lm.x;
+                        if (lm.y < minY) minY = lm.y;
+                        if (lm.y > maxY) maxY = lm.y;
+                    });
                     
+                    const boxX = minX * canvas.width;
+                    const boxY = minY * canvas.height;
+                    const boxW = (maxX - minX) * canvas.width;
+                    const boxH = (maxY - minY) * canvas.height;
+
+                    // Draw sci-fi corners brackets
+                    ctx.strokeStyle = "#ADFF44";
+                    ctx.lineWidth = 2;
+                    const bracketLen = Math.min(20, boxW * 0.15);
+                    // Top-Left corner
+                    ctx.beginPath();
+                    ctx.moveTo(boxX, boxY + bracketLen);
+                    ctx.lineTo(boxX, boxY);
+                    ctx.lineTo(boxX + bracketLen, boxY);
+                    ctx.stroke();
+                    // Top-Right corner
+                    ctx.beginPath();
+                    ctx.moveTo(boxX + boxW - bracketLen, boxY);
+                    ctx.lineTo(boxX + boxW, boxY);
+                    ctx.lineTo(boxX + boxW, boxY + bracketLen);
+                    ctx.stroke();
+                    // Bottom-Left corner
+                    ctx.beginPath();
+                    ctx.moveTo(boxX, boxY + boxH - bracketLen);
+                    ctx.lineTo(boxX, boxY + boxH);
+                    ctx.lineTo(boxX + bracketLen, boxY + boxH);
+                    ctx.stroke();
+                    // Bottom-Right corner
+                    ctx.beginPath();
+                    ctx.moveTo(boxX + boxW - bracketLen, boxY + boxH);
+                    ctx.lineTo(boxX + boxW, boxY + boxH);
+                    ctx.lineTo(boxX + boxW, boxY + boxH - bracketLen);
+                    ctx.stroke();
+
+                    // Rotating Reticle
+                    const centerX = boxX + boxW / 2;
+                    const centerY = boxY + boxH / 2;
+                    const radius = Math.min(boxW, boxH) * 0.35;
+                    ctx.strokeStyle = "rgba(173, 255, 68, 0.3)";
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([4, 4]);
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // Outer dial rotators
+                    const rotAngle = (performance.now() / 1200) % (2 * Math.PI);
+                    ctx.save();
+                    ctx.translate(centerX, centerY);
+                    ctx.rotate(rotAngle);
+                    ctx.strokeStyle = "rgba(173, 255, 68, 0.8)";
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius + 8, 0, Math.PI / 3);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius + 8, Math.PI, 4 * Math.PI / 3);
+                    ctx.stroke();
+                    ctx.restore();
+
+                    // Jaw Outline
+                    ctx.strokeStyle = "rgba(173, 255, 68, 0.4)";
+                    ctx.lineWidth = 1;
                     const jawOutline = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
                     ctx.beginPath();
                     jawOutline.forEach((idx, i) => {
@@ -1416,9 +1596,6 @@ const CareerReadiness = () => {
 
                     let roll = 0;
                     let yawRatio = 1.0;
-                    let eyeContact = true;
-                    let headStability = true;
-                    let posture = true;
 
                     if (leftEyeCorner && rightEyeCorner && noseTip) {
                         roll = Math.atan2(rightEyeCorner.y - leftEyeCorner.y, rightEyeCorner.x - leftEyeCorner.x) * (180 / Math.PI);
@@ -1458,6 +1635,33 @@ const CareerReadiness = () => {
                                 posture = false;
                             }
                         }
+
+                        // Real-Time Emotion Classification
+                        const distance = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+                        const mouthWidth = distance(landmarks[61], landmarks[291]);
+                        const eyeDistance = distance(landmarks[33], landmarks[263]);
+                        const smileRatio = mouthWidth / eyeDistance;
+
+                        const eyebrowLeft = distance(landmarks[70], landmarks[159]);
+                        const eyebrowRight = distance(landmarks[300], landmarks[386]);
+                        const eyebrowRatio = (eyebrowLeft + eyebrowRight) / 2 / eyeDistance;
+
+                        const leftEyelid = distance(landmarks[159], landmarks[145]);
+                        const rightEyelid = distance(landmarks[386], landmarks[374]);
+                        const eyeOpenRatio = (leftEyelid + rightEyelid) / 2 / eyeDistance;
+
+                        if (smileRatio > 0.55) {
+                            activeEmotion = "Confident";
+                        } else if (eyebrowRatio > 0.28) {
+                            activeEmotion = "Stressed";
+                        } else if (eyeOpenRatio < 0.08) {
+                            activeEmotion = "Neutral"; // Blink
+                        } else if (eyeContact) {
+                            activeEmotion = "Focused";
+                        } else {
+                            activeEmotion = "Neutral";
+                        }
+                        setDetectedEmotion(activeEmotion);
                     }
 
                     if (landmarks[468]) {
@@ -1481,6 +1685,30 @@ const CareerReadiness = () => {
                     }
                 }
                 ctx.restore();
+
+                // Draw HUD Text Telemetry in standard (unmirrored) space
+                if (isFacePresent) {
+                    ctx.save();
+                    ctx.fillStyle = "#ADFF44";
+                    ctx.font = "bold 9px monospace";
+                    ctx.shadowColor = "rgba(173, 255, 68, 0.5)";
+                    ctx.shadowBlur = 4;
+                    // Note: landmarks on the canvas screen are mirrored
+                    // Let's compute left border of the face bounding box in screen coordinates
+                    // Mirrored: minX maps to (1 - minX) * canvas.width
+                    const screenX = (1 - maxX) * canvas.width;
+                    const screenY = minY * canvas.height;
+                    const boxW = (maxX - minX) * canvas.width;
+                    const boxH = (maxY - minY) * canvas.height;
+                    
+                    ctx.fillText(`SYS_LOCK // CONNECTED`, screenX + 5, screenY - 18);
+                    ctx.fillText(`ALIGN: ${posture ? "OK" : "WARNING"}`, screenX + 5, screenY - 8);
+                    
+                    ctx.fillStyle = "rgba(173, 255, 68, 0.75)";
+                    ctx.fillText(`EMOTION: ${activeEmotion.toUpperCase()}`, screenX + 5, screenY + boxH + 12);
+                    ctx.fillText(`GAZE: ${eyeContact ? "LOCKED" : "SEARCH"}`, screenX + 5, screenY + boxH + 22);
+                    ctx.restore();
+                }
             });
 
             activePose.onResults((results: any) => {
@@ -1900,6 +2128,12 @@ const CareerReadiness = () => {
                                         <Linkedin size={16} /> LinkedIn Optimizer
                                     </button>
                                     <button
+                                        onClick={() => setActiveTab("ssi")}
+                                        className={`pb-4 text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === "ssi" ? "border-[#ADFF44] text-[#ADFF44]" : "border-transparent text-gray-400 hover:text-white"}`}
+                                    >
+                                        <TrendingUp size={16} /> SSI & Recruiter Heatmap
+                                    </button>
+                                    <button
                                         onClick={() => {
                                             setActiveTab("jobs");
                                             if (!jobsRequested) {
@@ -1915,6 +2149,7 @@ const CareerReadiness = () => {
                                 <div className="flex border-b border-white/10 gap-8 mb-8 overflow-x-auto scrollbar-none">
                                     {[
                                         { id: "ats", label: "ATS Score & Review", icon: ShieldCheck },
+                                        { id: "heatmap", label: "ATS Heatmap & Emulation", icon: Brain },
                                         { id: "skills", label: "Skills Gap & Jobs", icon: Target },
                                         { id: "cover", label: "Cover Letter", icon: FileText },
                                         { id: "rewriter", label: "Bullet Rewriter", icon: Sparkles }
@@ -2121,6 +2356,130 @@ const CareerReadiness = () => {
                                     </div>
                                 )}
 
+                                {/* LINKEDIN MODE: SSI & RECRUITER HEATMAP */}
+                                {linkedinAnalysis && activeTab === "ssi" && (
+                                    <div className="space-y-10 animate-in fade-in duration-300">
+                                        <div className="grid lg:grid-cols-3 gap-8">
+                                            {/* Social Selling Index (SSI) */}
+                                            <Card className="lg:col-span-1 bg-white/5 border border-white/10 p-8 rounded-3xl flex flex-col justify-between min-h-[500px]">
+                                                <div className="space-y-6">
+                                                    <div>
+                                                        <h3 className="text-xl font-bold font-sora">Social Selling Index (SSI)</h3>
+                                                        <p className="text-gray-400 text-xs mt-1">Predictive search discoverability & authority index.</p>
+                                                    </div>
+
+                                                    <div className="flex flex-col items-center justify-center relative py-6">
+                                                        <div className="relative">
+                                                            <svg className="w-40 h-40 transform -rotate-90">
+                                                                <circle className="text-white/5" strokeWidth="8" stroke="currentColor" fill="transparent" r="72" cx="80" cy="80" />
+                                                                <circle
+                                                                    className="text-[#ADFF44] transition-all duration-1000"
+                                                                    strokeWidth="8"
+                                                                    strokeDasharray={2 * Math.PI * 72}
+                                                                    strokeDashoffset={2 * Math.PI * 72 * (1 - 78 / 100)}
+                                                                    strokeLinecap="round"
+                                                                    stroke="currentColor"
+                                                                    fill="transparent"
+                                                                    r="72" cx="80" cy="80"
+                                                                />
+                                                            </svg>
+                                                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                                <span className="text-5xl font-black text-[#ADFF44] font-sora">78</span>
+                                                                <span className="text-[9px] font-black uppercase text-gray-500 tracking-wider">SSI Score</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-4">
+                                                        {[
+                                                            { name: "Establish Professional Brand", val: 21, max: 25 },
+                                                            { name: "Find the Right People", val: 18, max: 25 },
+                                                            { name: "Engage with Insights", val: 19, max: 25 },
+                                                            { name: "Build Relationships", val: 20, max: 25 }
+                                                        ].map((item, idx) => (
+                                                            <div key={idx} className="space-y-1.5">
+                                                                <div className="flex justify-between text-[11px] font-bold text-gray-300">
+                                                                    <span>{item.name}</span>
+                                                                    <span>{item.val} / {item.max}</span>
+                                                                </div>
+                                                                <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                                                                    <div className="h-full bg-[#ADFF44]" style={{ width: `${(item.val / item.max) * 100}%` }} />
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="text-[10px] text-gray-500 text-center leading-normal border-t border-white/5 pt-4 mt-6">
+                                                    Profiles with an SSI of 70+ receive 45% more opportunities and 3x recruiter search appearances.
+                                                </div>
+                                            </Card>
+
+                                            {/* Recruiter Attention Heatmap */}
+                                             <Card className="lg:col-span-2 bg-white/5 border border-white/10 p-8 rounded-3xl space-y-6">
+                                                 <div>
+                                                     <h3 className="text-xl font-bold font-sora">Recruiter Attention Heatmap</h3>
+                                                     <p className="text-gray-400 text-xs mt-1">Visual hotspots showing where recruiters focus their initial 6-second scan.</p>
+                                                 </div>
+
+                                                 <div className="border border-white/5 rounded-2xl bg-[#0d1117] p-6 relative font-sans text-xs text-gray-300 space-y-6 overflow-hidden min-h-[350px]">
+                                                     {/* Background layout resembling LinkedIn */}
+                                                     <div className="h-16 bg-gradient-to-r from-blue-700 to-indigo-900 rounded-t-xl -m-6 mb-2 relative">
+                                                         {/* Red hotspot banner overlay */}
+                                                         <div className="absolute inset-0 bg-red-500/10 flex items-center justify-center border border-red-500/20 backdrop-blur-[0.5px]">
+                                                             <span className="text-[9px] text-red-400 font-bold uppercase tracking-widest px-2 py-0.5 bg-black/80 rounded border border-red-500/30">Background Header (Banner) — Low Scan Priority</span>
+                                                         </div>
+                                                     </div>
+                                                     
+                                                     <div className="flex flex-col sm:flex-row gap-4 items-start relative z-10">
+                                                         {/* Avatar */}
+                                                         <div className="relative group shrink-0">
+                                                             <div className="w-20 h-20 rounded-full border-4 border-[#0d1117] bg-gray-700 overflow-hidden relative">
+                                                                 <div className="absolute inset-0 bg-red-500/40 border-2 border-red-500 group-hover:bg-red-500/50 transition-colors flex items-center justify-center text-white text-[9px] font-black text-center p-1 uppercase leading-none">
+                                                                     Photo Hotspot (15%)
+                                                                 </div>
+                                                             </div>
+                                                         </div>
+
+                                                         {/* Headline */}
+                                                         <div className="space-y-1.5 flex-1 relative group p-3 rounded border border-dashed border-red-500/30 bg-red-500/5 hover:bg-red-500/10 transition-colors">
+                                                             <div className="absolute top-2 right-2 bg-red-500 text-white text-[8px] px-2 py-0.5 rounded font-black uppercase tracking-wider z-20">
+                                                                 Hotspot (70% Focus)
+                                                             </div>
+                                                             <h4 className="text-base font-bold text-white">{formData.name || "Candidate Name"}</h4>
+                                                             <p className="text-gray-300 font-semibold leading-normal">
+                                                                 {roles[0]?.role || "Software Engineer"} | React & Node.js Developer | Building Scalable Enterprise Apps
+                                                             </p>
+                                                             <p className="text-gray-500 text-[10px] mt-1">San Francisco Bay Area • Contact info</p>
+                                                         </div>
+                                                     </div>
+
+                                                     {/* About */}
+                                                     <div className="space-y-2 relative group p-3 rounded border border-dashed border-yellow-500/30 bg-yellow-500/5 hover:bg-yellow-500/10 transition-colors">
+                                                         <div className="absolute top-2 right-2 bg-yellow-500 text-black text-[8px] px-2 py-0.5 rounded font-black uppercase tracking-wider">
+                                                             Warmspot (10% Focus)
+                                                         </div>
+                                                         <h5 className="font-bold text-white border-b border-white/5 pb-1 uppercase tracking-wider text-[9px]">About Summary</h5>
+                                                         <p className="text-gray-400 leading-relaxed text-[11px]">
+                                                             Results-driven professional with experience building web apps. Specialized in React, Node, and SQL. Focused on performance.
+                                                         </p>
+                                                     </div>
+
+                                                     {/* Experience */}
+                                                     <div className="space-y-2 relative group p-3 rounded border border-dashed border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors">
+                                                         <div className="absolute top-2 right-2 bg-emerald-500 text-black text-[8px] px-2 py-0.5 rounded font-black uppercase tracking-wider">
+                                                             Coolspot (5% Focus)
+                                                         </div>
+                                                         <h5 className="font-bold text-white border-b border-white/5 pb-1 uppercase tracking-wider text-[9px]">Experience</h5>
+                                                         <div className="text-[11px] font-bold text-gray-300">Software Engineer at Tech Corp</div>
+                                                         <p className="text-gray-500 text-[10px] mt-0.5">2024 – Present (6 months)</p>
+                                                     </div>
+                                                 </div>
+                                             </Card>
+                                         </div>
+                                     </div>
+                                 )}
+
                                 {/* RESUME MODE: ATS SCORE & REVIEW TAB */}
                                 {analysis && activeTab === "ats" && (
                                     <div className="space-y-10 animate-in fade-in duration-300">
@@ -2257,7 +2616,156 @@ const CareerReadiness = () => {
                                     </div>
                                 )}
 
-                                {/* RESUME MODE: SKILLS GAP & JOB EXPLORATION TAB */}
+                                {/* RESUME MODE: ATS HEATMAP & PARSER EMULATION */}
+                                {analysis && activeTab === "heatmap" && (
+                                    <div className="space-y-10 animate-in fade-in duration-300">
+                                        <div className="grid lg:grid-cols-2 gap-8">
+                                            {/* Left: ATS Heatmap Visualizer */}
+                                            <Card className="bg-white/5 border border-white/10 p-8 rounded-3xl space-y-6">
+                                                <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                                                    <div>
+                                                        <h3 className="text-xl font-bold font-sora">ATS Formatting Heatmap</h3>
+                                                        <p className="text-gray-400 text-xs mt-1">Hover over highlighted sections to see parser vulnerabilities.</p>
+                                                    </div>
+                                                    <div className="flex gap-2 text-[10px] font-black uppercase">
+                                                        <span className="bg-red-500/10 border border-red-500/20 text-red-400 px-2 py-1 rounded">Critique</span>
+                                                        <span className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 px-2 py-1 rounded">Warning</span>
+                                                        <span className="bg-[#ADFF44]/10 border border-[#ADFF44]/20 text-[#ADFF44] px-2 py-1 rounded">Optimized</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-black/50 border border-white/5 rounded-2xl p-6 relative font-sans text-xs text-gray-300 space-y-6 select-none overflow-hidden max-h-[600px] overflow-y-auto">
+                                                    {/* Header */}
+                                                    <div className="text-center space-y-2 pb-4 border-b border-white/5 relative group">
+                                                        <div className="absolute inset-0 bg-yellow-500/5 border border-dashed border-yellow-500/20 rounded opacity-0 group-hover:opacity-100 transition-opacity p-2 flex items-center justify-center text-[10px] text-yellow-400 font-bold backdrop-blur-[1px]">
+                                                            Warning: Double column header layout may lead to text fragmentation.
+                                                        </div>
+                                                        <h4 className="text-lg font-bold text-white tracking-wide">{formData.name || "Candidate Name"}</h4>
+                                                        <p className="text-gray-400 text-[10px]">{formData.email || "email@domain.com"} | {formData.phone || "+123456789"}</p>
+                                                    </div>
+
+                                                    {/* Summary */}
+                                                    <div className="space-y-2 relative group p-2 rounded border border-transparent hover:border-red-500/20 hover:bg-red-500/5 transition-all">
+                                                        <h5 className="font-bold text-white border-b border-white/5 pb-1 uppercase tracking-wider text-[10px]">Executive Summary</h5>
+                                                        <p className="text-gray-400 leading-relaxed">
+                                                            A highly ambitious and results-oriented professional with passion for innovation and engineering. Proven track record of building applications.
+                                                        </p>
+                                                        <div className="absolute top-2 right-2 hidden group-hover:block bg-red-500 text-white text-[9px] px-2 py-0.5 rounded font-black uppercase">
+                                                            Critique: Lacks quantifiable metrics (e.g. % growth, hours saved).
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Work Experience */}
+                                                    <div className="space-y-4">
+                                                        <h5 className="font-bold text-white border-b border-white/5 pb-1 uppercase tracking-wider text-[10px]">Experience</h5>
+                                                        
+                                                        {/* Job 1 */}
+                                                        <div className="space-y-1.5 relative group p-2 rounded border border-transparent hover:border-[#ADFF44]/20 hover:bg-[#ADFF44]/5 transition-all">
+                                                            <div className="flex justify-between font-bold text-white text-[11px]">
+                                                                 <span>Software Engineer | Tech Corp</span>
+                                                                 <span>2024 - Present</span>
+                                                             </div>
+                                                             <ul className="list-disc list-inside space-y-1 text-gray-400 pl-2">
+                                                                 <li>Developed and deployed microservices using <span className="bg-[#ADFF44]/20 text-[#ADFF44] px-1 rounded font-bold">React</span> and <span className="bg-[#ADFF44]/20 text-[#ADFF44] px-1 rounded font-bold">Node.js</span>.</li>
+                                                                 <li>Optimized database queries decreasing page loads by 35%.</li>
+                                                                 <li>Collaborated with team to ship code using git workflows.</li>
+                                                             </ul>
+                                                             <div className="absolute top-2 right-2 hidden group-hover:block bg-[#ADFF44] text-black text-[9px] px-2 py-0.5 rounded font-black uppercase">
+                                                                 Optimized: High keyword density & metrics found.
+                                                             </div>
+                                                         </div>
+
+                                                         {/* Job 2 */}
+                                                         <div className="space-y-1.5 relative group p-2 rounded border border-transparent hover:border-red-500/20 hover:bg-red-500/5 transition-all">
+                                                             <div className="flex justify-between font-bold text-white text-[11px]">
+                                                                 <span>Associate Developer | Web Solutions</span>
+                                                                 <span>2022 - 2024</span>
+                                                             </div>
+                                                             <ul className="list-disc list-inside space-y-1 text-gray-400 pl-2">
+                                                                 <li>Worked on web application development projects.</li>
+                                                                 <li>Assisted in designing user interfaces in Figma.</li>
+                                                                 <li>Fixed bugs and resolved user issues.</li>
+                                                             </ul>
+                                                             <div className="absolute top-2 right-2 hidden group-hover:block bg-red-500 text-white text-[9px] px-2 py-0.5 rounded font-black uppercase">
+                                                                 Critique: Weak verbs ("worked on", "assisted"). No metrics.
+                                                             </div>
+                                                         </div>
+                                                     </div>
+
+                                                     {/* Skills */}
+                                                     <div className="space-y-2 relative group p-2 rounded border border-transparent hover:border-[#ADFF44]/20 hover:bg-[#ADFF44]/5 transition-all">
+                                                         <h5 className="font-bold text-white border-b border-white/5 pb-1 uppercase tracking-wider text-[10px]">Skills</h5>
+                                                         <p className="text-gray-400">
+                                                             <span className="bg-[#ADFF44]/20 text-[#ADFF44] px-1 rounded font-bold m-0.5 inline-block">Python</span>, 
+                                                             <span className="bg-[#ADFF44]/20 text-[#ADFF44] px-1 rounded font-bold m-0.5 inline-block">TypeScript</span>, 
+                                                             <span className="bg-[#ADFF44]/20 text-[#ADFF44] px-1 rounded font-bold m-0.5 inline-block">Docker</span>, 
+                                                             <span className="bg-[#ADFF44]/20 text-[#ADFF44] px-1 rounded font-bold m-0.5 inline-block">CI/CD</span>, 
+                                                             SQL, Git, REST APIs, Tailwind CSS.
+                                                         </p>
+                                                         <div className="absolute top-2 right-2 hidden group-hover:block bg-[#ADFF44] text-black text-[9px] px-2 py-0.5 rounded font-black uppercase">
+                                                             Optimized: Highly relevant tech keywords.
+                                                         </div>
+                                                     </div>
+                                                 </div>
+                                             </Card>
+
+                                             {/* Right: ATS Parser Emulation */}
+                                             <Card className="bg-white/5 border border-white/10 p-8 rounded-3xl space-y-6 flex flex-col justify-between">
+                                                 <div className="space-y-4">
+                                                     <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                                                         <div>
+                                                             <h3 className="text-xl font-bold font-sora">ATS Parser Emulator</h3>
+                                                             <p className="text-gray-400 text-xs mt-1">This is how a raw ATS database sees your file's text structure.</p>
+                                                         </div>
+                                                         <span className="text-[10px] font-black uppercase bg-red-500/10 border border-red-500/20 text-red-400 px-2 py-1 rounded flex items-center gap-1">
+                                                             <AlertCircle size={10} /> Emulated Parse Errors
+                                                         </span>
+                                                     </div>
+
+                                                     <div className="space-y-4">
+                                                         <div className="bg-black/80 border border-white/5 rounded-2xl p-6 relative font-mono text-[11px] text-red-400/90 leading-normal max-h-[350px] overflow-y-auto select-text">
+                                                             <div className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wider bg-red-500/10 px-2 py-1 rounded">
+                                                                 Raw Scrambled Mode
+                                                             </div>
+                                                             <span className="text-gray-500">// Parser output: Two-column layout read left-to-right</span>
+                                                             <br/><br/>
+                                                             {formData.name || "CANDIDATE NAME"} | developer@gmail.com
+                                                             <br/>
+                                                             EDUCATION WORK EXPERIENCE
+                                                             <br/>
+                                                             B.Tech Computer Science Software Engineer | Tech Corp
+                                                             <br/>
+                                                             GITAM University (2020-2024) 2024 - Present
+                                                             <br/>
+                                                             CGPA: 8.81 Developed React microservices.
+                                                             <br/>
+                                                             <br/>
+                                                             <span className="text-yellow-500/80 font-bold">// CRITICAL WARNING: Education and Experience headers merged. Date alignment lost. Database match failed to retrieve chronological dates.</span>
+                                                         </div>
+                                                         
+                                                         <div className="bg-white/3 border border-white/5 p-4 rounded-xl space-y-2">
+                                                             <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                                                                 <Sparkles size={12} className="text-[#ADFF44]" /> How to Fix This
+                                                             </h4>
+                                                             <p className="text-xs text-gray-400 leading-relaxed font-sans">
+                                                                 Avoid side-by-side table column layouts or dual columns for headers. ATS screeners read raw text left-to-right across the page, resulting in education and work dates merging into gibberish. Use a single-column, top-down structure.
+                                                             </p>
+                                                         </div>
+                                                     </div>
+                                                 </div>
+
+                                                 <Button 
+                                                     onClick={() => setActiveTab("rewriter")}
+                                                     className="w-full h-12 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl text-xs uppercase tracking-wider border border-white/10 mt-6"
+                                                 >
+                                                     Fix Bullets with Google X-Y-Z Formula
+                                                 </Button>
+                                             </Card>
+                                         </div>
+                                     </div>
+                                 )}
+
+                                 {/* RESUME MODE: SKILLS GAP & JOB EXPLORATION TAB */}
                                 {analysis && activeTab === "skills" && (
                                     <div className="space-y-10 animate-in fade-in duration-300">
                                         <div className="grid lg:grid-cols-3 gap-8 items-start">
@@ -2827,99 +3335,209 @@ const CareerReadiness = () => {
                                         </div>
                                     ) : (
                                         <div className="space-y-4">
-                                            <div className="flex justify-between items-center bg-white/3 border border-white/5 px-6 py-4 rounded-2xl">
-                                                <span className="text-xs font-bold text-gray-400">Showing {qaCategory} Questions for <strong className="text-white">{qaRole}</strong></span>
-                                                <span className="text-xs bg-[#ADFF44]/10 text-[#ADFF44] font-bold px-3 py-1 rounded-full">200 Questions Loaded</span>
+                                            {/* QA Mode Switcher */}
+                                            <div className="flex justify-between items-center bg-white/3 border border-white/5 px-6 py-4 rounded-2xl gap-4 flex-wrap">
+                                                <span className="text-xs font-bold text-gray-400">Curated Library for <strong className="text-white">{qaRole}</strong></span>
+                                                <div className="inline-flex bg-white/5 p-1 rounded-xl border border-white/10">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setQaMode("browse")}
+                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                                            qaMode === "browse" ? "bg-[#ADFF44] text-black font-extrabold" : "text-gray-400 hover:text-white"
+                                                        }`}
+                                                    >
+                                                        Browse Questions
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setQaMode("star")}
+                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                                            qaMode === "star" ? "bg-[#ADFF44] text-black font-extrabold" : "text-gray-400 hover:text-white"
+                                                        }`}
+                                                    >
+                                                        STAR Builder
+                                                    </button>
+                                                </div>
                                             </div>
 
-                                            <div className="space-y-3">
-                                                {qaQuestions
-                                                    .filter(q => q.category === qaCategory && (qaSearch === "" || q.text.toLowerCase().includes(qaSearch.toLowerCase())))
-                                                    .map((q, idx) => {
-                                                        const isExpanded = expandedQuestionId === q.id;
-                                                        const cacheKey = `${qaRole}:${q.text}`;
-                                                        const answerData = answersStore[cacheKey];
+                                            {qaMode === "browse" ? (
+                                                <div className="space-y-3">
+                                                    {qaQuestions
+                                                        .filter(q => q.category === qaCategory && (qaSearch === "" || q.text.toLowerCase().includes(qaSearch.toLowerCase())))
+                                                        .map((q, idx) => {
+                                                            const isExpanded = expandedQuestionId === q.id;
+                                                            const cacheKey = `${qaRole}:${q.text}:${interviewerPersona}`;
+                                                            const answerData = answersStore[cacheKey];
 
-                                                        return (
-                                                            <div
-                                                                key={q.id}
-                                                                className={`border rounded-2xl transition-all overflow-hidden bg-white/3 ${isExpanded ? "border-[#ADFF44]/30 ring-1 ring-[#ADFF44]/10" : "border-white/5 hover:border-white/10"}`}
-                                                            >
+                                                            return (
+                                                                <div
+                                                                    key={q.id}
+                                                                    className={`border rounded-2xl transition-all overflow-hidden bg-white/3 ${isExpanded ? "border-[#ADFF44]/30 ring-1 ring-[#ADFF44]/10" : "border-white/5 hover:border-white/10"}`}
+                                                                >
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            if (isExpanded) {
+                                                                                setExpandedQuestionId(null);
+                                                                            } else {
+                                                                                setExpandedQuestionId(q.id);
+                                                                                loadQuestionAnswer(q.text);
+                                                                            }
+                                                                        }}
+                                                                        className="w-full px-6 py-5 text-left flex justify-between items-start gap-4 hover:bg-white/2 transition-colors"
+                                                                    >
+                                                                        <div className="flex gap-4">
+                                                                            <span className="text-xs font-mono font-bold text-gray-600 mt-0.5">{idx + 1}.</span>
+                                                                            <h4 className="font-bold text-sm text-gray-200 leading-snug">{q.text}</h4>
+                                                                        </div>
+                                                                        <ChevronRight
+                                                                            size={16}
+                                                                            className={`text-gray-500 mt-1 transition-transform shrink-0 ${isExpanded ? "rotate-90 text-[#ADFF44]" : ""}`}
+                                                                        />
+                                                                    </button>
+
+                                                                    {isExpanded && (
+                                                                        <div className="border-t border-white/5 bg-black/40 p-6 space-y-6">
+                                                                            {expandedQuestionLoading && !answerData ? (
+                                                                                <div className="space-y-3 animate-pulse">
+                                                                                    <div className="h-4 bg-white/5 rounded w-3/4" />
+                                                                                    <div className="h-4 bg-white/5 rounded w-5/6" />
+                                                                                    <div className="h-4 bg-white/5 rounded w-2/3" />
+                                                                                </div>
+                                                                            ) : answerData ? (
+                                                                                <div className="grid md:grid-cols-3 gap-6 items-start">
+                                                                                    <div className="md:col-span-2 space-y-3">
+                                                                                        <div className="flex items-center justify-between">
+                                                                                            <span className="text-[10px] font-black uppercase text-[#ADFF44] tracking-wider flex items-center gap-1">
+                                                                                                <Sparkles size={10} /> Suggested Model Answer
+                                                                                            </span>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => {
+                                                                                                    navigator.clipboard.writeText(answerData.suggested_answer);
+                                                                                                    toast.success("Answer copied to clipboard!");
+                                                                                                }}
+                                                                                                className="text-xs text-[#ADFF44] hover:underline flex items-center gap-1"
+                                                                                            >
+                                                                                                <Copy size={12} /> Copy Answer
+                                                                                            </button>
+                                                                                        </div>
+                                                                                        <p className="text-xs text-gray-300 leading-relaxed font-sans whitespace-pre-wrap select-text selection:bg-[#ADFF44] selection:text-black">
+                                                                                            {answerData.suggested_answer}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    <div className="bg-[#ADFF44]/5 border border-[#ADFF44]/15 p-4 rounded-xl space-y-3">
+                                                                                        <span className="text-[10px] font-black uppercase text-[#ADFF44] tracking-wider flex items-center gap-1">
+                                                                                            <Star size={10} fill="currentColor" /> Expert Response Tips
+                                                                                        </span>
+                                                                                        <ul className="space-y-2">
+                                                                                            {answerData.tips?.map((t: string, ti: number) => (
+                                                                                                <li key={ti} className="flex gap-2 text-[11px] text-gray-400 leading-normal">
+                                                                                                    <div className="w-1.5 h-1.5 rounded-full bg-[#ADFF44]/40 mt-1.5 shrink-0" />
+                                                                                                    <span>{t}</span>
+                                                                                                </li>
+                                                                                            ))}
+                                                                                        </ul>
+                                                                                    </div>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <p className="text-xs text-gray-500 italic">No answer data available.</p>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                </div>
+                                            ) : (
+                                                /* STAR Answer Builder Form */
+                                                <Card className="bg-white/5 border border-white/10 p-6 rounded-3xl space-y-6">
+                                                    <div className="border-b border-white/5 pb-4">
+                                                        <h3 className="text-lg font-bold font-sora text-white">Interactive STAR Method Builder</h3>
+                                                        <p className="text-xs text-gray-400 mt-1">Structure your thoughts using Situation, Task, Action, and Result to generate optimized interview replies.</p>
+                                                    </div>
+
+                                                    <div className="space-y-4">
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Situation</label>
+                                                            <Textarea
+                                                                placeholder="Set the scene: What was the context? (e.g. Our website latency had spiked...)"
+                                                                className="bg-black border-white/10 text-xs focus:border-[#ADFF44]"
+                                                                value={starS}
+                                                                onChange={(e) => setStarS(e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Task</label>
+                                                            <Textarea
+                                                                placeholder="Define the challenge: What was your specific responsibility? (e.g. I was tasked to trace the bottleneck...)"
+                                                                className="bg-black border-white/10 text-xs focus:border-[#ADFF44]"
+                                                                value={starT}
+                                                                onChange={(e) => setStarT(e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Action</label>
+                                                            <Textarea
+                                                                placeholder="Describe your execution: What did you do? (e.g. I profiled SQL indexes and refactored cache loops...)"
+                                                                className="bg-black border-white/10 text-xs focus:border-[#ADFF44]"
+                                                                value={starA}
+                                                                onChange={(e) => setStarA(e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Result</label>
+                                                            <Textarea
+                                                                placeholder="Explain the outcome: Quantified impact and learnings? (e.g. Latency dropped by 40% saving $5k...)"
+                                                                className="bg-black border-white/10 text-xs focus:border-[#ADFF44]"
+                                                                value={starR}
+                                                                onChange={(e) => setStarR(e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <Button
+                                                        onClick={handleRefineSTARAnswer}
+                                                        disabled={starRefiningLoading}
+                                                        className="w-full h-12 bg-[#ADFF44] hover:bg-[#9BE63D] text-black font-black text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2"
+                                                    >
+                                                        {starRefiningLoading ? (
+                                                            <>
+                                                                <Loader2 className="animate-spin" size={14} />
+                                                                <span>Refining with AI...</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Sparkles size={14} />
+                                                                <span>Refine and Merge (As {interviewerPersona})</span>
+                                                            </>
+                                                        )}
+                                                    </Button>
+
+                                                    {starRefinedAnswer && (
+                                                        <div className="border-t border-white/5 pt-6 space-y-3 animate-fade-in">
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-[10px] font-black uppercase text-[#ADFF44] tracking-wider flex items-center gap-1">
+                                                                    <Sparkles size={10} /> Polished STAR Answer
+                                                                </span>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => {
-                                                                        if (isExpanded) {
-                                                                            setExpandedQuestionId(null);
-                                                                        } else {
-                                                                            setExpandedQuestionId(q.id);
-                                                                            loadQuestionAnswer(q.text);
-                                                                        }
+                                                                        navigator.clipboard.writeText(starRefinedAnswer);
+                                                                        toast.success("STAR answer copied!");
                                                                     }}
-                                                                    className="w-full px-6 py-5 text-left flex justify-between items-start gap-4 hover:bg-white/2 transition-colors"
+                                                                    className="text-xs text-[#ADFF44] hover:underline flex items-center gap-1"
                                                                 >
-                                                                    <div className="flex gap-4">
-                                                                        <span className="text-xs font-mono font-bold text-gray-600 mt-0.5">{idx + 1}.</span>
-                                                                        <h4 className="font-bold text-sm text-gray-200 leading-snug">{q.text}</h4>
-                                                                    </div>
-                                                                    <ChevronRight
-                                                                        size={16}
-                                                                        className={`text-gray-500 mt-1 transition-transform shrink-0 ${isExpanded ? "rotate-90 text-[#ADFF44]" : ""}`}
-                                                                    />
+                                                                    <Copy size={12} /> Copy Result
                                                                 </button>
-
-                                                                {isExpanded && (
-                                                                    <div className="border-t border-white/5 bg-black/40 p-6 space-y-6">
-                                                                        {expandedQuestionLoading && !answerData ? (
-                                                                            <div className="space-y-3 animate-pulse">
-                                                                                <div className="h-4 bg-white/5 rounded w-3/4" />
-                                                                                <div className="h-4 bg-white/5 rounded w-5/6" />
-                                                                                <div className="h-4 bg-white/5 rounded w-2/3" />
-                                                                            </div>
-                                                                        ) : answerData ? (
-                                                                            <div className="grid md:grid-cols-3 gap-6 items-start">
-                                                                                <div className="md:col-span-2 space-y-3">
-                                                                                    <div className="flex items-center justify-between">
-                                                                                        <span className="text-[10px] font-black uppercase text-[#ADFF44] tracking-wider flex items-center gap-1">
-                                                                                            <Sparkles size={10} /> Suggested Model Answer
-                                                                                        </span>
-                                                                                        <button
-                                                                                            type="button"
-                                                                                            onClick={() => {
-                                                                                                navigator.clipboard.writeText(answerData.suggested_answer);
-                                                                                                toast.success("Answer copied to clipboard!");
-                                                                                            }}
-                                                                                            className="text-xs text-[#ADFF44] hover:underline flex items-center gap-1"
-                                                                                        >
-                                                                                            <Copy size={12} /> Copy Answer
-                                                                                        </button>
-                                                                                    </div>
-                                                                                    <p className="text-xs text-gray-300 leading-relaxed font-sans whitespace-pre-wrap select-text selection:bg-[#ADFF44] selection:text-black">
-                                                                                        {answerData.suggested_answer}
-                                                                                    </p>
-                                                                                </div>
-                                                                                <div className="bg-[#ADFF44]/5 border border-[#ADFF44]/15 p-4 rounded-xl space-y-3">
-                                                                                    <span className="text-[10px] font-black uppercase text-[#ADFF44] tracking-wider flex items-center gap-1">
-                                                                                        <Star size={10} fill="currentColor" /> Expert Response Tips
-                                                                                    </span>
-                                                                                    <ul className="space-y-2">
-                                                                                        {answerData.tips?.map((t: string, ti: number) => (
-                                                                                            <li key={ti} className="flex gap-2 text-[11px] text-gray-400 leading-normal">
-                                                                                                <div className="w-1.5 h-1.5 rounded-full bg-[#ADFF44]/40 mt-1.5 shrink-0" />
-                                                                                                <span>{t}</span>
-                                                                                            </li>
-                                                                                        ))}
-                                                                                    </ul>
-                                                                                </div>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <p className="text-xs text-gray-500 italic">No answer data available.</p>
-                                                                        )}
-                                                                    </div>
-                                                                )}
                                                             </div>
-                                                        );
-                                                    })}
-                                            </div>
+                                                            <div className="bg-black/60 border border-[#ADFF44]/15 rounded-2xl p-4 text-xs text-gray-300 leading-relaxed font-sans select-text whitespace-pre-wrap">
+                                                                {starRefinedAnswer}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </Card>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -2963,6 +3581,38 @@ const CareerReadiness = () => {
                                                     <option key={i} value={r} className="bg-neutral-900 text-gray-300">{r}</option>
                                                 ))}
                                             </select>
+                                        </div>
+
+                                        <div className="space-y-4 border-t border-white/5 pt-6">
+                                            <label className="text-xs font-black uppercase text-gray-400 tracking-wider block">Choose Your Interviewer Persona</label>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                {[
+                                                    { id: "Dave", name: "Dave", title: "Tech Lead", desc: "Blunt, code-focused, checks algorithms & scaling." },
+                                                    { id: "Sarah", name: "Sarah", title: "HR Recruiter", desc: "Warm, empathetic, focuses on culture & soft skills." },
+                                                    { id: "Mr. Stone", name: "Mr. Stone", title: "Stress Tester", desc: "Direct, intense, challenges all your answers." },
+                                                    { id: "Alex", name: "Alex", title: "Friendly Mentor", desc: "Supportive, guides you to use the STAR method." }
+                                                ].map(p => (
+                                                    <button
+                                                        key={p.id}
+                                                        type="button"
+                                                        onClick={() => setInterviewerPersona(p.id)}
+                                                        className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden backdrop-blur-md flex flex-col justify-between h-36 ${
+                                                            interviewerPersona === p.id 
+                                                                ? "bg-[#ADFF44]/10 border-[#ADFF44] shadow-md shadow-[#ADFF44]/10" 
+                                                                : "bg-white/3 border-white/10 hover:border-white/20"
+                                                        }`}
+                                                    >
+                                                        {interviewerPersona === p.id && (
+                                                            <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#ADFF44] shadow-lg shadow-[#ADFF44]/50 animate-pulse" />
+                                                        )}
+                                                        <div>
+                                                            <span className="text-xs font-black uppercase tracking-wider block text-white">{p.name}</span>
+                                                            <span className="text-[10px] opacity-60 block mt-0.5">{p.title}</span>
+                                                        </div>
+                                                        <p className="text-[9px] text-gray-400 leading-normal mt-2 line-clamp-3">{p.desc}</p>
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
 
                                         <div className="grid md:grid-cols-3 gap-4 border-t border-white/5 pt-6 text-xs text-gray-400">
@@ -3042,21 +3692,44 @@ const CareerReadiness = () => {
                                         </div>
 
                                         {/* Real-time Tracking Dials/Bars */}
-                                        <div className="grid grid-cols-3 gap-4">
-                                            <Card className="bg-white/5 border border-white/10 p-4 rounded-2xl flex flex-col items-center text-center space-y-2">
+                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                                            <Card className="bg-white/5 border border-white/10 p-4 rounded-2xl flex flex-col items-center justify-between text-center min-h-[110px]">
                                                 <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">Eye Contact</span>
-                                                <div className={`w-3.5 h-3.5 rounded-full ${liveMetrics.eyeContact ? "bg-[#ADFF44] shadow-lg shadow-[#ADFF44]/30" : "bg-red-500 shadow-lg shadow-red-500/30"} transition-colors`} />
+                                                <div className={`w-3.5 h-3.5 rounded-full ${liveMetrics.eyeContact ? "bg-[#ADFF44] shadow-lg shadow-[#ADFF44]/30" : "bg-red-500 shadow-lg shadow-red-500/30"} transition-colors my-1`} />
                                                 <span className="text-xs font-bold text-white">{liveMetrics.eyeContact ? "Looking at Screen" : "Looking Away"}</span>
                                             </Card>
-                                            <Card className="bg-white/5 border border-white/10 p-4 rounded-2xl flex flex-col items-center text-center space-y-2">
+                                            <Card className="bg-white/5 border border-white/10 p-4 rounded-2xl flex flex-col items-center justify-between text-center min-h-[110px]">
                                                 <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">Head Pose</span>
-                                                <div className={`w-3.5 h-3.5 rounded-full ${liveMetrics.headStability ? "bg-[#ADFF44] shadow-lg shadow-[#ADFF44]/30" : "bg-red-500 shadow-lg shadow-red-500/30"} transition-colors`} />
+                                                <div className={`w-3.5 h-3.5 rounded-full ${liveMetrics.headStability ? "bg-[#ADFF44] shadow-lg shadow-[#ADFF44]/30" : "bg-red-500 shadow-lg shadow-red-500/30"} transition-colors my-1`} />
                                                 <span className="text-xs font-bold text-white">{liveMetrics.headStability ? "Stable Posture" : "Head Movement"}</span>
                                             </Card>
-                                            <Card className="bg-white/5 border border-white/10 p-4 rounded-2xl flex flex-col items-center text-center space-y-2">
+                                            <Card className="bg-white/5 border border-white/10 p-4 rounded-2xl flex flex-col items-center justify-between text-center min-h-[110px]">
                                                 <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">Alignment</span>
-                                                <div className={`w-3.5 h-3.5 rounded-full ${liveMetrics.posture ? "bg-[#ADFF44] shadow-lg shadow-[#ADFF44]/30" : "bg-red-500 shadow-lg shadow-red-500/30"} transition-colors`} />
-                                                <span className="text-xs font-bold text-white">{liveMetrics.posture ? "Centered" : "Slouching / Leaning"}</span>
+                                                <div className={`w-3.5 h-3.5 rounded-full ${liveMetrics.posture ? "bg-[#ADFF44] shadow-lg shadow-[#ADFF44]/30" : "bg-red-500 shadow-lg shadow-red-500/30"} transition-colors my-1`} />
+                                                <span className="text-xs font-bold text-white">{liveMetrics.posture ? "Centered" : "Slouching"}</span>
+                                            </Card>
+                                            <Card className="bg-white/5 border border-white/10 p-4 rounded-2xl flex flex-col items-center justify-between text-center min-h-[110px]">
+                                                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">Live Emotion</span>
+                                                <span className="text-[#ADFF44] text-lg font-black tracking-wide my-1 uppercase font-mono drop-shadow-[0_0_8px_rgba(173,255,68,0.2)]">
+                                                    {detectedEmotion}
+                                                </span>
+                                                <span className="text-[9px] text-gray-400">Facial geometry</span>
+                                            </Card>
+                                            <Card className="bg-white/5 border border-white/10 p-4 rounded-2xl flex flex-col items-center justify-between text-center min-h-[110px]">
+                                                <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">Speech Pace</span>
+                                                <div className="my-1 flex flex-col items-center">
+                                                    <span className={`text-base font-black ${
+                                                        speechPace === 0 ? "text-gray-400" : speechPace < 95 ? "text-blue-400" : speechPace > 145 ? "text-orange-400" : "text-[#ADFF44]"
+                                                    }`}>
+                                                        {speechPace === 0 ? "--" : `${speechPace} WPM`}
+                                                    </span>
+                                                    <span className="text-[9px] text-gray-500 mt-0.5">
+                                                        {speechPace === 0 ? "Awaiting speech" : speechPace < 95 ? "Slow" : speechPace > 145 ? "Fast" : "Perfect Pace"}
+                                                    </span>
+                                                </div>
+                                                <span className="text-[9px] text-gray-400 font-medium">
+                                                    Fillers: <span className="text-red-400 font-bold">{fillerCount}</span>
+                                                </span>
                                             </Card>
                                         </div>
                                     </div>

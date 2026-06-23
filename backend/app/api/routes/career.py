@@ -917,11 +917,13 @@ Output ONLY valid JSON (no markdown, no formatting other than valid JSON):
 class QuestionAnswerRequest(BaseModel):
     role: str
     question: str
+    persona: Optional[str] = None
 
 class InterviewEvaluateRequest(BaseModel):
     role: str
     answers: List[Dict[str, str]]
     metrics: Dict[str, float]
+    persona: Optional[str] = None
 
 BEHAVIORAL_TEMPLATES = [
     "Tell me about yourself and your journey to becoming a {role}.",
@@ -1429,25 +1431,35 @@ async def get_question_answer(req: QuestionAnswerRequest):
     groq = get_groq()
     role = req.role.strip()
     question = req.question.strip()
+    persona = req.persona.strip() if req.persona else "General Professional"
     
-    cache_key = f"{role}:{question}"
+    cache_key = f"{role}:{question}:{persona}"
     if cache_key in ANSWER_CACHE:
         return ANSWER_CACHE[cache_key]
         
     prompt = f"""
 You are an expert technical interviewer and career coach.
-Generate a comprehensive, high-quality sample answer and tips for the following interview question.
+You are generating a sample response and coaching tips as the following interviewer persona: {persona}.
+
+PERSONA CHARACTERISTICS & TONE:
+- Dave (Tech Lead): Blunt, deep technical focus, queries about algorithms, scale, and performance. Keep the answer extremely technical.
+- Sarah (HR Recruiter): Empathy-driven, focused on collaboration, behavioral cues, and company culture fit. Highlight teamwork and soft skills.
+- Mr. Stone (Stress Tester): Direct, high pressure, challenges assumptions, questions why you chose a certain path. Frame the tips and answer around high pressure situations.
+- Alex (Friendly Mentor): Warm, supportive, guiding, breaks down problems. Focus on structured reasoning and mentoring guidance.
+- General Professional / default: Balanced, professional, informative.
+
+Adopt this persona's tone and perspective in both the suggested answer and the tips.
 
 TARGET ROLE: {role}
 QUESTION: {question}
 
 Provide the response as valid JSON with the following structure:
 {{
-  "suggested_answer": "<A highly detailed, professional sample answer. If behavioral, use the STAR format (Situation, Task, Action, Result). If technical, explain the concepts and principles clearly. Key points should be highlighted. Length: 150-250 words.>",
+  "suggested_answer": "<A sample answer tailored to the persona's style. If behavioral, use the STAR format (Situation, Task, Action, Result). If technical, explain the concepts and principles clearly. Key points should be highlighted. Length: 150-250 words.>",
   "tips": [
-    "<Actionable tip #1: what interviewers look for in this answer>",
-    "<Actionable tip #2: keywords or tech tools to mention>",
-    "<Actionable tip #3: what pitfalls to avoid>"
+    "<Coaching tip 1 reflecting this persona's priorities>",
+    "<Coaching tip 2 reflecting this persona's priorities>",
+    "<Coaching tip 3 reflecting this persona's priorities>"
   ]
 }}
 """
@@ -1479,6 +1491,7 @@ async def evaluate_interview(req: InterviewEvaluateRequest):
     groq = get_groq()
     
     role = req.role.strip()
+    persona = req.persona.strip() if req.persona else "General Professional"
     answers_str = ""
     for idx, ans in enumerate(req.answers):
         q = ans.get("question", "")
@@ -1491,7 +1504,15 @@ async def evaluate_interview(req: InterviewEvaluateRequest):
     posture = metrics.get("posture_alignment_ratio", 1.0) * 100
     
     prompt = f"""
-You are an expert public speaking coach and hiring manager.
+You are an expert public speaking coach, hiring manager, and specifically evaluating the candidate as the interviewer persona: {persona}.
+
+PERSONA CRITIQUE STYLE:
+- Dave (Tech Lead): Blunt, direct, technical correctness is priority. If their answers lack code structure, frameworks, or depth, point it out.
+- Sarah (HR Recruiter): Warm but selective. Focuses on culture, behavioral traits, teamwork, and growth mindset.
+- Mr. Stone (Stress Tester): Direct, high-pressure, looks for signs of panic, challenges soft phrasing. Extremely picky.
+- Alex (Friendly Mentor): Supportive, helpful, gives structured advice on how to improve using the STAR method.
+- General Professional: Balanced, standard industry evaluation.
+
 Evaluate this candidate's mock video interview performance for the role of {role}.
 
 TRANSCRIPT OF SPOKEN ANSWERS:
@@ -1503,23 +1524,23 @@ VIDEO TRACKING METRICS:
 - Posture Alignment (sitting centered and upright): {posture:.1f}% of the time
 
 CRITICAL EVALUATION RULES:
-1. Score out of 100. Be honest and constructive.
-2. Deliver two sections of feedback: Verbal Content (STAR structure, correctness) and Non-Verbal Delivery (body language, posture, eye contact).
+1. Score out of 100. Be honest and constructive. Adopt the style and tone of the "{persona}" persona.
+2. Deliver two sections of feedback: Verbal Content (STAR structure, correctness, vocabulary) and Non-Verbal Delivery (body language, posture, eye contact).
 3. Grade each individual answer, highlighting strengths and offering a better/optimized way to word the answer.
 
 Output ONLY valid JSON:
 {{
-  "overall_score": <0-100 overall blended grade>,
+  "overall_score": <0-100 overall blended grade based on persona standards>,
   "delivery_score": <0-100 score strictly for delivery/body language/metrics>,
   "content_score": <0-100 score strictly for answer quality/accuracy>,
-  "summary": "<2-3 sentences overall evaluation verdict>",
+  "summary": "<2-3 sentences overall evaluation verdict, adopting the persona's tone>",
   "delivery_feedback": "<Feedback addressing eye contact, head movement, posture, and suggestions to sit/look better>",
   "content_feedback": "<Feedback addressing answers, structure (STAR), technical terminology, and confidence>",
   "graded_answers": [
     {{
       "question": "<question text>",
       "rating": "<Strong|Good|Weak>",
-      "critique": "<Detailed 1-2 sentence critique of their spoken response>",
+      "critique": "<Detailed 1-2 sentence critique of their spoken response from the persona's perspective>",
       "better_answer": "<Optimized version of how they could have answered using better structure and action verbs>"
     }}
   ]
