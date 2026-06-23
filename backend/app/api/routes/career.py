@@ -925,6 +925,13 @@ class InterviewEvaluateRequest(BaseModel):
     metrics: Dict[str, float]
     persona: Optional[str] = None
 
+class AdaptiveNextQuestionRequest(BaseModel):
+    role: str
+    persona: Optional[str] = None
+    history: List[Dict[str, str]]
+    current_question: str
+    transcript: str
+
 BEHAVIORAL_TEMPLATES = [
     "Tell me about yourself and your journey to becoming a {role}.",
     "Why do you want to work as a {role} at our company?",
@@ -1564,3 +1571,71 @@ Output ONLY valid JSON:
     except Exception as e:
         logging.error(f"Interview evaluation failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Interview evaluation failed: {str(e)}")
+
+@router.post("/adaptive-next-question")
+async def adaptive_next_question(req: AdaptiveNextQuestionRequest):
+    groq = get_groq()
+    role = req.role.strip()
+    persona = req.persona.strip() if req.persona else "General Professional"
+    current_question = req.current_question.strip()
+    transcript = req.transcript.strip()
+    
+    # Construct conversational history string
+    history_str = ""
+    for turn in req.history:
+        q = turn.get("question", "")
+        a = turn.get("answer", "")
+        history_str += f"Interviewer: {q}\nCandidate: {a}\n\n"
+        
+    prompt = f"""
+You are an interviewer with the following persona: {persona}.
+
+PERSONA CHARACTERISTICS:
+- Dave (Tech Lead): Blunt, deep technical focus, queries about algorithms, scale, and performance. Probes technical assertions in their transcript.
+- Sarah (HR Recruiter): Empathy-driven, focused on collaboration, behavioral cues, and company culture fit. Probes soft skills and how they handle interpersonal dynamics.
+- Mr. Stone (Stress Tester): Direct, high pressure, challenges assumptions, questions why you chose a certain path. Frame the follow-up to stress-test their assertions or mock their decisions slightly but professionally.
+- Alex (Friendly Mentor): Warm, supportive, guiding, breaks down problems. Focus on structured reasoning, and guide them with encouraging but developmental follow-ups.
+- General Professional / default: Balanced, professional, standard follow-up.
+
+TARGET ROLE: {role}
+CONVERSATION SO FAR:
+{history_str}
+LAST QUESTION ASKED: {current_question}
+CANDIDATE'S LAST RESPONSE (TRANSCRIPT): {transcript}
+
+Based on their last response, generate the NEXT interview question.
+Your response MUST be an active conversational follow-up question.
+- If the candidate mentioned a specific technology, project, or event, ask a follow-up directly targeting that.
+- If their response was weak or incomplete, ask them to expand or clarify.
+- Maintain your persona's tone strictly.
+
+Provide your response as a simple JSON object:
+{{
+  "next_question": "<your conversational follow-up question here>"
+}}
+"""
+    try:
+        completion = groq.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": "You output ONLY valid raw JSON. No markdown, no explanations. Valid JSON only."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.4,
+            max_tokens=600
+        )
+        ai_text = completion.choices[0].message.content
+        result = parse_json_from_response(ai_text)
+        return result
+    except Exception as e:
+        logging.error(f"Adaptive question generation failed: {str(e)}")
+        # Fallback question if API fails
+        fallback_questions = [
+            f"Can you expand on how you applied your technical expertise for this {role} role in a recent project?",
+            f"How did you measure the success of the outcome in that situation?",
+            f"What was the most challenging aspect of that work, and how did you resolve it?",
+            f"How did you collaborate with other stakeholders or team members during that process?"
+        ]
+        import random
+        return {"next_question": random.choice(fallback_questions)}
+

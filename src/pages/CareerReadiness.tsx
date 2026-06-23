@@ -593,6 +593,22 @@ const CareerReadiness = () => {
     const [fillerCount, setFillerCount] = useState<number>(0);
     const [speechPace, setSpeechPace] = useState<number>(0);
     const speechStartTimeRef = useRef<number>(0);
+
+    // Deep Tech Audio & Interview State
+    const [adaptiveBranching, setAdaptiveBranching] = useState<boolean>(false);
+    const [fluencyState, setFluencyState] = useState<string>("Fluent");
+    const [hesitationCount, setHesitationCount] = useState<number>(0);
+    const [pitchStability, setPitchStability] = useState<number>(100);
+    const [volumeConsistency, setVolumeConsistency] = useState<number>(100);
+
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const analyserRef = useRef<AnalyserNode | null>(null);
+    const audioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+    const animationFrameIdRef = useRef<number | null>(null);
+    const silenceStartRef = useRef<number | null>(null);
+    const pitchHistoryRef = useRef<number[]>([]);
+    const volumeHistoryRef = useRef<number[]>([]);
+    const waveformBufferRef = useRef<number[]>([]);
     const [currentQuestionIdx, setCurrentQuestionIdx] = useState<number>(0);
     const [interviewQuestions, setInterviewQuestions] = useState<any[]>([]);
     const [spokenAnswers, setSpokenAnswers] = useState<Array<{ question: string; answer: string }>>([]);
@@ -654,6 +670,12 @@ const CareerReadiness = () => {
     const [customBullet, setCustomBullet] = useState<string>("");
     const [rewrittenBullet, setRewrittenBullet] = useState<string>("");
     const [rewritingBullet, setRewritingBullet] = useState<boolean>(false);
+
+    // Recruiter Search Sim State
+    const [searchSimRank, setSearchSimRank] = useState<number>(3);
+    const [searchSimOptimized, setSearchSimOptimized] = useState<boolean>(false);
+    const [searchSimMatches, setSearchSimMatches] = useState<number>(75);
+    const [searchSimAnim, setSearchSimAnim] = useState<boolean>(false);
 
     // --- Handlers ---
     const addRoleItem = () => {
@@ -1115,6 +1137,174 @@ const CareerReadiness = () => {
         }
     };
 
+    const autoCorrelate = (buffer: Uint8Array, sampleRate: number): number => {
+        const SIZE = buffer.length;
+        let sum = 0;
+        for (let i = 0; i < SIZE; i++) {
+            const val = (buffer[i] - 128) / 128;
+            sum += val * val;
+        }
+        const rms = Math.sqrt(sum / SIZE);
+        if (rms < 0.01) return -1;
+
+        let r1 = 0, r2 = SIZE - 1;
+        const thres = 0.2;
+        for (let i = 0; i < SIZE / 2; i++) {
+            if (Math.abs((buffer[i] - 128) / 128) < thres) {
+                r1 = i;
+                break;
+            }
+        }
+        for (let i = SIZE / 2; i < SIZE; i++) {
+            if (Math.abs((buffer[i] - 128) / 128) < thres) {
+                r2 = i;
+                break;
+            }
+        }
+
+        const c = new Float32Array(SIZE);
+        for (let i = 0; i < SIZE; i++) {
+            for (let j = 0; j < SIZE - i; j++) {
+                c[i] += ((buffer[j] - 128) / 128) * ((buffer[j + i] - 128) / 128);
+            }
+        }
+
+        let d = 0;
+        while (c[d] > c[d + 1]) d++;
+        let maxval = -1, maxpos = -1;
+        for (let i = d; i < SIZE / 2; i++) {
+            if (c[i] > maxval) {
+                maxval = c[i];
+                maxpos = i;
+            }
+        }
+
+        let T0 = maxpos;
+        if (T0 > 0) {
+            return sampleRate / T0;
+        }
+        return -1;
+    };
+
+    const cleanupAudioAnalyzer = () => {
+        if (animationFrameIdRef.current) {
+            cancelAnimationFrame(animationFrameIdRef.current);
+            animationFrameIdRef.current = null;
+        }
+        if (audioSourceRef.current) {
+            try { audioSourceRef.current.disconnect(); } catch (e) {}
+            audioSourceRef.current = null;
+        }
+        if (audioContextRef.current) {
+            try {
+                if (audioContextRef.current.state !== "closed") {
+                    audioContextRef.current.close();
+                }
+            } catch (e) {}
+            audioContextRef.current = null;
+        }
+        analyserRef.current = null;
+        waveformBufferRef.current = [];
+    };
+
+    const analyzeVoiceTelemetry = (analyser: AnalyserNode) => {
+        const bufferLength = analyser.fftSize;
+        const dataArray = new Uint8Array(bufferLength);
+        let lastPauseTriggered = false;
+
+        const loop = () => {
+            if (!analyserRef.current) return;
+            analyser.getByteTimeDomainData(dataArray);
+
+            let sumSquares = 0.0;
+            for (let i = 0; i < bufferLength; i++) {
+                const val = (dataArray[i] - 128) / 128;
+                sumSquares += val * val;
+            }
+            const rms = Math.sqrt(sumSquares / bufferLength);
+            const dbValue = rms * 100;
+
+            if (dbValue > 1) {
+                volumeHistoryRef.current.push(dbValue);
+                if (volumeHistoryRef.current.length > 200) volumeHistoryRef.current.shift();
+                
+                const avgVol = volumeHistoryRef.current.reduce((a, b) => a + b, 0) / volumeHistoryRef.current.length;
+                const variance = volumeHistoryRef.current.reduce((sum, v) => sum + Math.pow(v - avgVol, 2), 0) / volumeHistoryRef.current.length;
+                const stdDev = Math.sqrt(variance);
+                const consistency = Math.max(20, Math.min(100, Math.round(100 - (stdDev * 3))));
+                setVolumeConsistency(consistency);
+            }
+
+            const silenceThreshold = 0.015;
+            if (rms < silenceThreshold) {
+                if (silenceStartRef.current === null) {
+                    silenceStartRef.current = Date.now();
+                } else {
+                    const silenceDuration = Date.now() - silenceStartRef.current;
+                    if (silenceDuration > 1500 && !lastPauseTriggered) {
+                        setFluencyState("Paused");
+                        setHesitationCount(prev => prev + 1);
+                        lastPauseTriggered = true;
+                    }
+                }
+            } else {
+                silenceStartRef.current = null;
+                lastPauseTriggered = false;
+                setFluencyState("Fluent");
+            }
+
+            const sampleRate = audioContextRef.current?.sampleRate || 44100;
+            const pitch = autoCorrelate(dataArray, sampleRate);
+            if (pitch !== -1 && pitch > 50 && pitch < 500) {
+                pitchHistoryRef.current.push(pitch);
+                if (pitchHistoryRef.current.length > 100) pitchHistoryRef.current.shift();
+
+                const avgPitch = pitchHistoryRef.current.reduce((a, b) => a + b, 0) / pitchHistoryRef.current.length;
+                const pitchVariance = pitchHistoryRef.current.reduce((sum, p) => sum + Math.pow(p - avgPitch, 2), 0) / pitchHistoryRef.current.length;
+                const pitchStdDev = Math.sqrt(pitchVariance);
+                const jitterScore = Math.max(30, Math.min(100, Math.round(100 - (pitchStdDev * 0.8))));
+                setPitchStability(jitterScore);
+            }
+
+            waveformBufferRef.current = Array.from(dataArray);
+            animationFrameIdRef.current = requestAnimationFrame(loop);
+        };
+
+        animationFrameIdRef.current = requestAnimationFrame(loop);
+    };
+
+    const initAudioAnalyzer = (stream: MediaStream) => {
+        cleanupAudioAnalyzer();
+        if (!stream.getAudioTracks().length) return;
+
+        try {
+            const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+            const audioCtx = new AudioContextClass();
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 512;
+
+            const source = audioCtx.createMediaStreamSource(stream);
+            source.connect(analyser);
+
+            audioContextRef.current = audioCtx;
+            analyserRef.current = analyser;
+            audioSourceRef.current = source;
+
+            pitchHistoryRef.current = [];
+            volumeHistoryRef.current = [];
+            silenceStartRef.current = null;
+            
+            setHesitationCount(0);
+            setPitchStability(100);
+            setVolumeConsistency(100);
+            setFluencyState("Fluent");
+
+            analyzeVoiceTelemetry(analyser);
+        } catch (e) {
+            console.error("Failed to initialize audio analyzer", e);
+        }
+    };
+
     const startSpeechRecognition = () => {
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
         if (!SpeechRecognition) {
@@ -1277,6 +1467,7 @@ const CareerReadiness = () => {
             setMediaStream(stream);
             setWebcamActive(true);
             setInterviewStage("calibrating");
+            initAudioAnalyzer(stream);
 
             setTimeout(() => {
                 if (videoRef.current) {
@@ -1314,19 +1505,57 @@ const CareerReadiness = () => {
         }
     };
 
-    const handleNextQuestion = () => {
+    const handleNextQuestion = async () => {
         stopSpeechRecognition();
         
         const currentQ = interviewQuestions[currentQuestionIdx];
-        const nextAnswers = [...spokenAnswers, { question: currentQ.text, answer: transcript || "[No spoken response captured]" }];
+        const lastResponseText = transcript || "[No spoken response captured]";
+        const nextAnswers = [...spokenAnswers, { question: currentQ.text, answer: lastResponseText }];
         setSpokenAnswers(nextAnswers);
         setTranscript("");
         
         if (currentQuestionIdx < interviewQuestions.length - 1) {
             const nextIdx = currentQuestionIdx + 1;
-            setCurrentQuestionIdx(nextIdx);
-            speakQuestion(interviewQuestions[nextIdx].text);
-            startSpeechRecognition();
+            
+            if (adaptiveBranching) {
+                setLoading(true);
+                try {
+                    const res = await fetch("/api/v1/career/adaptive-next-question", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            role: interviewRole,
+                            persona: interviewerPersona,
+                            history: spokenAnswers,
+                            current_question: currentQ.text,
+                            transcript: lastResponseText
+                        })
+                    });
+                    if (!res.ok) throw new Error("Adaptive next question fetch failed");
+                    const data = await res.json();
+                    
+                    const updatedQuestions = [...interviewQuestions];
+                    updatedQuestions[nextIdx] = {
+                        id: `adaptive-${nextIdx}`,
+                        text: data.next_question,
+                        category: "Adaptive Follow-Up"
+                    };
+                    setInterviewQuestions(updatedQuestions);
+                    setCurrentQuestionIdx(nextIdx);
+                    speakQuestion(data.next_question);
+                } catch (e) {
+                    console.error("Failed to generate adaptive question, using static backup:", e);
+                    setCurrentQuestionIdx(nextIdx);
+                    speakQuestion(interviewQuestions[nextIdx].text);
+                } finally {
+                    setLoading(false);
+                    startSpeechRecognition();
+                }
+            } else {
+                setCurrentQuestionIdx(nextIdx);
+                speakQuestion(interviewQuestions[nextIdx].text);
+                startSpeechRecognition();
+            }
         } else {
             handleFinishInterview(nextAnswers);
         }
@@ -1391,6 +1620,7 @@ const CareerReadiness = () => {
         setWebcamActive(false);
         setMediaStream(null);
         stopSpeechRecognition();
+        cleanupAudioAnalyzer();
         
         setInterviewStage("evaluating");
         setEvaluatingLoading(true);
@@ -1709,6 +1939,39 @@ const CareerReadiness = () => {
                     ctx.fillText(`GAZE: ${eyeContact ? "LOCKED" : "SEARCH"}`, screenX + 5, screenY + boxH + 22);
                     ctx.restore();
                 }
+
+                // Draw glowing neon waveform
+                if (waveformBufferRef.current && waveformBufferRef.current.length > 0) {
+                    ctx.save();
+                    ctx.strokeStyle = "rgba(173, 255, 68, 0.65)";
+                    ctx.lineWidth = 1.5;
+                    ctx.shadowColor = "rgba(173, 255, 68, 0.4)";
+                    ctx.shadowBlur = 5;
+                    ctx.beginPath();
+                    
+                    const sliceWidth = canvas.width / waveformBufferRef.current.length;
+                    let x = 0;
+                    
+                    for (let i = 0; i < waveformBufferRef.current.length; i++) {
+                        const v = waveformBufferRef.current[i] / 128.0;
+                        const y = (canvas.height - 30) + (v - 1.0) * 20;
+                        
+                        if (i === 0) {
+                            ctx.moveTo(x, y);
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                        x += sliceWidth;
+                    }
+                    
+                    ctx.stroke();
+                    
+                    // Draw oscilloscope overlay text
+                    ctx.fillStyle = "rgba(173, 255, 68, 0.8)";
+                    ctx.font = "8px monospace";
+                    ctx.fillText(`AUDIO_VUX // ${fluencyState.toUpperCase()} // WPM: ${speechPace} // JITTER: ${pitchStability}%`, 10, canvas.height - 45);
+                    ctx.restore();
+                }
             });
 
             activePose.onResults((results: any) => {
@@ -1783,6 +2046,7 @@ const CareerReadiness = () => {
             if (activePose) {
                 try { activePose.close(); } catch (e) {}
             }
+            cleanupAudioAnalyzer();
         };
     }, [webcamActive, interviewStage]);
 
@@ -2152,7 +2416,8 @@ const CareerReadiness = () => {
                                         { id: "heatmap", label: "ATS Heatmap & Emulation", icon: Brain },
                                         { id: "skills", label: "Skills Gap & Jobs", icon: Target },
                                         { id: "cover", label: "Cover Letter", icon: FileText },
-                                        { id: "rewriter", label: "Bullet Rewriter", icon: Sparkles }
+                                        { id: "rewriter", label: "Bullet Rewriter", icon: Sparkles },
+                                        { id: "simulator", label: "Recruiter Search Sim", icon: Search }
                                     ].map((t) => (
                                         <button
                                             key={t.id}
@@ -2637,21 +2902,35 @@ const CareerReadiness = () => {
                                                 <div className="bg-black/50 border border-white/5 rounded-2xl p-6 relative font-sans text-xs text-gray-300 space-y-6 select-none overflow-hidden max-h-[600px] overflow-y-auto">
                                                     {/* Header */}
                                                     <div className="text-center space-y-2 pb-4 border-b border-white/5 relative group">
-                                                        <div className="absolute inset-0 bg-yellow-500/5 border border-dashed border-yellow-500/20 rounded opacity-0 group-hover:opacity-100 transition-opacity p-2 flex items-center justify-center text-[10px] text-yellow-400 font-bold backdrop-blur-[1px]">
-                                                            Warning: Double column header layout may lead to text fragmentation.
-                                                        </div>
+                                                        {searchSimOptimized ? (
+                                                            <div className="absolute inset-0 bg-[#ADFF44]/5 border border-dashed border-[#ADFF44]/30 rounded opacity-0 group-hover:opacity-100 transition-opacity p-2 flex items-center justify-center text-[10px] text-[#ADFF44] font-bold backdrop-blur-[1px]">
+                                                                Optimized: Single column header layout matches ATS parser schema.
+                                                            </div>
+                                                        ) : (
+                                                            <div className="absolute inset-0 bg-yellow-500/5 border border-dashed border-yellow-500/20 rounded opacity-0 group-hover:opacity-100 transition-opacity p-2 flex items-center justify-center text-[10px] text-yellow-400 font-bold backdrop-blur-[1px]">
+                                                                Warning: Double column header layout may lead to text fragmentation.
+                                                            </div>
+                                                        )}
                                                         <h4 className="text-lg font-bold text-white tracking-wide">{formData.name || "Candidate Name"}</h4>
                                                         <p className="text-gray-400 text-[10px]">{formData.email || "email@domain.com"} | {formData.phone || "+123456789"}</p>
                                                     </div>
 
                                                     {/* Summary */}
-                                                    <div className="space-y-2 relative group p-2 rounded border border-transparent hover:border-red-500/20 hover:bg-red-500/5 transition-all">
+                                                    <div className={`space-y-2 relative group p-2 rounded border border-transparent transition-all ${
+                                                        searchSimOptimized ? "hover:border-[#ADFF44]/20 hover:bg-[#ADFF44]/5" : "hover:border-red-500/20 hover:bg-red-500/5"
+                                                    }`}>
                                                         <h5 className="font-bold text-white border-b border-white/5 pb-1 uppercase tracking-wider text-[10px]">Executive Summary</h5>
                                                         <p className="text-gray-400 leading-relaxed">
-                                                            A highly ambitious and results-oriented professional with passion for innovation and engineering. Proven track record of building applications.
+                                                            {searchSimOptimized ? (
+                                                                "A highly ambitious Software Engineer with a proven track record of designing scalable microservices and leading cross-functional teams to drive a 40% efficiency boost."
+                                                            ) : (
+                                                                "A highly ambitious and results-oriented professional with passion for innovation and engineering. Proven track record of building applications."
+                                                            )}
                                                         </p>
-                                                        <div className="absolute top-2 right-2 hidden group-hover:block bg-red-500 text-white text-[9px] px-2 py-0.5 rounded font-black uppercase">
-                                                            Critique: Lacks quantifiable metrics (e.g. % growth, hours saved).
+                                                        <div className={`absolute top-2 right-2 hidden group-hover:block text-[9px] px-2 py-0.5 rounded font-black uppercase ${
+                                                            searchSimOptimized ? "bg-[#ADFF44] text-black" : "bg-red-500 text-white"
+                                                        }`}>
+                                                            {searchSimOptimized ? "Optimized: Quantifiable metrics added" : "Critique: Lacks quantifiable metrics (e.g. % growth, hours saved)"}
                                                         </div>
                                                     </div>
 
@@ -2676,18 +2955,32 @@ const CareerReadiness = () => {
                                                          </div>
 
                                                          {/* Job 2 */}
-                                                         <div className="space-y-1.5 relative group p-2 rounded border border-transparent hover:border-red-500/20 hover:bg-red-500/5 transition-all">
+                                                         <div className={`space-y-1.5 relative group p-2 rounded border border-transparent transition-all ${
+                                                             searchSimOptimized ? "hover:border-[#ADFF44]/20 hover:bg-[#ADFF44]/5" : "hover:border-red-500/20 hover:bg-red-500/5"
+                                                         }`}>
                                                              <div className="flex justify-between font-bold text-white text-[11px]">
                                                                  <span>Associate Developer | Web Solutions</span>
                                                                  <span>2022 - 2024</span>
                                                              </div>
                                                              <ul className="list-disc list-inside space-y-1 text-gray-400 pl-2">
-                                                                 <li>Worked on web application development projects.</li>
-                                                                 <li>Assisted in designing user interfaces in Figma.</li>
-                                                                 <li>Fixed bugs and resolved user issues.</li>
+                                                                 {searchSimOptimized ? (
+                                                                     <>
+                                                                         <li>Spearheaded migrating interfaces to React & TypeScript, boosting user conversion by 18%.</li>
+                                                                         <li>Architected centralized UI library in Figma, reducing front-end onboarding friction by 45%.</li>
+                                                                         <li>Resolved 120+ legacy software bugs, securing 99.9% uptime validation.</li>
+                                                                     </>
+                                                                 ) : (
+                                                                     <>
+                                                                         <li>Worked on web application development projects.</li>
+                                                                         <li>Assisted in designing user interfaces in Figma.</li>
+                                                                         <li>Fixed bugs and resolved user issues.</li>
+                                                                     </>
+                                                                 )}
                                                              </ul>
-                                                             <div className="absolute top-2 right-2 hidden group-hover:block bg-red-500 text-white text-[9px] px-2 py-0.5 rounded font-black uppercase">
-                                                                 Critique: Weak verbs ("worked on", "assisted"). No metrics.
+                                                             <div className={`absolute top-2 right-2 hidden group-hover:block text-[9px] px-2 py-0.5 rounded font-black uppercase ${
+                                                                 searchSimOptimized ? "bg-[#ADFF44] text-black" : "bg-red-500 text-white"
+                                                             }`}>
+                                                                 {searchSimOptimized ? "Optimized: Rewritten with high metrics" : "Critique: Weak verbs ('worked on', 'assisted'). No metrics."}
                                                              </div>
                                                          </div>
                                                      </div>
@@ -2700,6 +2993,12 @@ const CareerReadiness = () => {
                                                              <span className="bg-[#ADFF44]/20 text-[#ADFF44] px-1 rounded font-bold m-0.5 inline-block">TypeScript</span>, 
                                                              <span className="bg-[#ADFF44]/20 text-[#ADFF44] px-1 rounded font-bold m-0.5 inline-block">Docker</span>, 
                                                              <span className="bg-[#ADFF44]/20 text-[#ADFF44] px-1 rounded font-bold m-0.5 inline-block">CI/CD</span>, 
+                                                             {searchSimOptimized && (
+                                                                 <>
+                                                                     <span className="bg-[#ADFF44]/20 text-[#ADFF44] px-1 rounded font-bold m-0.5 inline-block animate-pulse">GraphQL</span>, 
+                                                                     <span className="bg-[#ADFF44]/20 text-[#ADFF44] px-1 rounded font-bold m-0.5 inline-block animate-pulse">AWS</span>, 
+                                                                 </>
+                                                             )}
                                                              SQL, Git, REST APIs, Tailwind CSS.
                                                          </p>
                                                          <div className="absolute top-2 right-2 hidden group-hover:block bg-[#ADFF44] text-black text-[9px] px-2 py-0.5 rounded font-black uppercase">
@@ -3162,6 +3461,198 @@ const CareerReadiness = () => {
                                                 </div>
                                             </div>
                                         </Card>
+                                    </div>
+                                )}
+
+                                {/* RESUME MODE: RECRUITER SEARCH SIMULATOR TAB */}
+                                {analysis && activeTab === "simulator" && (
+                                    <div className="space-y-8 animate-in fade-in duration-300">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-[#ADFF44]/10 flex items-center justify-center border border-[#ADFF44]/20 text-[#ADFF44]">
+                                                <Search size={20} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-2xl font-bold font-sora">Recruiter Search Simulator</h3>
+                                                <p className="text-gray-500 text-sm">Visualize your search visibility and ranking inside recruiter platforms like LinkedIn Recruiter or Greenhouse.</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid lg:grid-cols-3 gap-8">
+                                            {/* Search Criteria Settings panel */}
+                                            <Card className="lg:col-span-1 bg-white/5 border border-white/10 p-6 rounded-2xl space-y-6">
+                                                <h4 className="font-bold text-xs uppercase tracking-wider text-gray-400">Recruiter Query Parameters</h4>
+                                                
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Search Term (Title)</label>
+                                                        <div className="w-full bg-black border border-white/10 rounded-xl px-4 py-2.5 mt-1 font-mono text-sm text-gray-300">
+                                                            {analysis.best_for?.role || "Software Engineer"}
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Required Skills</label>
+                                                        <div className="flex flex-wrap gap-2 mt-1">
+                                                            {(analysis.skills_gap?.present_skills || ["React", "Typescript", "Node.js"]).slice(0, 4).map((sk: string, i: number) => (
+                                                                <span key={i} className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#ADFF44]/10 border border-[#ADFF44]/20 text-[#ADFF44] font-mono">
+                                                                    {sk}
+                                                                </span>
+                                                            ))}
+                                                            {searchSimOptimized ? (
+                                                                (analysis.skills_gap?.missing_skills || ["Docker", "GraphQL", "AWS"]).slice(0, 3).map((sk: string, i: number) => (
+                                                                    <span key={i} className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-green-500/20 border border-green-500/40 text-green-400 font-mono animate-pulse">
+                                                                        {sk}
+                                                                    </span>
+                                                                ))
+                                                            ) : (
+                                                                (analysis.skills_gap?.missing_skills || ["Docker", "GraphQL", "AWS"]).slice(0, 3).map((sk: string, i: number) => (
+                                                                    <span key={i} className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 font-mono line-through">
+                                                                        {sk}
+                                                                    </span>
+                                                                ))
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Search Experience Filter</label>
+                                                        <div className="w-full bg-black border border-white/10 rounded-xl px-4 py-2.5 mt-1 font-mono text-sm text-gray-300">
+                                                            Mid-Senior Level (3-5 Years)
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="border-t border-white/5 pt-4 space-y-3">
+                                                    <div className="flex justify-between items-center text-xs">
+                                                        <span className="text-gray-400">SEO Match Percentage:</span>
+                                                        <span className={`font-bold font-mono ${searchSimOptimized ? "text-[#ADFF44]" : "text-yellow-400"}`}>
+                                                            {searchSimMatches}%
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center text-xs">
+                                                        <span className="text-gray-400">Active Search Rank:</span>
+                                                        <span className={`font-bold font-mono ${searchSimOptimized ? "text-[#ADFF44]" : "text-red-400"}`}>
+                                                            #{searchSimRank} of 142
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <Button
+                                                    onClick={() => {
+                                                        setSearchSimAnim(true);
+                                                        setTimeout(() => {
+                                                            setSearchSimOptimized(true);
+                                                            setSearchSimRank(1);
+                                                            setSearchSimMatches(96);
+                                                            setSearchSimAnim(false);
+                                                            toast.success("Keyword injected! Resume SEO rank updated.");
+                                                        }, 1500);
+                                                    }}
+                                                    disabled={searchSimOptimized || searchSimAnim}
+                                                    className="w-full h-11 rounded-xl bg-[#ADFF44] hover:bg-[#9BE63D] text-black font-black text-xs uppercase transition-all tracking-wider flex items-center justify-center gap-2"
+                                                >
+                                                    {searchSimAnim ? (
+                                                        <>
+                                                            <Loader2 className="animate-spin" size={14} />
+                                                            <span>Optimizing Ranking...</span>
+                                                        </>
+                                                    ) : searchSimOptimized ? (
+                                                        <>
+                                                            <CheckCircle size={14} />
+                                                            <span>Ranking Maxed Out (#1)</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Sparkles size={14} />
+                                                            <span>Simulate Rank Optimization</span>
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </Card>
+
+                                            {/* Mock search result list */}
+                                            <div className="lg:col-span-2 space-y-4">
+                                                <div className="flex justify-between items-center text-xs text-gray-500 uppercase tracking-widest font-black">
+                                                    <span>Search Results (Simulated Recruiter View)</span>
+                                                    <span>Relevance Score</span>
+                                                </div>
+
+                                                <div className="space-y-3 relative flex flex-col">
+                                                    {[
+                                                        { name: "Candidate A (Sarah Lin)", score: 98, rank: 1, skills: ["React", "Typescript", "Node.js", "Docker", "GraphQL", "AWS"], matches: "Matched all keywords" },
+                                                        { name: "Candidate B (Marcus Chen)", score: 92, rank: 2, skills: ["React", "Typescript", "Node.js", "AWS"], matches: "Matched 4 key skills" },
+                                                        { name: "Candidate C (The User)", score: 75, rank: 3, skills: ["React", "Typescript", "Node.js"], matches: "Missing: Docker, GraphQL, AWS" },
+                                                        { name: "Candidate D (David Miller)", score: 68, rank: 4, skills: ["React", "Node.js"], matches: "Missing: Typescript, Docker" }
+                                                    ]
+                                                    .map(cand => {
+                                                        const isUser = cand.name.includes("The User");
+                                                        let actualRank = cand.rank;
+                                                        let actualScore = cand.score;
+                                                        let actualMatches = cand.matches;
+                                                        
+                                                        if (isUser && searchSimOptimized) {
+                                                            actualRank = 1;
+                                                            actualScore = 96;
+                                                            actualMatches = "Matched all optimized keywords!";
+                                                        } else if (!isUser && searchSimOptimized && cand.rank < 3) {
+                                                            actualRank = cand.rank + 1;
+                                                        }
+
+                                                        return (
+                                                            <motion.div
+                                                                key={cand.name}
+                                                                layout
+                                                                transition={{ type: "spring", stiffness: 100, damping: 15 }}
+                                                                className={`p-5 rounded-2xl border transition-all flex justify-between items-center ${
+                                                                    isUser 
+                                                                        ? searchSimOptimized 
+                                                                            ? "bg-[#ADFF44]/10 border-[#ADFF44] shadow-md shadow-[#ADFF44]/5" 
+                                                                            : "bg-yellow-500/5 border-yellow-500/20"
+                                                                        : "bg-white/3 border-white/5"
+                                                                }`}
+                                                                style={{ order: actualRank }}
+                                                            >
+                                                                <div className="flex gap-4 items-center">
+                                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono font-bold text-xs ${
+                                                                        actualRank === 1 
+                                                                            ? "bg-[#ADFF44]/20 border border-[#ADFF44]/30 text-[#ADFF44]" 
+                                                                            : "bg-white/5 border border-white/10 text-gray-400"
+                                                                    }`}>
+                                                                        #{actualRank}
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className={`font-bold text-sm ${isUser ? "text-white" : "text-gray-300"}`}>
+                                                                                {isUser ? `${formData.name || "Anonymous User"} (You)` : cand.name}
+                                                                            </span>
+                                                                            {isUser && (
+                                                                                <span className="text-[9px] px-2 py-0.5 rounded bg-[#ADFF44]/20 text-[#ADFF44] font-black uppercase tracking-wider">
+                                                                                    Your Resume
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-[10px] text-gray-400 mt-1">
+                                                                            {cand.skills.join(", ")}
+                                                                        </p>
+                                                                        <p className={`text-[10px] font-mono mt-1 ${isUser ? (searchSimOptimized ? "text-[#ADFF44]" : "text-yellow-400") : "text-gray-500"}`}>
+                                                                            {actualMatches}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right shrink-0">
+                                                                    <div className={`text-base font-black font-mono ${
+                                                                        actualRank === 1 ? "text-[#ADFF44]" : "text-gray-300"
+                                                                    }`}>
+                                                                        {actualScore}%
+                                                                    </div>
+                                                                    <span className="text-[9px] text-gray-500 uppercase tracking-widest block font-bold mt-0.5">Match</span>
+                                                                </div>
+                                                            </motion.div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
 
@@ -3628,6 +4119,20 @@ const CareerReadiness = () => {
                                                 <h4 className="font-bold text-white flex items-center gap-1.5 uppercase text-[10px] tracking-wider"><Target size={12} className="text-[#ADFF44]" /> Posture Alert</h4>
                                                 <p>Monitors distance and neck alignment, warning you in real-time if you lean or slouch.</p>
                                             </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between p-4 rounded-2xl bg-white/3 border border-white/5">
+                                            <div className="space-y-1">
+                                                <h4 className="font-bold text-white text-[11px] uppercase tracking-wider">Adaptive AI Branching (Deep Tech Mode)</h4>
+                                                <p className="text-[9px] text-gray-400 max-w-sm leading-normal">Interviewer dynamically reacts to your answers and crafts custom follow-up questions instead of using static templates.</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setAdaptiveBranching(!adaptiveBranching)}
+                                                className={`w-12 h-6 rounded-full p-1 transition-all duration-300 flex-shrink-0 ${adaptiveBranching ? "bg-[#ADFF44]" : "bg-neutral-850"}`}
+                                            >
+                                                <div className={`w-4 h-4 rounded-full transition-all duration-300 ${adaptiveBranching ? "translate-x-6 bg-black" : "bg-gray-400"}`} />
+                                            </button>
                                         </div>
 
                                         <Button
